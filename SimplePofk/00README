@@ -1,0 +1,3 @@
+Simple code to extract power-spectrum from simulation data 
+Accepts GADGET1, RAMSES and ASCII input files
+Written by Hans A. Winther 2017

@@ -1,0 +1,101 @@
+#!/bin/bash
+
+####################################################
+# Simple P(k) estimation. Deconvolves the
+# window function (NGP) and subtracts shotnoise
+# but that it. Outputs P(k) up to the Nyquist
+# frequency of the grid used for the computation
+####################################################
+
+# Parameters
+simplecode="/Users/hans/local/MG-PICOLA-PUBLIC/SimplePofk/simplepofk" # Path to executable
+datafolder="$1"
+outputname="$2"
+ngrid="$3"
+dataformat="$4"
+nthreads="$5"
+re='^[0-9]+$'
+
+# Check input
+if [ "$3" == "" ]; then
+  echo ""
+  echo "  Run as simplePowerComp datafolder outputname ngrid (nthreads)"
+  echo "  [1] Datafolder   : [/path/to/output_0000X] or [/path/to/gadget.]"
+  echo "  [2] Outputname    : [myfile.txt]"
+  echo "  [3] Ngrid         : [128] (even integer)"
+  echo "  [4] Dataformat    : [RAMSES] or [GADGET] or [ASCII]"
+  echo "  [5] OpenMP threads: [20] (optional, 1 is standard)"
+  echo ""
+  exit
+fi
+
+# Extract the number of RAMSES files and the RAMSES outputnumber
+if [ "$dataformat" == "RAMSES" ]; then
+  nfiles=`ls -l $datafolder/part_* | wc -l`
+  ramsesnum=`echo $datafolder | rev | cut -d "_" -f 1 | rev | cut -d "/" -f 1`
+elif [ "$dataformat" == "GADGET" ]; then
+  nfiles=`ls -l ${datafolder}* | wc -l`
+elif [ "$dataformat" == "ASCII" ]; then
+  nfiles="1"
+fi
+
+# If nthreads is not set (or not integer) set to 1
+if ! [[ $nthreads =~ $re ]]; then
+  nthreads=1
+  echo "put to 1"
+fi
+
+# Verbose
+echo ""
+echo "  ======================================="
+echo "  Running SimplePofk with parameters:    "
+echo "  ======================================="
+echo "  [1] Filepath:       [$datafolder]      "
+echo "  [2] Outputname:     [$outputname]      "
+echo "  [3] Ngrid:          [$ngrid]           "
+echo "  [4] Dataformat:     [$dataformat]      "
+echo "  [5] OpenMP threads: [$nthreads]        "
+echo "  DataFiles found     [$nfiles]          "
+if [ "$dataformat" == "RAMSES" ]; then
+  echo "  RamsesNumber        [$ramsesnum]     "
+fi
+echo "  ======================================="
+echo ""
+
+# Validate input
+#if ! [[ $nfiles =~ $re ]]; then
+#  echo "Error: nfiles [$nfiles] is not a positive integer"
+#  exit
+#fi
+if [ "$dataformat" == "RAMSES" ]; then
+  if [ ! -e "$datafolder/part_${ramsesnum}.out00001" ]; then
+    echo "Error: we could not find the file [$datafolder/part_${ramsesnum}.out00001]"
+    exit
+  fi
+elif [ "$dataformat" == "GADGET" ]; then
+  if [ ! -e "${datafolder}0" ]; then
+    echo "Error: we could not find the file [${datafolder}0]"
+    exit
+  fi
+elif [ "$dataformat" == "ASCII" ]; then
+  if [ ! -e "$datafolder" ]; then
+    echo "Error: we could not find the file [$datafolder]"
+    exit
+  fi
+else
+  echo "Error: unknown dataformat [$dataformat]"
+  exit
+fi
+if ! [[ $ngrid =~ $re ]]; then
+  echo "Error: ngrid [$ngrid] is not a positive integer"
+  exit
+fi
+
+# Run code
+if [ "$dataformat" == "RAMSES" ]; then
+  OMP_NUM_THREADS=$nthreads $simplecode $datafolder/part_${ramsesnum}.out $outputname $ngrid $nfiles $dataformat
+elif [ "$dataformat" == "GADGET" ]; then
+  OMP_NUM_THREADS=$nthreads $simplecode $datafolder $outputname $ngrid $nfiles $dataformat
+else
+  OMP_NUM_THREADS=$nthreads $simplecode $datafolder $outputname $ngrid $nfiles $dataformat
+fi

@@ -1,0 +1,3 @@
+Compile SimplePofk and set the path to the executable in calcPofkSimple
+Set path to mpirun and eps->pdf (epspdf) in the runtest_model.sh scripts and run
+to produce the figures attached here
