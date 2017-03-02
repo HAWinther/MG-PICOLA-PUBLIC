@@ -15,7 +15,7 @@
 picolaoutputdir="output_fofr"
 mymgpicolaexec="MG_PICOLA_FOFR"
 mypofksimple="../SimplePofk/calcPofkSimple"
-mympirun="mpirun"
+mympirun="mpirun-openmpi-gcc6"
 myepspdf="epspdf"
 plotname="pofk_fofr_testrun"
 recompile="true"
@@ -119,27 +119,27 @@ if [[ "$runsim" == "true" ]]; then
   # Run LCDM simulation
   paramfile=$( make_parameter_file 0 0 1 1 1e-10 $box $ngrid $npart lcdm $picolaoutputdir )
   echo "$paramfile" > $picolaoutputdir/lcdm.inp
-  $mympirun -np $ncpu $mymgpicolaexec $picolaoutputdir/lcdm.inp
+  mpirun -np $ncpu $mymgpicolaexec $picolaoutputdir/lcdm.inp
 
   # Run f(R) simulation (no screening)
   paramfile=$( make_parameter_file 1 0 0 1 $fofr0 $box $ngrid $npart fofr $picolaoutputdir )
   echo "$paramfile" > $picolaoutputdir/fofr.inp
-  $mympirun -np $ncpu $mymgpicolaexec $picolaoutputdir/fofr.inp
+  mpirun -np $ncpu $mymgpicolaexec $picolaoutputdir/fofr.inp
   
   # Run f(R) simulation (with screening)
   paramfile=$( make_parameter_file 1 1 0 1 $fofr0 $box $ngrid $npart fofr_screen $picolaoutputdir )
   echo "$paramfile" > $picolaoutputdir/fofr_screen.inp
-  $mympirun -np $ncpu $mymgpicolaexec $picolaoutputdir/fofr_screen.inp
+  mpirun -np $ncpu $mymgpicolaexec $picolaoutputdir/fofr_screen.inp
   
   # Run f(R) simulation with LCDM growthfac (no screening)
   paramfile=$( make_parameter_file 1 0 1 1 $fofr0 $box $ngrid $npart fofr_Dlcdm $picolaoutputdir )
   echo "$paramfile" > $picolaoutputdir/fofr_Dlcdm.inp
-  $mympirun -np $ncpu $mymgpicolaexec $picolaoutputdir/fofr_Dlcdm.inp
+  mpirun -np $ncpu $mymgpicolaexec $picolaoutputdir/fofr_Dlcdm.inp
   
   # Run f(R) simulation with LCDM growthfac (with screening)
   paramfile=$( make_parameter_file 1 1 1 1 $fofr0 $box $ngrid $npart fofr_Dlcdm_screen $picolaoutputdir )
   echo "$paramfile" > $picolaoutputdir/fofr_Dlcdm_screen.inp
-  $mympirun -np $ncpu $mymgpicolaexec $picolaoutputdir/fofr_Dlcdm_screen.inp
+  mpirun -np $ncpu $mymgpicolaexec $picolaoutputdir/fofr_Dlcdm_screen.inp
 fi
 
 #==================================

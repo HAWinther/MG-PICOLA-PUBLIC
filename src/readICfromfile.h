@@ -858,7 +858,7 @@ void readICFromFile_assign_particles(){
 #ifndef SCALEDEPENDENT
   // The IC we read in are for LCDM so make sure we rescale the initial displacement field
   // given to the particles so that this becomes correct. For scale-dependent growth this is
-  // not needed here as we don't store Dz and D2 but recompute them at every step
+  // not needed here as we don't store D and D2 but recompute them at every step
   double rescale_1lpt = growth_DLCDM(A) / growth_D(A);
   double rescale_2lpt = growth_D2LCDM(A) / growth_D2(A);
 #endif
@@ -881,8 +881,8 @@ void readICFromFile_assign_particles(){
 
         // Assign displacementfields to particles
         for (int m = 0; m < 3; m++) {
-#ifndef SCALEDEPENDENT // If SCALEDEPENDENT then we don't use Dz and D2
-          P[coord].Dz[m] = ZA[m][coord];
+#ifndef SCALEDEPENDENT 
+          P[coord].D[m]  = ZA[m][coord];
           P[coord].D2[m] = LPT[m][coord];
 #endif
           if (UseCOLA == 0) {
@@ -910,10 +910,10 @@ void readICFromFile_assign_particles(){
         //==============================================================================================
         // So far the displacement-field corresponds to LCDM at redshift 0 so rescale it to the correct value
         //==============================================================================================
-#ifndef SCALEDEPENDENT // If SCALEDEPENDENT then we don't use Dz and D2
+#ifndef SCALEDEPENDENT 
         if(UseCOLA != 0){
           for (int m = 0; m < 3; m++) {
-            P[coord].Dz[m] *= rescale_1lpt;
+            P[coord].D[m]  *= rescale_1lpt;
             P[coord].D2[m] *= rescale_2lpt;
           }
         }

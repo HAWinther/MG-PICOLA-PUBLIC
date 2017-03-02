@@ -15,7 +15,6 @@
 picolaoutputdir="output_dgp"
 mymgpicolaexec="MG_PICOLA_DGP"
 mypofksimple="../SimplePofk/calcPofkSimple"
-mympirun="mpirun"
 myepspdf="epspdf"
 plotname="pofk_dgp_testrun"
 recompile="true"
@@ -119,17 +118,17 @@ if [[ "$runsim" == "true" ]]; then
   # Run LCDM simulation
   paramfile=$( make_parameter_file 0 0 1 1 $rcH0_DGP $box $ngrid $npart lcdm       $picolaoutputdir )
   echo "$paramfile" > $picolaoutputdir/lcdm.inp
-  $mympirun -np $ncpu $mymgpicolaexec $picolaoutputdir/lcdm.inp
+  mpirun -np $ncpu $mymgpicolaexec $picolaoutputdir/lcdm.inp
 
   # Run DGP simulation (no screening)
   paramfile=$( make_parameter_file 1 0 0 1 $rcH0_DGP $box $ngrid $npart dgp        $picolaoutputdir )
   echo "$paramfile" > $picolaoutputdir/dgp.inp
-  $mympirun -np $ncpu $mymgpicolaexec $picolaoutputdir/dgp.inp
+  mpirun -np $ncpu $mymgpicolaexec $picolaoutputdir/dgp.inp
   
   # Run DGP simulation (with screening)
   paramfile=$( make_parameter_file 1 1 0 1 $rcH0_DGP $box $ngrid $npart dgp_screen $picolaoutputdir )
   echo "$paramfile" > $picolaoutputdir/dgp_screen.inp
-  $mympirun -np $ncpu $mymgpicolaexec $picolaoutputdir/dgp_screen.inp
+  mpirun -np $ncpu $mymgpicolaexec $picolaoutputdir/dgp_screen.inp
   
 fi
 

@@ -272,7 +272,7 @@ int main(int argc, char **argv) {
           //========================================
           // Assign displacementfields to particles
           //========================================
-          P[coord].Dz[m] = ZA[m][coord];
+          P[coord].D[m]  = ZA[m][coord];
           P[coord].D2[m] = LPT[m][coord];
 #endif
 
@@ -284,7 +284,7 @@ int main(int argc, char **argv) {
 #ifdef SCALEDEPENDENT
             P[coord].Vel[m] = P[coord].dDdy[m] + P[coord].dD2dy[m] * Use2LPT_IC;
 #else
-            P[coord].Vel[m] = P[coord].Dz[m] * Dv + P[coord].D2[m] * Dv2 * Use2LPT_IC;
+            P[coord].Vel[m] = P[coord].D[m] * Dv + P[coord].D2[m] * Dv2 * Use2LPT_IC;
 #endif
           } else {
 
@@ -301,9 +301,9 @@ int main(int argc, char **argv) {
         P[coord].Pos[1] = periodic_wrap( j                 *(Box / (double)Nsample) + P[coord].D[1] + P[coord].D2[1] * Use2LPT_IC);
         P[coord].Pos[2] = periodic_wrap( k                 *(Box / (double)Nsample) + P[coord].D[2] + P[coord].D2[2] * Use2LPT_IC);   
 #else
-        P[coord].Pos[0] = periodic_wrap((i + Local_p_start)*(Box / (double)Nsample) + P[coord].Dz[0] * Di + P[coord].D2[0] * Di2 * Use2LPT_IC);
-        P[coord].Pos[1] = periodic_wrap( j                 *(Box / (double)Nsample) + P[coord].Dz[1] * Di + P[coord].D2[1] * Di2 * Use2LPT_IC);
-        P[coord].Pos[2] = periodic_wrap( k                 *(Box / (double)Nsample) + P[coord].Dz[2] * Di + P[coord].D2[2] * Di2 * Use2LPT_IC);   
+        P[coord].Pos[0] = periodic_wrap((i + Local_p_start)*(Box / (double)Nsample) + P[coord].D[0] * Di + P[coord].D2[0] * Di2 * Use2LPT_IC);
+        P[coord].Pos[1] = periodic_wrap( j                 *(Box / (double)Nsample) + P[coord].D[1] * Di + P[coord].D2[1] * Di2 * Use2LPT_IC);
+        P[coord].Pos[2] = periodic_wrap( k                 *(Box / (double)Nsample) + P[coord].D[2] * Di + P[coord].D2[2] * Di2 * Use2LPT_IC);   
 #endif
         if(ThisTask == 0 && coord < 10) printf("Particle [%i] :   %8.3f   %8.3f   %8.3f\n", coord, P[coord].Pos[0], P[coord].Pos[1], P[coord].Pos[2]);
       }
@@ -701,7 +701,7 @@ finalize:
     for(unsigned int n = 0; n < NumPart; n++) {
       for(int axes = 0; axes < 3; axes ++) {
         Disp[axes][n]  -= sumDxyz[axes];
-        force[axes]     = -1.5 * Omega * Disp[axes][n] - UseCOLA * ( P[n].Dz[axes] * q1 + P[n].D2[axes] * q2 * Use2LPT_STEP) / A;
+        force[axes]     = -1.5 * Omega * Disp[axes][n] - UseCOLA * ( P[n].D[axes] * q1 + P[n].D2[axes] * q2 * Use2LPT_STEP) / A;
         P[n].Vel[axes] += force[axes] * dda;
         sumxyz[axes]   += P[n].Vel[axes];
       }
@@ -753,7 +753,7 @@ finalize:
     for(unsigned int n = 0; n < NumPart; n++) {
       for(int axes = 0; axes < 3; axes++){
         P[n].Pos[axes] += (P[n].Vel[axes] - sumxyz[axes]) * dyyy;
-        P[n].Pos[axes]  = periodic_wrap(P[n].Pos[axes] + UseCOLA*(P[n].Dz[axes] * da1 + P[n].D2[axes] * da2 * Use2LPT_STEP ));
+        P[n].Pos[axes]  = periodic_wrap(P[n].Pos[axes] + UseCOLA*(P[n].D[axes] * da1 + P[n].D2[axes] * da2 * Use2LPT_STEP ));
       }
     }
 #endif
@@ -862,7 +862,7 @@ finalize:
 #ifdef SCALEDEPENDENT
             for(k = 0; k < 3; k++) block[3 * pc + k] = (float)(velfac*fac*(P[n].Vel[k] - sumxyz[k] + (P[n].dDdy[k] + P[n].dD2dy[k] * Use2LPT_STEP ) * UseCOLA));
 #else
-            for(k = 0; k < 3; k++) block[3 * pc + k] = (float)(velfac*fac*(P[n].Vel[k] - sumxyz[k] + (P[n].Dz[k] * Dv + P[n].D2[k] * Dv2 * Use2LPT_STEP ) * UseCOLA));
+            for(k = 0; k < 3; k++) block[3 * pc + k] = (float)(velfac*fac*(P[n].Vel[k] - sumxyz[k] + (P[n].D[k] * Dv + P[n].D2[k] * Dv2 * Use2LPT_STEP ) * UseCOLA));
 #endif
             pc++;
             if(pc == blockmaxlen) {
@@ -904,12 +904,13 @@ finalize:
 
           for(n = 0; n < NumPart; n++){
             double P_Vel[3];
-            for(int axes = 0; axes < 3; axes++)
+            for(int axes = 0; axes < 3; axes++) {
 #ifdef SCALEDEPENDENT
               P_Vel[axes] = fac*(P[n].Vel[axes] - sumxyz[axes] + (P[n].dDdy[axes] + P[n].dD2dy[axes] * Use2LPT_STEP ) * UseCOLA);
 #else
-            P_Vel[axes] = fac*(P[n].Vel[axes] - sumxyz[axes] + (P[n].Dz[axes] * Dv + P[n].D2[axes] * Dv2) * UseCOLA);
+              P_Vel[axes] = fac*(P[n].Vel[axes] - sumxyz[axes] + (P[n].D[axes] * Dv + P[n].D2[axes] * Dv2) * UseCOLA);
 #endif
+            }
 
             // Output positions in Mpc/h and velocities in km/s
 #ifdef PARTICLE_ID

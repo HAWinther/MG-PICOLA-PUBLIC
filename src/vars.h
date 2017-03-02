@@ -262,7 +262,7 @@ extern struct part_data {
 
 #else
 
-  float Dz[3];             // The Zeldovich displacment of the particle in the X, Y and Z directions
+  float D[3];             // The Zeldovich displacment of the particle in the X, Y and Z directions
   float D2[3];             // The 2LPT displacment of the particle in the X, Y and Z directions
 
 #endif
@@ -279,21 +279,20 @@ extern struct part_data {
 #ifdef PARTICLE_ID
   unsigned long long ID;      // The particle ID
 #endif
-  float_kind Dz[3];           // The Zeldovich displacment of the particle in the X, Y and Z directions
+  float_kind D[3];            // The Zeldovich displacment of the particle in the X, Y and Z directions
   float_kind D2[3];           // The 2LPT displacment of the particle in the X, Y and Z directions
   float_kind Pos[3];          // The position of the particle in the X, Y and Z directions
   float_kind Vel[3];          // The velocity of the particle in the X, Y and Z directions
+
 #ifdef SCALEDEPENDENT
   unsigned int coord_q;
   unsigned int init_cpu_id;
   
   // First order displacment-vectors
-  float_kind D[3];
   float_kind dDdy[3];
   float_kind ddDddy[3];
   
   // Second order displacment-vectors
-  float_kind DD2[3];
   float_kind dD2dy[3];
   float_kind ddD2ddy[3];
 #endif

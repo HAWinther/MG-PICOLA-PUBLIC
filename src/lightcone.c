@@ -401,9 +401,9 @@ void Drift_Lightcone(double A, double AFF, double AF, double Di, double Di2) {
     outputflag++;
     if (n < NumPart) {
 
-      Delta_Pos[0] = (P[n].Vel[0] - sumx) * dyyy + UseCOLA * (P[n].Dz[0]*da1 + P[n].D2[0]*da2);
-      Delta_Pos[1] = (P[n].Vel[1] - sumy) * dyyy + UseCOLA * (P[n].Dz[1]*da1 + P[n].D2[1]*da2);   
-      Delta_Pos[2] = (P[n].Vel[2] - sumz) * dyyy + UseCOLA * (P[n].Dz[2]*da1 + P[n].D2[2]*da2);     
+      Delta_Pos[0] = (P[n].Vel[0] - sumx) * dyyy + UseCOLA * (P[n].D[0]*da1 + P[n].D2[0]*da2);
+      Delta_Pos[1] = (P[n].Vel[1] - sumy) * dyyy + UseCOLA * (P[n].D[1]*da1 + P[n].D2[1]*da2);   
+      Delta_Pos[2] = (P[n].Vel[2] - sumz) * dyyy + UseCOLA * (P[n].D[2]*da1 + P[n].D2[2]*da2);     
 
       // Check that 100Mpc^2/h^2 boundaries is enough
       if((Delta_Pos[0] > boundary) || (Delta_Pos[1] > boundary) || (Delta_Pos[2] > boundary)) {
@@ -450,12 +450,12 @@ void Drift_Lightcone(double A, double AFF, double AF, double Di, double Di2) {
               
                   // Store the interpolated particle position and velocity.
                   unsigned int ind = 6*(blockmaxlen*repcount+pc[repcount]);
-                  block[ind]     = (float)(lengthfac*(P[n].Pos[0] + (P[n].Vel[0]-sumx)*dyyy_tmp+UseCOLA*(P[n].Dz[0]*da1_tmp+P[n].D2[0]*da2_tmp) + (i*Box)));
-                  block[ind + 1] = (float)(lengthfac*(P[n].Pos[1] + (P[n].Vel[1]-sumy)*dyyy_tmp+UseCOLA*(P[n].Dz[1]*da1_tmp+P[n].D2[1]*da2_tmp) + (j*Box)));
-                  block[ind + 2] = (float)(lengthfac*(P[n].Pos[2] + (P[n].Vel[2]-sumz)*dyyy_tmp+UseCOLA*(P[n].Dz[2]*da1_tmp+P[n].D2[2]*da2_tmp) + (k*Box)));
-                  block[ind + 3] = (float)(velfac*fac*(P[n].Vel[0]-sumx+(P[n].Dz[0]*dv1+P[n].D2[0]*dv2)*UseCOLA));
-                  block[ind + 4] = (float)(velfac*fac*(P[n].Vel[1]-sumy+(P[n].Dz[1]*dv1+P[n].D2[1]*dv2)*UseCOLA));
-                  block[ind + 5] = (float)(velfac*fac*(P[n].Vel[2]-sumz+(P[n].Dz[2]*dv1+P[n].D2[2]*dv2)*UseCOLA));
+                  block[ind]     = (float)(lengthfac*(P[n].Pos[0] + (P[n].Vel[0]-sumx)*dyyy_tmp+UseCOLA*(P[n].D[0]*da1_tmp+P[n].D2[0]*da2_tmp) + (i*Box)));
+                  block[ind + 1] = (float)(lengthfac*(P[n].Pos[1] + (P[n].Vel[1]-sumy)*dyyy_tmp+UseCOLA*(P[n].D[1]*da1_tmp+P[n].D2[1]*da2_tmp) + (j*Box)));
+                  block[ind + 2] = (float)(lengthfac*(P[n].Pos[2] + (P[n].Vel[2]-sumz)*dyyy_tmp+UseCOLA*(P[n].D[2]*da1_tmp+P[n].D2[2]*da2_tmp) + (k*Box)));
+                  block[ind + 3] = (float)(velfac*fac*(P[n].Vel[0]-sumx+(P[n].D[0]*dv1+P[n].D2[0]*dv2)*UseCOLA));
+                  block[ind + 4] = (float)(velfac*fac*(P[n].Vel[1]-sumy+(P[n].D[1]*dv1+P[n].D2[1]*dv2)*UseCOLA));
+                  block[ind + 5] = (float)(velfac*fac*(P[n].Vel[2]-sumz+(P[n].D[2]*dv1+P[n].D2[2]*dv2)*UseCOLA));
                   pc[repcount]++;   
                   Noutput[coord]++;
                 }
