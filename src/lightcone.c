@@ -1,6 +1,15 @@
 #include "vars.h"
 #include "proto.h"
 
+//================================================================================================
+// 
+// MG-PICOLA NOTE:
+// The lightcone version of the code is so far incompatible with the scale-dependent implementation
+// due to us requiring dDdy and Delta D for many different values of a which is way to expensive. 
+// Might be possible to use some approximation here and get it to work.
+//
+//================================================================================================
+
 //=================================
 // Set up the lightcone parameters
 //=================================
@@ -321,7 +330,7 @@ void Drift_Lightcone(double A, double AFF, double AF, double Di, double Di2) {
   for (i = 0; i < NTAB; i++) {
     AL = ( i * (AFF - A) ) / (NTAB - 1.0) + A;
     AL_tab[i] = AL;
-    da1_tab[i] = growth_D(AL)- Di;
+    da1_tab[i] = growth_D(AL)  - Di;
     da2_tab[i] = growth_D2(AL) - Di2;
     if (StdDA == 0) {
       dyyy_tab[i] = Sq(A,AL,AF);
@@ -401,9 +410,9 @@ void Drift_Lightcone(double A, double AFF, double AF, double Di, double Di2) {
     outputflag++;
     if (n < NumPart) {
 
-      Delta_Pos[0] = (P[n].Vel[0] - sumx) * dyyy + UseCOLA * (P[n].D[0]*da1 + P[n].D2[0]*da2);
-      Delta_Pos[1] = (P[n].Vel[1] - sumy) * dyyy + UseCOLA * (P[n].D[1]*da1 + P[n].D2[1]*da2);   
-      Delta_Pos[2] = (P[n].Vel[2] - sumz) * dyyy + UseCOLA * (P[n].D[2]*da1 + P[n].D2[2]*da2);     
+      Delta_Pos[0] = (P[n].Vel[0] - sumx) * dyyy + UseCOLA * (P[n].D[0] * da1 + P[n].D2[0] * da2);
+      Delta_Pos[1] = (P[n].Vel[1] - sumy) * dyyy + UseCOLA * (P[n].D[1] * da1 + P[n].D2[1] * da2);   
+      Delta_Pos[2] = (P[n].Vel[2] - sumz) * dyyy + UseCOLA * (P[n].D[2] * da1 + P[n].D2[2] * da2);     
 
       // Check that 100Mpc^2/h^2 boundaries is enough
       if((Delta_Pos[0] > boundary) || (Delta_Pos[1] > boundary) || (Delta_Pos[2] > boundary)) {
@@ -450,12 +459,15 @@ void Drift_Lightcone(double A, double AFF, double AF, double Di, double Di2) {
               
                   // Store the interpolated particle position and velocity.
                   unsigned int ind = 6*(blockmaxlen*repcount+pc[repcount]);
-                  block[ind]     = (float)(lengthfac*(P[n].Pos[0] + (P[n].Vel[0]-sumx)*dyyy_tmp+UseCOLA*(P[n].D[0]*da1_tmp+P[n].D2[0]*da2_tmp) + (i*Box)));
-                  block[ind + 1] = (float)(lengthfac*(P[n].Pos[1] + (P[n].Vel[1]-sumy)*dyyy_tmp+UseCOLA*(P[n].D[1]*da1_tmp+P[n].D2[1]*da2_tmp) + (j*Box)));
-                  block[ind + 2] = (float)(lengthfac*(P[n].Pos[2] + (P[n].Vel[2]-sumz)*dyyy_tmp+UseCOLA*(P[n].D[2]*da1_tmp+P[n].D2[2]*da2_tmp) + (k*Box)));
-                  block[ind + 3] = (float)(velfac*fac*(P[n].Vel[0]-sumx+(P[n].D[0]*dv1+P[n].D2[0]*dv2)*UseCOLA));
-                  block[ind + 4] = (float)(velfac*fac*(P[n].Vel[1]-sumy+(P[n].D[1]*dv1+P[n].D2[1]*dv2)*UseCOLA));
-                  block[ind + 5] = (float)(velfac*fac*(P[n].Vel[2]-sumz+(P[n].D[2]*dv1+P[n].D2[2]*dv2)*UseCOLA));
+                  
+                  block[ind]     = (float)(lengthfac *(P[n].Pos[0] + (P[n].Vel[0] - sumx) * dyyy_tmp + UseCOLA*(P[n].D[0] * da1_tmp + P[n].D2[0] * da2_tmp) + (i*Box)));
+                  block[ind + 1] = (float)(lengthfac *(P[n].Pos[1] + (P[n].Vel[1] - sumy) * dyyy_tmp + UseCOLA*(P[n].D[1] * da1_tmp + P[n].D2[1] * da2_tmp) + (j*Box)));
+                  block[ind + 2] = (float)(lengthfac *(P[n].Pos[2] + (P[n].Vel[2] - sumz) * dyyy_tmp + UseCOLA*(P[n].D[2] * da1_tmp + P[n].D2[2] * da2_tmp) + (k*Box)));
+                  
+                  block[ind + 3] = (float)(velfac*fac*(P[n].Vel[0] - sumx + (P[n].D[0] * dv1 + P[n].D2[0] * dv2) * UseCOLA));
+                  block[ind + 4] = (float)(velfac*fac*(P[n].Vel[1] - sumy + (P[n].D[1] * dv1 + P[n].D2[1] * dv2) * UseCOLA));
+                  block[ind + 5] = (float)(velfac*fac*(P[n].Vel[2] - sumz + (P[n].D[2] * dv1 + P[n].D2[2] * dv2) * UseCOLA));
+                  
                   pc[repcount]++;   
                   Noutput[coord]++;
                 }

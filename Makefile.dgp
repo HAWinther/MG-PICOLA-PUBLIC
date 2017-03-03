@@ -26,8 +26,8 @@ OPTIONS += $(SMOOTHFILTER) $(MGMODEL)
 GAUSSIAN = -DGAUSSIAN                    # Switch this if you want gaussian initial conditions (fnl otherwise)
 OPTIONS += $(GAUSSIAN) 
 
-MEMORY_MODE = -DMEMORY_MODE	           # Save memory by making sure to allocate and deallocate arrays only when we need them
-OPTIONS += $(MEMORY_MODE)	   	         # and by making the particle data single precision
+MEMORY_MODE = -DMEMORY_MODE	             # Save memory by making sure to allocate and deallocate arrays only when we need them
+OPTIONS += $(MEMORY_MODE)	   	           # and by making the particle data single precision
 
 GADGET_STYLE = -DGADGET_STYLE            # If we are running snapshots this writes all the output in Gadget's '1' style format, 
                                          # with the corresponding header
@@ -142,25 +142,9 @@ ifndef LIGHTCONE
 endif
 endif
 
-# Consistency check: only filter can be defined
-ifdef GAUSSIANFILTER
-ifdef TOPHATFILTER
-	$(error ERROR: Only one filter is possible)
-endif
-ifdef SHARPKFILTER
-	$(error ERROR: Only one filter is possible)
-endif
-endif
-ifdef TOPHATFILTER
-ifdef SHARPKFILTER
-	$(error ERROR: Only one filter is possible)
-endif
-endif
-
-# Consistency check: only one modified gravity model can be defined
-ifdef FOFRGRAVITY
-ifdef DGPGRAVITY
-	$(error ERROR: Only one MG model is possible)
+ifdef SCALEDEPENDENT
+ifdef LIGHTCONE
+   $(error ERROR: LIGHTCONE AND SCALEDEPENDENT are not compatible. Use LCDM growth-factors for LIGHTCONE simulations.)
 endif
 endif
 

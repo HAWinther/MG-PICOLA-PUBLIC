@@ -20,7 +20,8 @@ OPTIMIZE  = -O3 -Wall -std=c99
 # ====================================================================
 
 MGMODEL  = -DFOFRGRAVITY                 # f(R) gravity
-OPTIONS += $(MGMODEL) -DSCALEDEPENDENT
+OPTIONS += $(MGMODEL) -DSCALEDEPENDENT   # The scaledependent version is so far incompatible with LIGHTCONE
+                                         # so use LCDM growth-factors for lightcone sims
 
 GAUSSIAN = -DGAUSSIAN                    # Switch this if you want gaussian initial conditions (fnl otherwise)
 OPTIONS += $(GAUSSIAN) 
@@ -138,6 +139,12 @@ endif
 ifdef UNFORMATTED
 ifndef LIGHTCONE 
    $(error ERROR: UNFORMATTED option is incompatible with snapshot simulations, for binary output with snapshot simulations please choose the GADGET_STYLE option.)
+endif
+endif
+
+ifdef SCALEDEPENDENT
+ifdef LIGHTCONE
+   $(error ERROR: LIGHTCONE AND SCALEDEPENDENT are not compatible. Use LCDM growth-factors for LIGHTCONE simulations.)
 endif
 endif
 

@@ -11,54 +11,52 @@
 #include "io_gadget.h"
 #include "io_ascii.h"
 #define pow2(x) ((x)*(x))
+#define pow3(x) ((x)*(x)*(x))
 
-#define _SUBTRACTSHOTNOISE
-#define CIC
-
-#if defined(NGP)
-#define powwindow(x) (x)
-#endif
-
-#if defined(CIC)
-#define powwindow(x) ((x)*(x))
-#endif
-
-#if defined TSC
-#define powwindow(x) ((x)*(x)*(X))
-#endif
+using namespace std;
 
 //======================================
-// Quick code to estimate P(k) and/or
-// output a small random sample of particles
+// Simple code to estimate P(k) 
 // Hans A. Winther 2015
 //======================================
 
-using namespace std;
+#define _SUBTRACTSHOTNOISE
+
+#define _CIC
+
+#if defined(__NGP)
+const std::string gridassignment = "NGP";
+#define powwindow(x) (x)
+#elif defined(_CIC)
+const std::string gridassignment = "CIC";
+#define powwindow(x) ((x)*(x))
+#elif defined _TSC
+const std::string gridassignment = "TSC";
+#define powwindow(x) ((x)*(x)*(X))
+#endif
   
 //======================================
 // Global container 
 //======================================
 
 struct Simulation {
-  bool outputslice;     // Make a slice?
-  bool calcpofk;        // Calculate pofk?
   int npart_tot;        // Total number of particles [updated when reading]
-  int nfiles;           // Number of RAMSES files
+  int nfiles;           // Number of input files
   int ngrid;            // FFT grid size
   int nbuffer;          // Size of buffer
   double *readbuffer;   // Read buffer
   double *pofk;         // P(k) bins
   double *nmodes;       // Number of modes in each pofk bin
-  string filebase;      // "/path/to/output_0000X/part_0000X.out"
+  string filebase;      // "/path/to/output_0000X/part_0000X.out" or "/path/to/gadget."
   string pofkoutfile;   // Name of pofk output file
   string datatype;      // RAMSES or GADGET
-  ofstream outfile;     // Name of slice file
   fftw_complex *grid;   // FFT grid
   fftw_plan plan;       // FFT execution plan
-
-  fftw_complex **tempgrid;
 } global;
 
+//=================================================
+// Nearest-Grid-Point density assignment scheme
+//=================================================
 void add_to_grid_NGP(double x, double y, double z, int ngrid){
   int ix, iy, iz;
 
@@ -70,9 +68,12 @@ void add_to_grid_NGP(double x, double y, double z, int ngrid){
   if(iy >= ngrid) iy -= ngrid;
   if(iz >= ngrid) iz -= ngrid;
 
-  global.grid[ix + ngrid*(iy+ngrid*iz)][0] += 1.0;
+  global.grid[ix + ngrid*(iy + ngrid*iz)][0] += 1.0;
 }
 
+//=================================================
+// Cloud-In-Cell density assignment scheme
+//=================================================
 void add_to_grid_CIC(double x, double y, double z, int ngrid){
   int ix, iy, iz;
 
@@ -111,22 +112,21 @@ void add_to_grid_CIC(double x, double y, double z, int ngrid){
   global.grid[ixneigh + ngrid*(iyneigh + ngrid*izneigh)][0] += DX*DY*DZ;
 }
 
-//======================================
+//=================================================
 // Process GADGET data
 // Format of pos is [x1 y1 z1 z2 y2 z2 ...]
-// with x,y,z in [0,boxsize]
+// with x,y,z in [0, BoxSize]
 //
 // Process RAMSES data
 // Format pos [x1 ... xN y1 ... z1 ... ]
 // with x,y,z in [0,1]
-//======================================
-
+//=================================================
 void process_particle_data(double *pos, int npart, double boxsize = 0.0){
   double x, y, z;
-  int ix, iy, iz, ngrid = global.ngrid;
+  int ngrid = global.ngrid;
   float *pos_float = (float *) pos;
 
-  for(int i=0;i<npart;i++){
+  for(int i = 0; i < npart; i++){
 
     if(global.datatype.compare("RAMSES") == 0){
       x = pos[i];
@@ -143,34 +143,21 @@ void process_particle_data(double *pos, int npart, double boxsize = 0.0){
     }
 
     //======================================
-    // Output slice
-    //======================================
-    if(global.outputslice){
-      // Specify criterion for slice here...
-      if(rand() % 100 == 1){
-        global.outfile << x << " " << y << " " << z << " " << 1.0 << endl;
-      }
-    }
-
-    //======================================
     // Bin particle to the grid
     //======================================
-    if(global.calcpofk){
-
-#ifdef NGP
-      add_to_grid_NGP( x, y, z, ngrid);
-#else 
-      add_to_grid_CIC( x, y, z, ngrid);
+#if defined(_NGP)
+    add_to_grid_NGP( x, y, z, ngrid);
+#elif defined(_CIC)
+    add_to_grid_CIC( x, y, z, ngrid);
+#elif defined(_TSC)
+    Not implemented
 #endif
-
-    }
   }
 }
 
 //======================================
 // Allocate memory and initialize arrays
 //======================================
-
 void allocate_memory(bool allocate){
   int ngrid = global.ngrid;
 
@@ -184,11 +171,12 @@ void allocate_memory(bool allocate){
     global.nmodes = new double[ngrid];
 
     // Init P(k) arrays
-    for(int i =0;i<ngrid;i++) 
+    for(int i = 0; i < ngrid; i++) 
       global.pofk[i] = global.nmodes[i] = 0.0;
 
     // Init FFT grid
-    for(int i=0;i<ngrid*ngrid*ngrid;i++)
+    int ngridtot = pow3(ngrid);
+    for(int i = 0; i < ngridtot; i++)
       global.grid[i][0] = global.grid[i][1] = 0.0;
 
   } else {
@@ -200,9 +188,8 @@ void allocate_memory(bool allocate){
 
 //======================================
 // Window function for the density
-// assignment (here for NGP)
+// assignment
 //======================================
-
 double window(int kx, int ky, int kz){
   double fac, kkx, kky, kkz, w;
 
@@ -219,7 +206,6 @@ double window(int kx, int ky, int kz){
   if(kz != 0)
     w *= sin(kkz)/kkz;
 
-  // powwindow(x) = x for NGP, x^2 for CIC, x^3 for TSC
   return powwindow(w);
 }
 
@@ -227,7 +213,6 @@ double window(int kx, int ky, int kz){
 // Compute P(k) by FFTing the density field
 // Assuming we have binned particles to grid
 //======================================
-
 void calculate_pofk(){
   int ngrid = global.ngrid;
   fftw_complex *grid = global.grid;
@@ -243,7 +228,7 @@ void calculate_pofk(){
 #pragma omp parallel private(id)
   {
     id = omp_get_thread_num(); 
-    if(id==0) nthreads = omp_get_num_threads();
+    if(id == 0) nthreads = omp_get_num_threads();
   }
   pofk_t   = new double[ngrid*nthreads];
   nmodes_t = new double[ngrid*nthreads];
@@ -263,13 +248,13 @@ void calculate_pofk(){
   int nover2 = ngrid/2;
   double fac = 1.0/double(ngrid*ngrid*ngrid);
   fac = fac*fac;
-  for(int i=0;i<ngrid;i++){
+  for(int i = 0; i < ngrid; i++){
     int ii = (i < nover2 ? i : i-ngrid);
-    for(int j=0;j<ngrid;j++){
+    for(int j = 0; j < ngrid; j++){
       int jj = (j < nover2 ? j : j-ngrid);
       int kk, ind, kind, dind;
 #pragma omp parallel for private(kk,ind,kind,dind)
-      for(int k=0;k<ngrid;k++){
+      for(int k = 0; k < ngrid; k++){
         dind = ngrid * omp_get_thread_num();
         kk = (k < nover2 ? k : k-ngrid);
         ind = i + ngrid*(j + k*ngrid);
@@ -286,14 +271,14 @@ void calculate_pofk(){
   //======================================
   // Sum up pofk from all the threads
   //======================================
-  for(int i=0;i<ngrid;i++){
-    for(int j=0;j<nthreads;j++){
+  for(int i = 0; i < ngrid; i++){
+    for(int j = 0; j < nthreads; j++){
       pofk[i] += pofk_t[i + ngrid*j];
       nmodes[i] += nmodes_t[i + ngrid*j];
     }
   }
-  for(int i=0;i<ngrid;i++){
-    if(nmodes[i]>0){
+  for(int i = 0; i < ngrid; i++){
+    if(nmodes[i] > 0){
       pofk[i] /= nmodes[i];
     }
   }
@@ -302,7 +287,7 @@ void calculate_pofk(){
   // Subtract shotnoise
   //======================================
 #ifdef _SUBTRACTSHOTNOISE
-  for(int i=0;i<ngrid;i++){
+  for(int i = 0; i < ngrid; i++){
     pofk[i] -= 1.0/double(global.npart_tot);
   }
 #endif
@@ -325,7 +310,7 @@ void output_pofk(){
   double *nmodes = global.nmodes;
 
   ofstream pofkfile(global.pofkoutfile.c_str());
-  for(int i=1;i<= ngrid/2;i++){
+  for(int i = 1; i <= ngrid/2; i++){
     if(nmodes[i]>0){
       pofkfile << i << " " << pofk[i] << endl;
     }
@@ -337,8 +322,6 @@ int main(int argv, char **argc){
   //======================================
   // Initialize parameters
   //======================================
-  global.outputslice = false;
-  global.calcpofk    = true;
   if(argv < 5){
     cout << "Run as ./pofk /path/output_0000X/part_0000X.out outfilename ngrid nFiles RAMSES/GADGET" << endl;
     exit(1);
@@ -349,17 +332,18 @@ int main(int argv, char **argc){
     global.nfiles      = atoi(argc[4]);
     global.datatype    = argc[5];
     global.npart_tot   = 0;
-    global.nbuffer     = 100000000;
+    global.nbuffer     = 100000000; // 750 MB
 
     cout << endl;
     cout << "=====================================" << endl;
     cout << "Parameters:                          " << endl;
     cout << "=====================================" << endl;
-    cout << "Filebase = " << global.filebase        << endl; 
-    cout << "Outfile  = " << global.pofkoutfile     << endl; 
-    cout << "Ngrid    = " << global.ngrid           << endl; 
-    cout << "Nfiles   = " << global.nfiles          << endl; 
-    cout << "Datatype = " << global.datatype        << endl; 
+    cout << "Filebase   = " << global.filebase      << endl; 
+    cout << "Outfile    = " << global.pofkoutfile   << endl; 
+    cout << "Ngrid      = " << global.ngrid         << endl; 
+    cout << "Nfiles     = " << global.nfiles        << endl; 
+    cout << "Datatype   = " << global.datatype      << endl; 
+    cout << "Assignment = " << gridassignment       << endl;
 #pragma omp parallel
     {
       if(omp_get_thread_num() == 0)
@@ -370,20 +354,15 @@ int main(int argv, char **argc){
   }
 
   //======================================
-  // Open file for particle slice
-  //======================================
-  if(global.outputslice) global.outfile.open("partsample.txt");
-
-  //======================================
   // Allocate memory
   //======================================
-  if(global.calcpofk) allocate_memory(true);
+  allocate_memory(true);
 
   //======================================
   // Read particles from data files
   //======================================
   global.readbuffer = new double[global.nbuffer];
-  for(int i=1;i <= global.nfiles; i++){
+  for(int i = 1; i <= global.nfiles; i++){
 
     if(global.datatype.compare("RAMSES") == 0){
       cout << "Read " << i << endl;
@@ -417,12 +396,14 @@ int main(int argv, char **argc){
   printf("Average density rho = %f  Maxdens = %f\n", avg, maxdens);
 
   //======================================
-  // Compute and output P(k). Clean up
+  // Compute and output P(k)
   //======================================
-  if(global.calcpofk){
-    calculate_pofk();
-    output_pofk();
-    allocate_memory(false);
-  }
+  calculate_pofk();
+  output_pofk();
+  
+  //======================================
+  // Clean up
+  //======================================
+  allocate_memory(false);
 }
 

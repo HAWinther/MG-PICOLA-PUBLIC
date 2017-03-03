@@ -76,7 +76,10 @@ void read_and_bin_particles_ramses(std::string filebase, int filenum, int *npart
   read_int_vec(fp, mstar_tot_loc , 2);
   read_int_vec(fp, mstar_lost_loc, 2);
   nsink_loc     = read_int(fp);
- 
+  (void) ncpu_loc;
+  (void) nsink_loc;
+  (void) nstar_tot_loc;
+
   // Sanity check
   if(ndim_loc*npart_loc > *nbuffer){
     std::cout << "Error: increase size of buffer. Trying to read " << 3*npart_loc << " > nbuffer = " << *nbuffer << std::endl;

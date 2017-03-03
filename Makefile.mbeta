@@ -19,14 +19,15 @@ OPTIMIZE  = -O3 -Wall -std=c99
 # Various C preprocessor directives that change the way PICOLA is made
 # ====================================================================
 
-MGMODEL  = -DMBETAMODEL                     # General (m,beta) parametrisation
-OPTIONS += $(MGMODEL) -DSCALEDEPENDENT
+MGMODEL  = -DMBETAMODEL                  # General (m,beta) parametrisation
+OPTIONS += $(MGMODEL) -DSCALEDEPENDENT   # The scaledependent version is so far incompatible with LIGHTCONE
+                                         # so use LCDM growth-factors for lightcone sims
 
-GAUSSIAN = -DGAUSSIAN                       # Switch this if you want gaussian initial conditions (fnl otherwise)
+GAUSSIAN = -DGAUSSIAN                    # Switch this if you want gaussian initial conditions (fnl otherwise)
 OPTIONS += $(GAUSSIAN) 
 
-#MEMORY_MODE = -DMEMORY_MODE	              # Save memory by making sure to allocate and deallocate arrays only when we need them
-#OPTIONS += $(MEMORY_MODE)	   	            # and by making the particle data single precision
+MEMORY_MODE = -DMEMORY_MODE	             # Save memory by making sure to allocate and deallocate arrays only when we need them
+OPTIONS += $(MEMORY_MODE)	   	           # and by making the particle data single precision
 
 GADGET_STYLE = -DGADGET_STYLE            # If we are running snapshots this writes all the output in Gadget's '1' style format, 
                                          # with the corresponding header
@@ -138,6 +139,12 @@ endif
 ifdef UNFORMATTED
 ifndef LIGHTCONE 
    $(error ERROR: UNFORMATTED option is incompatible with snapshot simulations, for binary output with snapshot simulations please choose the GADGET_STYLE option.)
+endif
+endif
+
+ifdef SCALEDEPENDENT
+ifdef LIGHTCONE
+   $(error ERROR: LIGHTCONE AND SCALEDEPENDENT are not compatible. Use LCDM growth-factors for LIGHTCONE simulations.)
 endif
 endif
 

@@ -98,10 +98,10 @@ void read_gadget_float_vector(FILE *fd, void *buffer, int dim, int npart, bool v
   // Verbose
   if(verbose){
     std::cout << "***********************" << std::endl;
-    for(int i=0;i<npart;i++){
-      if(i>=npart-10 || i<=10){
+    for(int i = 0; i < npart; i++){
+      if(i >= npart-10 || i <= 10){
         std::cout << "i = " << i << " ";
-        for(int k=0;k<dim;k++){
+        for(int k = 0; k < dim; k++){
           std::cout << val[dim*i+k] << " ";
         }
         std::cout << std::endl;
@@ -128,9 +128,9 @@ void read_gadget_int_vector(FILE *fd, void *buffer, int dim, int npart, bool ver
   // Verbose
   if(verbose){
     std::cout << "***********************" << std::endl;
-    for(int i=0;i<npart;i++){
-      if(i>=npart-3 || i<=3){
-        for(int k=0;k<dim;k++){
+    for(int i = 0; i < npart; i++){
+      if(i >= npart-3 || i <= 3){
+        for(int k = 0; k < dim; k++){
           std::cout << val[dim*i+k] << " ";
         }
         std::cout << std::endl;
@@ -152,7 +152,6 @@ void read_and_bin_particles_gadget(std::string fileprefix, int filenum, int *npa
   FILE *fp;
   int npart_now;
   bool verbose = false;
-  char *buffer = (char *) readbuffer;
 
   // Open file
   std::cout << "Opening file: " << filename << std::endl;
