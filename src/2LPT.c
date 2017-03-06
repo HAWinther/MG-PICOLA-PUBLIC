@@ -1481,13 +1481,12 @@ void free_stored_initial_displacment_field(){
 }
 
 //====================================================================================
-// This routine takes the stored displacement-field in k-space
-// and makes it at the given redshift
-// Assuming [ZA_D, ZA_dDdy, ZA_ddDddy] has been allocated
+// This routine takes the stored displacement-field in k-space and makes it at the given redshift
+// Assuming [ZA_D] has been allocated
 // Assuming we already have stored the initial displacement-field in [cdisp_store]
 //====================================================================================
 
-void from_cdisp_store_to_ZA(double A, double AF, double AFF, int firststep, int LPTorder){
+void from_cdisp_store_to_ZA(double A, double AF, double AFF, int fieldtype, int LPTorder){
   unsigned long long nmesh3 = ((unsigned long long) Nmesh) * ((unsigned long long) Nmesh ) * ((unsigned long long) Nmesh);    
 
   // Growth-factor to given LPT order
@@ -1523,30 +1522,16 @@ void from_cdisp_store_to_ZA(double A, double AF, double AFF, int firststep, int 
       stored_disp_field[axes] = cdisp2_store[axes];
   }
 
+  // Allocate temporary memory
   complex_kind *(cdisp_D[3]);
-  complex_kind *(cdisp_dDdy[3]);
-  complex_kind *(cdisp_ddDddy[3]);
-
-  float_kind *(disp_D[3]);
-  float_kind *(disp_dDdy[3]);
-  float_kind *(disp_ddDddy[3]);
-
-  // Allocate memory
-  double sumdis_D[3], sumdis_dDdy[3], sumdis_ddDddy[3];
+  double sumdis_D[3];
   for(int axes = 0; axes < 3; axes++){
-    cdisp_ddDddy[axes] = malloc(sizeof(complex_kind) * Total_size);
-    cdisp_dDdy[axes]   = malloc(sizeof(complex_kind) * Total_size);
-    cdisp_D[axes]      = malloc(sizeof(complex_kind) * Total_size);
-
-    disp_D[axes]       = (float_kind *) cdisp_D[axes];
-    disp_dDdy[axes]    = (float_kind *) cdisp_dDdy[axes];
-    disp_ddDddy[axes]  = (float_kind *) cdisp_ddDddy[axes];
-  
-    sumdis_D[axes] = sumdis_dDdy[axes] = sumdis_ddDddy[axes] = 0.0;
+    disp_D[axes]   = malloc(sizeof(float_kind) * 2 * Total_size);
+    cdisp_D[axes]  = (complex_kind *) disp_D[axes];
+    sumdis_D[axes] = 0.0;
   }
 
   // Multiply by growth-factor D(k, A)
-  if(ThisTask == 0) printf("Multiply stored D-field with scaledependent growth-factor\n");
   for(int i = 0; i < Local_nx; i++) {
     for(int j = 0; j < Nmesh; j++)     {
       for(int k = 0; k <= Nmesh / 2; k++) {
@@ -1576,32 +1561,19 @@ void from_cdisp_store_to_ZA(double A, double AF, double AFF, int firststep, int 
         double kmag = sqrt(kmag2);
 
         // Fetch growth factors
-        double growth_factor_D      = normfactor *  func_growth_D_scaledependent(kmag, A);
-        double growth_factor_dDdy   = normfactor * (func_growth_D_scaledependent(kmag, AFF) - func_growth_D_scaledependent(kmag, A));
-        double growth_factor_ddDddy = normfactor *  func_growth_ddDddy_scaledependent(kmag, A);
-        if(firststep == 1){
-          growth_factor_dDdy  = normfactor * func_growth_dDdy_scaledependent(kmag, A);
-        }
+        double growth_factor = 1.0;
+        if(fieldtype == FIELD_D)      growth_factor = normfactor * func_growth_D_scaledependent(kmag, A);
+        if(fieldtype == FIELD_dDdy)   growth_factor = normfactor * func_growth_dDdy_scaledependent(kmag, A);
+        if(fieldtype == FIELD_ddDddy) growth_factor = normfactor * func_growth_ddDddy_scaledependent(kmag, A);
+        if(fieldtype == FIELD_deltaD) growth_factor = normfactor * (func_growth_D_scaledependent(kmag, AFF) - func_growth_D_scaledependent(kmag, A));
 
         for(int axes = 0; axes < 3; axes++) {
           if(kmag2 > 0.0) {
-            cdisp_D[axes][coord][0]      = stored_disp_field[axes][coord][0] * growth_factor_D;
-            cdisp_D[axes][coord][1]      = stored_disp_field[axes][coord][1] * growth_factor_D;
-
-            cdisp_dDdy[axes][coord][0]   = stored_disp_field[axes][coord][0] * growth_factor_dDdy;
-            cdisp_dDdy[axes][coord][1]   = stored_disp_field[axes][coord][1] * growth_factor_dDdy;
-
-            cdisp_ddDddy[axes][coord][0] = stored_disp_field[axes][coord][0] * growth_factor_ddDddy;
-            cdisp_ddDddy[axes][coord][1] = stored_disp_field[axes][coord][1] * growth_factor_ddDddy;
+            cdisp_D[axes][coord][0] = stored_disp_field[axes][coord][0] * growth_factor;
+            cdisp_D[axes][coord][1] = stored_disp_field[axes][coord][1] * growth_factor;
           } else {
-            cdisp_D[axes][coord][0]      = 0.0;
-            cdisp_D[axes][coord][1]      = 0.0;
-
-            cdisp_dDdy[axes][coord][0]   = 0.0;
-            cdisp_dDdy[axes][coord][1]   = 0.0;
-
-            cdisp_ddDddy[axes][coord][0] = 0.0;
-            cdisp_ddDddy[axes][coord][1] = 0.0;
+            cdisp_D[axes][coord][0] = 0.0;
+            cdisp_D[axes][coord][1] = 0.0;
           }
         }
       }
@@ -1610,33 +1582,21 @@ void from_cdisp_store_to_ZA(double A, double AF, double AFF, int firststep, int 
 
   // Fourier transform to k-space
   for(int axes = 0; axes < 3; axes++) {
-
-    if(ThisTask == 0) printf("Fourier-transforming axes = %i\n", axes);
-
-    // FFT Disp_D and copy over slice
+    // FFT and copy over slice
     plan_kind Inverse_plan_D      = my_fftw_mpi_plan_dft_c2r_3d(Nmesh, Nmesh, Nmesh, cdisp_D[axes],      disp_D[axes],      MPI_COMM_WORLD, FFTW_ESTIMATE);
     my_fftw_execute(Inverse_plan_D);
     my_fftw_destroy_plan(Inverse_plan_D);
     MPI_Sendrecv(&(disp_D[axes][0]),   sizeof(float_kind) * 2 * alloc_slice, MPI_BYTE, LeftTask,  10,
         &(disp_D[axes][2*last_slice]), sizeof(float_kind) * 2 * alloc_slice, MPI_BYTE, RightTask, 10, MPI_COMM_WORLD, &status);
-
-    // FFT Disp_dDdy and copy over slice
-    plan_kind Inverse_plan_dDdy   = my_fftw_mpi_plan_dft_c2r_3d(Nmesh, Nmesh, Nmesh, cdisp_dDdy[axes],   disp_dDdy[axes],   MPI_COMM_WORLD, FFTW_ESTIMATE);
-    my_fftw_execute(Inverse_plan_dDdy);
-    my_fftw_destroy_plan(Inverse_plan_dDdy);
-    MPI_Sendrecv(&(disp_dDdy[axes][0]),   sizeof(float_kind) * 2 * alloc_slice, MPI_BYTE, LeftTask,  10,
-        &(disp_dDdy[axes][2*last_slice]), sizeof(float_kind) * 2 * alloc_slice, MPI_BYTE, RightTask, 10, MPI_COMM_WORLD, &status);
-
-    // FFT Disp_ddDddy and copy over slice
-    plan_kind Inverse_plan_ddDddy = my_fftw_mpi_plan_dft_c2r_3d(Nmesh, Nmesh, Nmesh, cdisp_ddDddy[axes], disp_ddDddy[axes], MPI_COMM_WORLD, FFTW_ESTIMATE);
-    my_fftw_execute(Inverse_plan_ddDddy);
-    my_fftw_destroy_plan(Inverse_plan_ddDddy);
-    MPI_Sendrecv(&(disp_ddDddy[axes][0]),   sizeof(float_kind) * 2 * alloc_slice, MPI_BYTE, LeftTask,  10,
-        &(disp_ddDddy[axes][2*last_slice]), sizeof(float_kind) * 2 * alloc_slice, MPI_BYTE, RightTask, 10, MPI_COMM_WORLD, &status);
   }
 
   // Make the real-space Lagrangian displacement vectors
-  if(ThisTask == 0) printf("Assigning %iLPT displacementfield to particles\n", LPTorder);
+  char fieldname[10];
+  if(fieldtype == FIELD_D)      sprintf(fieldname,"%s","[D     ]");
+  if(fieldtype == FIELD_dDdy)   sprintf(fieldname,"%s","[dDdy  ]");
+  if(fieldtype == FIELD_ddDddy) sprintf(fieldname,"%s","[ddDddy]");
+  if(fieldtype == FIELD_deltaD) sprintf(fieldname,"%s","[deltaD]");
+  if(ThisTask == 0) printf("Assigning scale-dependent %iLPT displacementfield %s to particles\n", LPTorder, fieldname);
   double maxdisp_glob = 0, maxdisp = 0;
   for (int n = 0; n < Local_np; n++) {
     for (int m = 0; m < Nsample; m++) {
@@ -1680,44 +1640,21 @@ void from_cdisp_store_to_ZA(double A, double AF, double AFF, int firststep, int 
         double f8 = (u) * (v) * (w);
 
         // Trilinear interpolation
-        double dis_D[3], dis_dDdy[3], dis_ddDddy[3];
+        double dis_D[3];
         for(int axes = 0; axes < 3; axes++) {
 
-          dis_D[axes] = disp_D[axes][(i * Nmesh + j)   * (2 * (Nmesh / 2 + 1)) + k]  * f1 +
+          dis_D[axes] = disp_D[axes][(i * Nmesh + j)   * (2 * (Nmesh / 2 + 1)) + k ] * f1 +
                         disp_D[axes][(i * Nmesh + j)   * (2 * (Nmesh / 2 + 1)) + kk] * f2 +
-                        disp_D[axes][(i * Nmesh + jj)  * (2 * (Nmesh / 2 + 1)) + k]  * f3 +
+                        disp_D[axes][(i * Nmesh + jj)  * (2 * (Nmesh / 2 + 1)) + k ] * f3 +
                         disp_D[axes][(i * Nmesh + jj)  * (2 * (Nmesh / 2 + 1)) + kk] * f4 +
-                        disp_D[axes][(ii * Nmesh + j)  * (2 * (Nmesh / 2 + 1)) + k]  * f5 +
+                        disp_D[axes][(ii * Nmesh + j)  * (2 * (Nmesh / 2 + 1)) + k ] * f5 +
                         disp_D[axes][(ii * Nmesh + j)  * (2 * (Nmesh / 2 + 1)) + kk] * f6 +
-                        disp_D[axes][(ii * Nmesh + jj) * (2 * (Nmesh / 2 + 1)) + k]  * f7 +
+                        disp_D[axes][(ii * Nmesh + jj) * (2 * (Nmesh / 2 + 1)) + k ] * f7 +
                         disp_D[axes][(ii * Nmesh + jj) * (2 * (Nmesh / 2 + 1)) + kk] * f8;
-          
-          dis_dDdy[axes] = disp_dDdy[axes][(i * Nmesh + j)   * (2 * (Nmesh / 2 + 1)) + k]  * f1 +
-                           disp_dDdy[axes][(i * Nmesh + j)   * (2 * (Nmesh / 2 + 1)) + kk] * f2 +
-                           disp_dDdy[axes][(i * Nmesh + jj)  * (2 * (Nmesh / 2 + 1)) + k]  * f3 +
-                           disp_dDdy[axes][(i * Nmesh + jj)  * (2 * (Nmesh / 2 + 1)) + kk] * f4 +
-                           disp_dDdy[axes][(ii * Nmesh + j)  * (2 * (Nmesh / 2 + 1)) + k]  * f5 +
-                           disp_dDdy[axes][(ii * Nmesh + j)  * (2 * (Nmesh / 2 + 1)) + kk] * f6 +
-                           disp_dDdy[axes][(ii * Nmesh + jj) * (2 * (Nmesh / 2 + 1)) + k]  * f7 +
-                           disp_dDdy[axes][(ii * Nmesh + jj) * (2 * (Nmesh / 2 + 1)) + kk] * f8;
-          
-          dis_ddDddy[axes] = disp_ddDddy[axes][(i * Nmesh + j)   * (2 * (Nmesh / 2 + 1)) + k]  * f1 +
-                             disp_ddDddy[axes][(i * Nmesh + j)   * (2 * (Nmesh / 2 + 1)) + kk] * f2 +
-                             disp_ddDddy[axes][(i * Nmesh + jj)  * (2 * (Nmesh / 2 + 1)) + k]  * f3 +
-                             disp_ddDddy[axes][(i * Nmesh + jj)  * (2 * (Nmesh / 2 + 1)) + kk] * f4 +
-                             disp_ddDddy[axes][(ii * Nmesh + j)  * (2 * (Nmesh / 2 + 1)) + k]  * f5 +
-                             disp_ddDddy[axes][(ii * Nmesh + j)  * (2 * (Nmesh / 2 + 1)) + kk] * f6 +
-                             disp_ddDddy[axes][(ii * Nmesh + jj) * (2 * (Nmesh / 2 + 1)) + k]  * f7 +
-                             disp_ddDddy[axes][(ii * Nmesh + jj) * (2 * (Nmesh / 2 + 1)) + kk] * f8;
-  
-          sumdis_D[axes]      += dis_D[axes];
-          sumdis_dDdy[axes]   += dis_dDdy[axes];
-          sumdis_ddDddy[axes] += dis_ddDddy[axes];
 
-          ZA_D[axes][coord]      = dis_D[axes];
-          ZA_dDdy[axes][coord]   = dis_dDdy[axes];
-          ZA_ddDddy[axes][coord] = dis_ddDddy[axes];
-        
+          sumdis_D[axes]   += dis_D[axes];
+          ZA_D[axes][coord] = dis_D[axes];
+
           if( fabs(dis_D[axes]) > maxdisp) maxdisp = dis_D[axes];
         }
       }
@@ -1725,64 +1662,51 @@ void from_cdisp_store_to_ZA(double A, double AF, double AFF, int firststep, int 
   }
 
   MPI_Reduce(&maxdisp, &maxdisp_glob, 1, MPI_DOUBLE, MPI_MAX, 0, MPI_COMM_WORLD);
-  if(ThisTask == 0)
-    printf("Maximum %iLPT displacement = %lf kpc/h (%lf in units of the particle separation)...\n\n", LPTorder, maxdisp_glob, maxdisp_glob / (Box / Nmesh));
+  if(ThisTask == 0 && fieldtype == FIELD_D)
+    printf("Maximum %iLPT displacement = %lf kpc/h (%lf in units of the particle separation)\n", LPTorder, maxdisp_glob, maxdisp_glob / (Box / Nmesh));
 
   // Communicate sum of displacement over all particles on all CPUs
   for(int axes = 0; axes < 3; axes++) {
     ierr = MPI_Allreduce(MPI_IN_PLACE, &(sumdis_D[axes]), 1, MPI_DOUBLE, MPI_SUM, MPI_COMM_WORLD);
-    ierr = MPI_Allreduce(MPI_IN_PLACE, &(sumdis_dDdy[axes]), 1, MPI_DOUBLE, MPI_SUM, MPI_COMM_WORLD);
-    ierr = MPI_Allreduce(MPI_IN_PLACE, &(sumdis_ddDddy[axes]), 1, MPI_DOUBLE, MPI_SUM, MPI_COMM_WORLD);
-    sumdis_D[axes]       /= (double)TotNumPart;
-    sumdis_dDdy[axes]    /= (double)TotNumPart;
-    sumdis_ddDddy[axes]  /= (double)TotNumPart;
+    sumdis_D[axes]  /= (double) TotNumPart;
   }
-  
+
   // Make sure sum of displacements is zero
   int NumPart_init = Local_np * Nsample * Nsample;
   for(int axes = 0; axes < 3; axes++){
     for (int coord = 0; coord < NumPart_init; coord++) {
-      ZA_D[axes][coord]      -= sumdis_D[axes];
-      ZA_dDdy[axes][coord]   -= sumdis_dDdy[axes];
-      ZA_ddDddy[axes][coord] -= sumdis_ddDddy[axes];
+      ZA_D[axes][coord] -= sumdis_D[axes];
     }
   }
 
   // Free up memory
   for(int axes = 0; axes < 3; axes++){
-    free(cdisp_D[axes]);
-    free(cdisp_dDdy[axes]);
-    free(cdisp_ddDddy[axes]);
+    free(disp_D[axes]);
   }
 }
 
+//====================================================================
 // The data we send to CPU[i] requesting displacment-fields at [coord_q]
 // needed for particle [pid] (on this CPU not [i])
+//====================================================================
 struct disp_comm_data{
- unsigned int pid;
- unsigned int coord_q;
+  unsigned int pid;
+  unsigned int coord_q;
 };
 
+//====================================================================
 // The data we get back from CPU[i]
 // Use to assign displacment-fields to particle [pid] (on this CPU not [i])
+//====================================================================
 struct disp_comm_data_return{
- unsigned int pid;
- float_kind D[3];
- float_kind dDdy[3];
- float_kind ddDddy[3];
+  unsigned int pid;
+  float_kind D[3];
 };
 
-void sendrecv(struct disp_comm_data ** send_data, struct disp_comm_data ** get_data, int send_request_to, int get_request_from, int num_requests_send, int num_requests_get){
-  printf("Task[%i] sending to Task[%i] and recieving from Task[%i]\n", ThisTask, send_request_to, get_request_from);
-  MPI_Sendrecv(send_data[send_request_to], num_requests_send * sizeof(struct disp_comm_data), MPI_BYTE, send_request_to, 0, get_data[get_request_from], num_requests_get * sizeof(struct disp_comm_data), MPI_BYTE, get_request_from, 0, MPI_COMM_WORLD, &status);
-}
-void sendrecv_return(struct disp_comm_data_return ** send_data, struct disp_comm_data_return ** get_data, int send_request_to, int get_request_from, int num_requests_send, int num_requests_get){
-  printf("Task[%i] sending to Task[%i] and recieving from Task[%i]\n", ThisTask, send_request_to, get_request_from);
-  MPI_Sendrecv(send_data[send_request_to], num_requests_send * sizeof(struct disp_comm_data_return), MPI_BYTE, send_request_to, 0, get_data[get_request_from], num_requests_get * sizeof(struct disp_comm_data_return), MPI_BYTE, get_request_from, 0, MPI_COMM_WORLD, &status);
-}
-
+//====================================================================
 // This routine assigns the density field to the particles
-void assign_displacment_field_to_particles(double A, double AF, double AFF, int firststep, int LPTorder){
+//====================================================================
+void assign_displacment_field_to_particles(double A, double AF, double AFF, int fieldtype, int LPTorder){
   long long allocated_bytes = 0;
   int comm_verbose = 0;
 
@@ -1792,16 +1716,14 @@ void assign_displacment_field_to_particles(double A, double AF, double AFF, int 
     exit(1);
   }
 
-  // First we allocate and compute ZA_D, ZA_dDdy and ZA_ddDddy
+  // First we allocate and compute ZA_D
   for(int axes = 0; axes < 3; axes++) {
     ZA_D[axes]       = malloc(Nsample*Nsample*Local_np*sizeof(float_kind));
-    ZA_dDdy[axes]    = malloc(Nsample*Nsample*Local_np*sizeof(float_kind));
-    ZA_ddDddy[axes]  = malloc(Nsample*Nsample*Local_np*sizeof(float_kind));
-    allocated_bytes += Nsample*Nsample*Local_np*sizeof(float_kind)*3;
+    allocated_bytes += Nsample*Nsample*Local_np*sizeof(float_kind); 
   }
 
   // Compute the displacment fields ZA_D, ZA_dDdy and ZA_ddDddy 
-  from_cdisp_store_to_ZA(A, AF, AFF, firststep, LPTorder);
+  from_cdisp_store_to_ZA(A, AF, AFF, fieldtype, LPTorder);
 
   // Allocate communication count buffer
   int *n_ThisTask_needs_from_cpu = malloc(sizeof(int) * NTask);
@@ -1825,7 +1747,6 @@ void assign_displacment_field_to_particles(double A, double AF, double AFF, int 
       request_buffer[i][j].pid     = 0;
       request_buffer[i][j].coord_q = 0;
     }
-    
     allocated_bytes += sizeof(struct disp_comm_data) * n_ThisTask_needs_from_cpu[i];
   }
 
@@ -1844,15 +1765,17 @@ void assign_displacment_field_to_particles(double A, double AF, double AFF, int 
       // Assign displacment-fields to particle
       if(LPTorder == 1){
         for(int axes = 0; axes < 3; axes ++){
-          P[i].D[axes]       = ZA_D[axes][coord_q];
-          P[i].dDdy[axes]    = ZA_dDdy[axes][coord_q];
-          P[i].ddDddy[axes]  = ZA_ddDddy[axes][coord_q];
+          if(fieldtype == FIELD_D)      P[i].D[axes]       = ZA_D[axes][coord_q];
+          if(fieldtype == FIELD_dDdy)   P[i].dDdy[axes]    = ZA_D[axes][coord_q];
+          if(fieldtype == FIELD_ddDddy) P[i].ddDddy[axes]  = ZA_D[axes][coord_q];
+          if(fieldtype == FIELD_deltaD) P[i].dDdy[axes]    = ZA_D[axes][coord_q];
         }
       } else if(LPTorder == 2){
         for(int axes = 0; axes < 3; axes ++){
-          P[i].D2[axes]     = ZA_D[axes][coord_q];
-          P[i].dD2dy[axes]   = ZA_dDdy[axes][coord_q];
-          P[i].ddD2ddy[axes] = ZA_ddDddy[axes][coord_q];
+          if(fieldtype == FIELD_D)      P[i].D2[axes]      = ZA_D[axes][coord_q];
+          if(fieldtype == FIELD_dDdy)   P[i].dD2dy[axes]   = ZA_D[axes][coord_q];
+          if(fieldtype == FIELD_ddDddy) P[i].ddD2ddy[axes] = ZA_D[axes][coord_q];
+          if(fieldtype == FIELD_deltaD) P[i].dD2dy[axes]   = ZA_D[axes][coord_q];
         }
       }
 
@@ -1931,7 +1854,6 @@ void assign_displacment_field_to_particles(double A, double AF, double AFF, int 
     }
 
     // Send to right, recieve from left
-    //sendrecv(request_data_to_send_to, request_data_to_recieve_from, send_request_to, get_request_from, n_to_send, n_to_recieve);
     MPI_Sendrecv(request_data_to_send_to[send_request_to], n_to_send * sizeof(struct disp_comm_data), MPI_BYTE, send_request_to, 0, 
         request_data_to_recieve_from[get_request_from], n_to_recieve * sizeof(struct disp_comm_data), MPI_BYTE, get_request_from, 0, MPI_COMM_WORLD, &status);
   }
@@ -1958,9 +1880,7 @@ void assign_displacment_field_to_particles(double A, double AF, double AFF, int 
       // Compile up return data
       return_data_to_send_to[i][j].pid  = pid;
       for(int axes = 0; axes < 3; axes++){
-        return_data_to_send_to[i][j].D[axes]      = ZA_D[axes][coord_q];
-        return_data_to_send_to[i][j].dDdy[axes]   = ZA_dDdy[axes][coord_q];
-        return_data_to_send_to[i][j].ddDddy[axes] = ZA_ddDddy[axes][coord_q];
+        return_data_to_send_to[i][j].D[axes] = ZA_D[axes][coord_q];
       }
     }
   }
@@ -1979,7 +1899,6 @@ void assign_displacment_field_to_particles(double A, double AF, double AFF, int 
     }
 
     // Send to right, recieve from left
-    //sendrecv_return(return_data_to_send_to, return_data_to_recieve_from, send_request_to, get_request_from, n_to_send, n_to_recieve);
     MPI_Sendrecv(return_data_to_send_to[send_request_to], n_to_send * sizeof(struct disp_comm_data_return), MPI_BYTE, send_request_to, 0, 
     return_data_to_recieve_from[get_request_from], n_to_recieve * sizeof(struct disp_comm_data_return), MPI_BYTE, get_request_from, 0, MPI_COMM_WORLD, &status);
   }
@@ -1988,24 +1907,24 @@ void assign_displacment_field_to_particles(double A, double AF, double AFF, int 
   for(int i = 0; i < NTask; i++){
     for(int j = 0; j < n_to_send_all[ThisTask * NTask + i]; j++){
       unsigned int pid  = return_data_to_recieve_from[i][j].pid;
-      float_kind *D      = &(return_data_to_recieve_from[i][j].D[0]);
-      float_kind *dDdy   = &(return_data_to_recieve_from[i][j].dDdy[0]);
-      float_kind *ddDddy = &(return_data_to_recieve_from[i][j].ddDddy[0]);
+      float_kind *D = &(return_data_to_recieve_from[i][j].D[0]);
 
       // Check for out of bounds error just in case
       if(pid < 0 || pid > NumPart) printf("Error: %i %i\n", pid, NumPart);
       
       if(LPTorder == 1){
         for(int axes = 0; axes < 3; axes++){
-          P[pid].D[axes]       = D[axes];
-          P[pid].dDdy[axes]    = dDdy[axes];
-          P[pid].ddDddy[axes]  = ddDddy[axes];
+          if(fieldtype == FIELD_D)      P[pid].D[axes]       = D[axes];
+          if(fieldtype == FIELD_dDdy)   P[pid].dDdy[axes]    = D[axes];
+          if(fieldtype == FIELD_ddDddy) P[pid].ddDddy[axes]  = D[axes];
+          if(fieldtype == FIELD_deltaD) P[pid].dDdy[axes]    = D[axes];
         }
       } else if(LPTorder == 2){
         for(int axes = 0; axes < 3; axes++){
-          P[pid].D2[axes]      = D[axes];
-          P[pid].dD2dy[axes]   = dDdy[axes];
-          P[pid].ddD2ddy[axes] = ddDddy[axes];
+          if(fieldtype == FIELD_D)      P[pid].D2[axes]      = D[axes];
+          if(fieldtype == FIELD_dDdy)   P[pid].dD2dy[axes]   = D[axes];
+          if(fieldtype == FIELD_ddDddy) P[pid].ddD2ddy[axes] = D[axes];
+          if(fieldtype == FIELD_deltaD) P[pid].dD2dy[axes]   = D[axes];
         }
       }
     }
@@ -2028,8 +1947,6 @@ void assign_displacment_field_to_particles(double A, double AF, double AFF, int 
   // Free up displacment-fields
   for(int axes = 0; axes < 3; axes++) {
     free(ZA_D[axes]);
-    free(ZA_dDdy[axes]);
-    free(ZA_ddDddy[axes]);
   }
 
   if(ThisTask == 0 && comm_verbose){

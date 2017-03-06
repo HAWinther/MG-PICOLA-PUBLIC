@@ -32,7 +32,7 @@
 //===================================================
 
 void Output_Info(double A);
-void Output(double A, double AF, double AFF, double Dv, double Dv2);
+void Output(double A, double AF, double AFF, double dDdy, double dD2dy);
 void Kick(double AI, double AF, double A, double Di);
 void Drift(double A, double AFF, double AF, double Di, double Di2);
 
@@ -61,7 +61,6 @@ void   SmoothDensityField(complex_kind *densityk, complex_kind *densityk_smooth,
 void   CopyDensityArray();
 void   AllocateMGArrays();
 void   FreeMGArrays();
-
 
 //===================================================
 // Updated cosmo routines new_cosmo.h
@@ -131,6 +130,10 @@ void   init_modified_version();
 
 #define LPT_ORDER_ONE 1
 #define LPT_ORDER_TWO 2
+#define FIELD_D       0
+#define FIELD_dDdy    1
+#define FIELD_ddDddy  2
+#define FIELD_deltaD  3
 
 // Scaledependent growth-factors
 void  integrate_first_order_scale_dependent_growth_ode(double *x_arr, double *d_arr, double *q_arr, double know, int npts);

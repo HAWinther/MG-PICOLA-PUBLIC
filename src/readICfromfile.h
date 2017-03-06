@@ -853,7 +853,7 @@ void AssignDisplacementField(complex_kind *(cdisp[3])){
 void readICFromFile_assign_particles(){
   double A = 1.0/(1.0 + Init_Redshift);
   double Di_lcdm = growth_DLCDM(A);
-  double Dv_lcdm = growth_dDLCDMdy(A);
+  double dDidy_lcdm = growth_dDLCDMdy(A);
 
 #ifndef SCALEDEPENDENT
   // The IC we read in are for LCDM so make sure we rescale the initial displacement field
@@ -891,7 +891,7 @@ void readICFromFile_assign_particles(){
             // When reading particles from file we assume the IC are as in LCDM so we use this growth-factor 
             // to get the right normalization here. If changing this one probably also need to change the normfac in readICfromfile.h
             //==============================================================================================
-            P[coord].Vel[m] = ZA[m][coord] * Dv_lcdm;
+            P[coord].Vel[m] = ZA[m][coord] * dDidy_lcdm;
 
           } else {
 

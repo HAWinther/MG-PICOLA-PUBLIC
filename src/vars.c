@@ -99,10 +99,10 @@ plan_kind plan_mg_phik;           // ...
 //===================================================
 // Units
 //===================================================
-double G;              // The unit-less Gravitational constant
-double Light;          // The unit-less speed of light
-double Hubble;         // The unit-less Hubble constant
-double UnitMass_in_g;  // The unit mass (in g/cm) used in the code, read in from run parameters
+double G;                               // The unit-less Gravitational constant
+double Light;                           // The unit-less speed of light
+double Hubble;                          // The unit-less Hubble constant
+double UnitMass_in_g;                   // The unit mass (in g/cm) used in the code, read in from run parameters
 double UnitTime_in_s;                   // The unit time (in s) used for the code, calculated from unit length and velocity
 double UnitLength_in_cm;                // The unit length (in cm/h) used in the code, read in from run parameters file
 double UnitVelocity_in_cm_per_s;        // The unit velocity (in cm/s) used in the code, read in from run parameters file
@@ -121,16 +121,16 @@ struct io_header_1 header;
 char OutputRedshiftFile[500];  // The list of output redshifts
 int timeSteptot;               // The total number of timsteps made
 double Fnl;                    // The primordial non-gaussianity parameter for local, equilateral or orthogonal
-double Anorm;        // The normalisation of the power spectrum/ transfer function
-double Omega;        // The total matter density, CDM+Baryon
-double Sigma8;       // The normalisation of the power spectrum 
-double FnlTime;      // The scale factor at which fnl kicks in
-double DstartFnl;    // The growth factor for the initial potential 
-double ShapeGamma;   // The paramerisation of the Efstathiou power spectrum
-double OmegaBaryon;  // The baryonic matter density
-double HubbleParam;  // The normalised Hubble parameter, h=H/100
-double Fnl_Redshift;        // The redshift at which the nongaussian f_nl potential is computed
-double Init_Redshift;       // The redshift at which to begin timestepping
+double Anorm;                  // The normalisation of the power spectrum/ transfer function
+double Omega;                  // The total matter density, CDM+Baryon
+double Sigma8;                 // The normalisation of the power spectrum 
+double FnlTime;                // The scale factor at which fnl kicks in
+double DstartFnl;              // The growth factor for the initial potential 
+double ShapeGamma;             // The paramerisation of the Efstathiou power spectrum
+double OmegaBaryon;            // The baryonic matter density
+double HubbleParam;            // The normalised Hubble parameter, h=H/100
+double Fnl_Redshift;           // The redshift at which the nongaussian f_nl potential is computed
+double Init_Redshift;          // The redshift at which to begin timestepping
 double PrimordialIndex;        // The spectral index, n_s
 struct Outputs * OutputList;   // The output redshifts of the simulation and the number of steps between outputs
 
@@ -150,9 +150,19 @@ double sumxyz[3];
 double sumDxyz[3];
 
 #ifdef SCALEDEPENDENT
+
+// Stored 1LPT displacment scalar in k-space at z = 0 
+complex_kind *(cdisp_store[3]);
+float_kind *(disp_store[3]);
+
+// Stored 2LPT displacment scalar in k-space at z = 0 
+complex_kind *(cdisp2_store[3]);
+float_kind *(disp2_store[3]);
+
+// Temporary fields needed to compute growth-factors
 float_kind *ZA_D[3];
-float_kind *ZA_dDdy[3];
-float_kind *ZA_ddDddy[3];
+float_kind *disp_D[3];
+
 #endif
 
 #ifdef MEMORY_MODE
@@ -174,11 +184,11 @@ struct part_data *P;
 //===================================================
 // Simulation variables
 //===================================================
-char FileBase[500];   // The base output filename
-char OutputDir[500];  // The output directory
-int Nmesh;            // The size of the displacement, density and force grids (in 1-D) 
-int Nsample;          // The number of particles (in 1-D)
-int UseCOLA;          // Whether or not to use the COLA modifications
+char FileBase[500];             // The base output filename
+char OutputDir[500];            // The output directory
+int Nmesh;                      // The size of the displacement, density and force grids (in 1-D) 
+int Nsample;                    // The number of particles (in 1-D)
+int UseCOLA;                    // Whether or not to use the COLA modifications
 int Noutputs;                   // The number of output times
 int NumFilesWrittenInParallel;  // The maximum number of files to be written out in parallel
 unsigned int NumPart;           // The number of particles on each processor
@@ -186,28 +196,20 @@ unsigned long long TotNumPart;  // The total number of particles in the simulati
 double Box;                     // The edge length of the simulation
 double Buffer;                  // The amount of extra memory of each processor to compensate for moving particles
 #ifdef LIGHTCONE
-int * writeflag;          // A flag to tell the code whether to write a new file or append onto an existing one.
-int * repflag;          // A flag to say whether we need to check inside a given replicate
-int Nrep_neg_x;         // The number of replicated boxes in the negative x direction
-int Nrep_neg_y;         // The number of replicated boxes in the negative y direction
-int Nrep_neg_z;         // The number of replicated boxes in the negative z direction
-int Nrep_pos_x;         // The number of replicated boxes in the positive x direction
-int Nrep_pos_y;         // The number of replicated boxes in the positive y direction
-int Nrep_pos_z;         // The number of replicated boxes in the positive z direction
-int Nrep_neg_max[3];    // The maximum number of replicated boxes in the negative directions
-int Nrep_pos_max[3];    // The maximum number of replicated boxes in the positive directions
-unsigned int * Noutput; // The number of particles that we output in each slice (original and replicated)
-double Origin_x;        // The x-position of the lightcone origin
-double Origin_y;        // The y-position of the lightcone origin
-double Origin_z;        // The z-position of the lightcone origin
-#endif
-
-#ifdef SCALEDEPENDENT
-complex_kind *(cdisp_store[3]);
-float_kind *(disp_store[3]);
-
-complex_kind *(cdisp2_store[3]);
-float_kind *(disp2_store[3]);
+int * writeflag;                // A flag to tell the code whether to write a new file or append onto an existing one.
+int * repflag;                  // A flag to say whether we need to check inside a given replicate
+int Nrep_neg_x;                 // The number of replicated boxes in the negative x direction
+int Nrep_neg_y;                 // The number of replicated boxes in the negative y direction
+int Nrep_neg_z;                 // The number of replicated boxes in the negative z direction
+int Nrep_pos_x;                 // The number of replicated boxes in the positive x direction
+int Nrep_pos_y;                 // The number of replicated boxes in the positive y direction
+int Nrep_pos_z;                 // The number of replicated boxes in the positive z direction
+int Nrep_neg_max[3];            // The maximum number of replicated boxes in the negative directions
+int Nrep_pos_max[3];            // The maximum number of replicated boxes in the positive directions
+unsigned int * Noutput;         // The number of particles that we output in each slice (original and replicated)
+double Origin_x;                // The x-position of the lightcone origin
+double Origin_y;                // The y-position of the lightcone origin
+double Origin_z;                // The z-position of the lightcone origin
 #endif
 
 //===================================================
@@ -217,9 +219,9 @@ char FileWithInputSpectrum[500];  // The file containing the input power spectru
 char FileWithInputTransfer[500];  // The file containing the input transfer function
 char FileWithInputKernel[500];    // The file containing the input nongaussian kernel
 int Seed;                         // The random seed to generate to realisation
-int SphereMode;       // Whether to use a sphere or a cube in k-space
-int WhichSpectrum;    // Which power spectrum to use
-int WhichTransfer;    // Which transfer function to use
+int SphereMode;                   // Whether to use a sphere or a cube in k-space
+int WhichSpectrum;                // Which power spectrum to use
+int WhichTransfer;                // Which transfer function to use
 
 //===================================================
 // COLA specific

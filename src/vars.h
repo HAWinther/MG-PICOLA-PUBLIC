@@ -130,14 +130,6 @@ extern double rcH0_DGP;                 // DGP cross-over scale in units of c/H0
 extern Spline *phi_of_a_spline;
 #endif
 
-#ifdef SCALEDEPENDENT
-extern complex_kind *(cdisp_store[3]);
-extern float_kind *(disp_store[3]);
-
-extern complex_kind *(cdisp2_store[3]);
-extern float_kind *(disp2_store[3]);
-#endif
-
 extern float_kind *mgarray_one;         // Modified gravity arrays                      
 extern float_kind *mgarray_two;         // ...                                          
 extern complex_kind *P3D_mgarray_one;   // k-space arrays                               
@@ -148,10 +140,10 @@ extern plan_kind plan_mg_phik;          // ...
 //===================================================
 // Units
 //===================================================
-extern double G;              // The unit-less Gravitational constant
-extern double Light;          // The unit-less speed of light
-extern double Hubble;         // The unit-less Hubble constant
-extern double UnitMass_in_g;  // The unit mass (in g/cm) used in the code, read in from run parameters
+extern double G;                               // The unit-less Gravitational constant
+extern double Light;                           // The unit-less speed of light
+extern double Hubble;                          // The unit-less Hubble constant
+extern double UnitMass_in_g;                   // The unit mass (in g/cm) used in the code, read in from run parameters
 extern double UnitTime_in_s;                   // The unit time (in s) used for the code, calculated from unit length and velocity
 extern double UnitLength_in_cm;                // The unit length (in cm/h) used in the code, read in from run parameters file
 extern double UnitVelocity_in_cm_per_s;        // The unit velocity (in cm/s) used in the code, read in from run parameters file
@@ -190,18 +182,18 @@ header;
 extern char OutputRedshiftFile[500];  // The list of output redshifts
 extern int timeSteptot;               // The total number of timsteps made
 extern double Fnl;                    // The primordial non-gaussianity parameter for local, equilateral or orthogonal
-extern double Anorm;        // The normalisation of the power spectrum/ transfer function
-extern double Omega;        // The total matter density, CDM+Baryon
-extern double Sigma8;       // The normalisation of the power spectrum 
-extern double FnlTime;      // The scale factor at which fnl kicks in
-extern double DstartFnl;    // The growth factor for the initial potential 
-extern double ShapeGamma;   // The paramerisation of the Efstathiou power spectrum
-extern double OmegaBaryon;  // The baryonic matter density
-extern double HubbleParam;  // The normalised Hubble parameter, h=H/100
-extern double Fnl_Redshift;        // The redshift at which the nongaussian f_nl potential is computed
-extern double Init_Redshift;       // The redshift at which to begin timestepping
-extern double PrimordialIndex;     // The spectral index, n_s
-extern struct Outputs {            // The output redshifts of the simulation and the number of steps between outputs
+extern double Anorm;                  // The normalisation of the power spectrum/ transfer function
+extern double Omega;                  // The total matter density, CDM+Baryon
+extern double Sigma8;                 // The normalisation of the power spectrum 
+extern double FnlTime;                // The scale factor at which fnl kicks in
+extern double DstartFnl;              // The growth factor for the initial potential 
+extern double ShapeGamma;             // The paramerisation of the Efstathiou power spectrum
+extern double OmegaBaryon;            // The baryonic matter density
+extern double HubbleParam;            // The normalised Hubble parameter, h=H/100
+extern double Fnl_Redshift;           // The redshift at which the nongaussian f_nl potential is computed
+extern double Init_Redshift;          // The redshift at which to begin timestepping
+extern double PrimordialIndex;        // The spectral index, n_s
+extern struct Outputs {               // The output redshifts of the simulation and the number of steps between outputs
   int Nsteps;
   double Redshift;
 } * OutputList;
@@ -222,14 +214,23 @@ extern struct kern_table {         // The kernel lookup table
 //===================================================
 // Particle data and pointers
 //===================================================
-//extern double sumx, sumy, sumz;
 extern double sumxyz[3];
 extern double sumDxyz[3];
 
 #ifdef SCALEDEPENDENT
+
+// Stored 1LPT displacment scalar in k-space at z = 0 
+extern complex_kind *(cdisp_store[3]);
+extern float_kind *(disp_store[3]);
+
+// Stored 2LPT displacment scalar in k-space at z = 0 
+extern complex_kind *(cdisp2_store[3]);
+extern float_kind *(disp2_store[3]);
+
+// Temporary fields needed to compute growth-factors
 extern float_kind *ZA_D[3];
-extern float_kind *ZA_dDdy[3];
-extern float_kind *ZA_ddDddy[3];
+extern float_kind *disp_D[3];
+
 #endif
 
 #ifdef MEMORY_MODE
@@ -262,8 +263,8 @@ extern struct part_data {
 
 #else
 
-  float D[3];             // The Zeldovich displacment of the particle in the X, Y and Z directions
-  float D2[3];             // The 2LPT displacment of the particle in the X, Y and Z directions
+  float D[3];    // The Zeldovich displacment of the particle in the X, Y and Z directions
+  float D2[3];   // The 2LPT displacment of the particle in the X, Y and Z directions
 
 #endif
 
@@ -279,6 +280,7 @@ extern struct part_data {
 #ifdef PARTICLE_ID
   unsigned long long ID;      // The particle ID
 #endif
+
   float_kind D[3];            // The Zeldovich displacment of the particle in the X, Y and Z directions
   float_kind D2[3];           // The 2LPT displacment of the particle in the X, Y and Z directions
   float_kind Pos[3];          // The position of the particle in the X, Y and Z directions
@@ -303,11 +305,11 @@ extern struct part_data {
 //===================================================
 // Simulation variables
 //===================================================
-extern char FileBase[500];   // The base output filename
-extern char OutputDir[500];  // The output directory
-extern int Nmesh;            // The size of the displacement, density and force grids (in 1-D) 
-extern int Nsample;          // The number of particles (in 1-D)
-extern int UseCOLA;          // Whether or not to use the COLA modifications
+extern char FileBase[500];             // The base output filename
+extern char OutputDir[500];            // The output directory
+extern int Nmesh;                      // The size of the displacement, density and force grids (in 1-D) 
+extern int Nsample;                    // The number of particles (in 1-D)
+extern int UseCOLA;                    // Whether or not to use the COLA modifications
 extern int Noutputs;                   // The number of output times
 extern int NumFilesWrittenInParallel;  // The maximum number of files to be written out in parallel
 extern unsigned int NumPart;           // The number of particles on each processor
@@ -315,20 +317,20 @@ extern unsigned long long TotNumPart;  // The total number of particles in the s
 extern double Box;                     // The edge length of the simulation
 extern double Buffer;                  // The amount of extra memory of each processor to compensate for moving particles
 #ifdef LIGHTCONE
-extern int * writeflag;          // A flag to tell the code whether to write a new file or append onto an existing one.
-extern int * repflag;          // A flag to say whether we need to check inside a given replicate
-extern int Nrep_neg_x;         // The number of replicated boxes in the negative x direction
-extern int Nrep_neg_y;         // The number of replicated boxes in the negative y direction
-extern int Nrep_neg_z;         // The number of replicated boxes in the negative z direction
-extern int Nrep_pos_x;         // The number of replicated boxes in the positive x direction
-extern int Nrep_pos_y;         // The number of replicated boxes in the positive y direction
-extern int Nrep_pos_z;         // The number of replicated boxes in the positive z direction
-extern int Nrep_neg_max[3];    // The maximum number of replicated boxes in the negative directions
-extern int Nrep_pos_max[3];    // The maximum number of replicated boxes in the positive directions
-extern unsigned int * Noutput; // The number of particles that we output in each slice (original and replicated)
-extern double Origin_x;        // The x-position of the lightcone origin
-extern double Origin_y;        // The y-position of the lightcone origin
-extern double Origin_z;        // The z-position of the lightcone origin
+extern int * writeflag;                // A flag to tell the code whether to write a new file or append onto an existing one.
+extern int * repflag;                  // A flag to say whether we need to check inside a given replicate
+extern int Nrep_neg_x;                 // The number of replicated boxes in the negative x direction
+extern int Nrep_neg_y;                 // The number of replicated boxes in the negative y direction
+extern int Nrep_neg_z;                 // The number of replicated boxes in the negative z direction
+extern int Nrep_pos_x;                 // The number of replicated boxes in the positive x direction
+extern int Nrep_pos_y;                 // The number of replicated boxes in the positive y direction
+extern int Nrep_pos_z;                 // The number of replicated boxes in the positive z direction
+extern int Nrep_neg_max[3];            // The maximum number of replicated boxes in the negative directions
+extern int Nrep_pos_max[3];            // The maximum number of replicated boxes in the positive directions
+extern unsigned int * Noutput;         // The number of particles that we output in each slice (original and replicated)
+extern double Origin_x;                // The x-position of the lightcone origin
+extern double Origin_y;                // The y-position of the lightcone origin
+extern double Origin_z;                // The z-position of the lightcone origin
 #endif
 
 //===================================================
@@ -338,9 +340,9 @@ extern char FileWithInputSpectrum[500];  // The file containing the input power 
 extern char FileWithInputTransfer[500];  // The file containing the input transfer function
 extern char FileWithInputKernel[500];    // The file containing the input nongaussian kernel
 extern int Seed;                         // The random seed to generate to realisation
-extern int SphereMode;       // Whether to use a sphere or a cube in k-space
-extern int WhichSpectrum;    // Which power spectrum to use
-extern int WhichTransfer;    // Which transfer function to use
+extern int SphereMode;                   // Whether to use a sphere or a cube in k-space
+extern int WhichSpectrum;                // Which power spectrum to use
+extern int WhichTransfer;                // Which transfer function to use
 
 //===================================================
 // COLA specific

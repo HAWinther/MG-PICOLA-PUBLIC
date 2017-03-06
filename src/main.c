@@ -189,12 +189,12 @@ int main(int argc, char **argv) {
   int NoutputStart = 0;
   int timeStep;
   unsigned int coord = 0;
-  double da  = 0;
-  double A   = 1.0/(1.0 + Init_Redshift);  // This is the scale factor which we'll be advancing below.
-  double Di  = growth_D(A);                // initial growth factor
-  double Di2 = growth_D2(A);               // initial 2nd order growth factor  
-  double Dv  = growth_dDdy(A);             // T[D_{za}]=dD_{za}/dy
-  double Dv2 = growth_dD2dy(A);            // T[D_{2lpt}]=dD_{2lpt}/dy
+  double da    = 0;
+  double A     = 1.0/(1.0 + Init_Redshift);  // This is the scale factor which we'll be advancing below.
+  double Di    = growth_D(A);                // initial growth factor
+  double Di2   = growth_D2(A);               // initial 2nd order growth factor  
+  double dDdy  = growth_dDdy(A);             // T[D_{za}]=dD_{za}/dy
+  double dD2dy = growth_dD2dy(A);            // T[D_{2lpt}]=dD_{2lpt}/dy
 
   //===========================================================================================
   // A is the scale factor of the particle positions.
@@ -252,8 +252,17 @@ int main(int argc, char **argv) {
   }
 
   // Assign 1LPT and 2LPT displacementfields to the particles
-  assign_displacment_field_to_particles(A, AF, AFF, 1, LPT_ORDER_ONE);
-  assign_displacment_field_to_particles(A, AF, AFF, 1, LPT_ORDER_TWO);
+  assign_displacment_field_to_particles(A, AF, AFF, FIELD_D,      LPT_ORDER_ONE);
+  assign_displacment_field_to_particles(A, AF, AFF, FIELD_D,      LPT_ORDER_TWO);
+  if(ThisTask == 0) printf("\n");
+
+  assign_displacment_field_to_particles(A, AF, AFF, FIELD_dDdy,   LPT_ORDER_ONE);
+  assign_displacment_field_to_particles(A, AF, AFF, FIELD_dDdy,   LPT_ORDER_TWO);
+  if(ThisTask == 0) printf("\n");
+  
+  assign_displacment_field_to_particles(A, AF, AFF, FIELD_ddDddy, LPT_ORDER_ONE);
+  assign_displacment_field_to_particles(A, AF, AFF, FIELD_ddDddy, LPT_ORDER_TWO);
+  if(ThisTask == 0) printf("\n");
 #endif
 
   // Assign positions, velocities and displacement
@@ -284,7 +293,7 @@ int main(int argc, char **argv) {
 #ifdef SCALEDEPENDENT
             P[coord].Vel[m] = P[coord].dDdy[m] + P[coord].dD2dy[m] * Use2LPT_IC;
 #else
-            P[coord].Vel[m] = P[coord].D[m] * Dv + P[coord].D2[m] * Dv2 * Use2LPT_IC;
+            P[coord].Vel[m] = P[coord].D[m] * dDdy + P[coord].D2[m] * dD2dy * Use2LPT_IC;
 #endif
           } else {
 
@@ -336,7 +345,7 @@ int main(int argc, char **argv) {
       sumxyz[axes] = 0;
 
     // Output particles
-    Output(A, AF, AFF, Dv, Dv2);
+    Output(A, AF, AFF, dDdy, dD2dy);
 
     // If this is the only output timestep then simply skip to the end
     if(Noutputs == 1) {
@@ -492,10 +501,20 @@ int main(int argc, char **argv) {
           printf("\n=================================\n");
           printf("Compute displacment fields...   \n");
           printf("=================================\n");
-          printf("Assign displacment-fields... AFF = %f  A = %f\n", AFF, A);
         }
-        assign_displacment_field_to_particles(A, AF, AFF, 0, LPT_ORDER_ONE);
-        assign_displacment_field_to_particles(A, AF, AFF, 0, LPT_ORDER_TWO);
+        
+        assign_displacment_field_to_particles(A, AF, AFF, FIELD_D,      LPT_ORDER_ONE);
+        assign_displacment_field_to_particles(A, AF, AFF, FIELD_D,      LPT_ORDER_TWO);
+        if(ThisTask == 0) printf("\n");
+        
+        assign_displacment_field_to_particles(A, AF, AFF, FIELD_deltaD, LPT_ORDER_ONE);
+        assign_displacment_field_to_particles(A, AF, AFF, FIELD_deltaD, LPT_ORDER_TWO);
+        if(ThisTask == 0) printf("\n");
+        
+        assign_displacment_field_to_particles(A, AF, AFF, FIELD_ddDddy, LPT_ORDER_ONE);
+        assign_displacment_field_to_particles(A, AF, AFF, FIELD_ddDddy, LPT_ORDER_TWO);
+        if(ThisTask == 0) printf("\n");
+        
 #endif
 
         Kick(AI, AF, A, Di);
@@ -520,10 +539,10 @@ int main(int argc, char **argv) {
           // This corresponds to L_+ operator in TZE.
           //======================================================================================
 
-          Dv  = growth_dDdy(A);    // dD_{za}/dy
-          Dv2 = growth_dD2dy(A);   // dD_{2lpt}/dy
+          dDdy  = growth_dDdy(A);    // dD_{za}/dy
+          dD2dy = growth_dD2dy(A);   // dD_{2lpt}/dy
 
-          Output(A, AF, AFF, Dv, Dv2);
+          Output(A, AF, AFF, dDdy, dD2dy);
 
           //======================================================================================
           // If we have reached the last output timestep we skip to the end
@@ -693,15 +712,14 @@ finalize:
 #else
 
     // Second derivate of the growth factors
-    double q1, q2;
-    q1 = growth_ddDddy(A);   // T^2[D_{ZA}]=d^2 D_{ZA}/dy^2
-    q2 = growth_ddD2ddy(A);  // T^2[D_{2lpt}]=d^2 D_{2lpt}/dy^2
+    double ddDddy  = growth_ddDddy(A);   // T^2[D_{ZA}]=d^2 D_{ZA}/dy^2
+    double ddD2ddy = growth_ddD2ddy(A);  // T^2[D_{2lpt}]=d^2 D_{2lpt}/dy^2
 
     // Update velocity
     for(unsigned int n = 0; n < NumPart; n++) {
       for(int axes = 0; axes < 3; axes ++) {
         Disp[axes][n]  -= sumDxyz[axes];
-        force[axes]     = -1.5 * Omega * Disp[axes][n] - UseCOLA * ( P[n].D[axes] * q1 + P[n].D2[axes] * q2 * Use2LPT_STEP) / A;
+        force[axes]     = -1.5 * Omega * Disp[axes][n] - UseCOLA * ( P[n].D[axes] * ddDddy + P[n].D2[axes] * ddD2ddy * Use2LPT_STEP) / A;
         P[n].Vel[axes] += force[axes] * dda;
         sumxyz[axes]   += P[n].Vel[axes];
       }
@@ -745,15 +763,14 @@ finalize:
 #else
 
     // Change in growth-factors
-    double da1, da2;
-    da1 = (growth_D(AFF) - Di);    // change in D
-    da2 = (growth_D2(AFF) - Di2);  // change in D_{2lpt}
+    double deltaD  = (growth_D(AFF) - Di);    // change in D
+    double deltaD2 = (growth_D2(AFF) - Di2);  // change in D_{2lpt}
 
     // Update positions
     for(unsigned int n = 0; n < NumPart; n++) {
       for(int axes = 0; axes < 3; axes++){
         P[n].Pos[axes] += (P[n].Vel[axes] - sumxyz[axes]) * dyyy;
-        P[n].Pos[axes]  = periodic_wrap(P[n].Pos[axes] + UseCOLA*(P[n].D[axes] * da1 + P[n].D2[axes] * da2 * Use2LPT_STEP ));
+        P[n].Pos[axes]  = periodic_wrap(P[n].Pos[axes] + UseCOLA*(P[n].D[axes] * deltaD + P[n].D2[axes] * deltaD2 * Use2LPT_STEP ));
       }
     }
 #endif
@@ -764,7 +781,7 @@ finalize:
   //=================
   // Output the data
   //=================
-  void Output(double A, double AF, double AFF, double Dv, double Dv2) {
+  void Output(double A, double AF, double AFF, double dDdy, double dD2dy) {
     timer_start(_WriteOutput);
     FILE * fp; 
     char buf[300];
@@ -787,12 +804,11 @@ finalize:
         tmp_buffer_D2[3*i + axes] = P[i].dD2dy[axes];
       }
     }
-    assign_displacment_field_to_particles(A, AF, AFF, 1, LPT_ORDER_ONE);
-    assign_displacment_field_to_particles(A, AF, AFF, 1, LPT_ORDER_TWO);
 
-    // This can be done smarter / faster as we only need to compute dDdy here
-    // Requires some small changes in the routines called above, should not be too hard to fix
-
+    // Compute dDdy
+    assign_displacment_field_to_particles(A, AF, AFF, FIELD_dDdy, LPT_ORDER_ONE);
+    assign_displacment_field_to_particles(A, AF, AFF, FIELD_dDdy, LPT_ORDER_TWO);
+    if(ThisTask == 0) printf("\n");
 #endif
 
 #ifdef GADGET_STYLE
@@ -862,7 +878,7 @@ finalize:
 #ifdef SCALEDEPENDENT
             for(k = 0; k < 3; k++) block[3 * pc + k] = (float)(velfac*fac*(P[n].Vel[k] - sumxyz[k] + (P[n].dDdy[k] + P[n].dD2dy[k] * Use2LPT_STEP ) * UseCOLA));
 #else
-            for(k = 0; k < 3; k++) block[3 * pc + k] = (float)(velfac*fac*(P[n].Vel[k] - sumxyz[k] + (P[n].D[k] * Dv + P[n].D2[k] * Dv2 * Use2LPT_STEP ) * UseCOLA));
+            for(k = 0; k < 3; k++) block[3 * pc + k] = (float)(velfac*fac*(P[n].Vel[k] - sumxyz[k] + (P[n].D[k] * dDdy + P[n].D2[k] * dD2dy * Use2LPT_STEP ) * UseCOLA));
 #endif
             pc++;
             if(pc == blockmaxlen) {
@@ -908,7 +924,7 @@ finalize:
 #ifdef SCALEDEPENDENT
               P_Vel[axes] = fac*(P[n].Vel[axes] - sumxyz[axes] + (P[n].dDdy[axes] + P[n].dD2dy[axes] * Use2LPT_STEP ) * UseCOLA);
 #else
-              P_Vel[axes] = fac*(P[n].Vel[axes] - sumxyz[axes] + (P[n].D[axes] * Dv + P[n].D2[axes] * Dv2) * UseCOLA);
+              P_Vel[axes] = fac*(P[n].Vel[axes] - sumxyz[axes] + (P[n].D[axes] * dDdy + P[n].D2[axes] * dD2dy) * UseCOLA);
 #endif
             }
 
@@ -942,8 +958,6 @@ finalize:
     }
     free(tmp_buffer_D1);
     free(tmp_buffer_D2);
-
-    // Again this should be replaced by a faster / smarter way...
 
 #endif
 
