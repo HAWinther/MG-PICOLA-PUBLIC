@@ -14,7 +14,7 @@
 
 // Some useful functions
 #define MIN(x,y) ((x) < (y) ? (y) : (x))
-#define MAX(x,y) ((x) < (y) ? (x) : (y))
+#define MAX(x,y) ((x) > (y) ? (x) : (y))
 #define pow2(x)  ((x)*(x))
 #define pow3(x)  ((x)*(x)*(x))
 #define pow4(x)  ((x)*(x)*(x)*(x))
@@ -858,7 +858,19 @@ void calculate_scale_dependent_growth_factor(){
       double d2now = interpolate_from_splinearray(&SecondOrderGrowthFactor_D, know, log(anow)) / spline_lookup(TimeDependentSplines.D2LCDM_spline, log(anow) );
       double ratio = - 7.0 / 3.0 * interpolate_from_splinearray(&SecondOrderGrowthFactor_D, know, log(anow)) 
                            / pow2( interpolate_from_splinearray(&FirstOrderGrowthFactor_D,  know, log(anow))); 
-      printf("k = %8.3f h/Mpc    D(k, a=1) / DLCDM(a=1) = %8.3f  D2(k,a=1) / D2LCDM(a=1) = %8.3f   D2 / ( - 3/7 D1^2 ) = %8.3f\n", know, dnow, d2now, ratio);
+      printf("k = %8.3f h/Mpc    D(k, a=1):    : MG / LCDM = %8.3f  D2      : MG / LCDM = %8.3f   D2 / ( - 3/7 D1^2 ) = %8.3f\n", know, dnow, d2now, ratio);
+    }
+    for(int k = 0; k < nk; k+=50){
+      double know = exp( log(kmin) + log(kmax/kmin) * k/(double)(nk-1) );
+      double dnow  = interpolate_from_splinearray(&FirstOrderGrowthFactor_dDdy,  know, log(anow)) / spline_lookup(TimeDependentSplines.dDLCDMdy_spline,  log(anow) );
+      double d2now = interpolate_from_splinearray(&SecondOrderGrowthFactor_dDdy, know, log(anow)) / spline_lookup(TimeDependentSplines.dD2LCDMdy_spline, log(anow) );
+      printf("k = %8.3f h/Mpc    dDdy(k, a=1)  : MG / LCDM = %8.3f  dD2dy   : MG / LCDM = %8.3f\n", know, dnow, d2now);
+    }
+    for(int k = 0; k < nk; k+=50){
+      double know = exp( log(kmin) + log(kmax/kmin) * k/(double)(nk-1) );
+      double dnow  = interpolate_from_splinearray(&FirstOrderGrowthFactor_ddDddy,  know, log(anow)) / spline_lookup(TimeDependentSplines.ddDLCDMddy_spline,  log(anow) );
+      double d2now = interpolate_from_splinearray(&SecondOrderGrowthFactor_ddDddy, know, log(anow)) / spline_lookup(TimeDependentSplines.ddD2LCDMddy_spline, log(anow) );
+      printf("k = %8.3f h/Mpc    ddDddy(k, a=1): MG / LCDM = %8.3f  ddD2ddy : MG / LCDM = %8.3f\n", know, dnow, d2now);
     }
     printf("\nSigma8(z=0) is enhanced by a factor: %f\n\n", mg_sigma8_enhancement(anow));
   }

@@ -14,6 +14,8 @@ This code is based on the [L-PICOLA](https://github.com/CullanHowlett/l-picola) 
 
  - To implement a new model see [src_v3/user_defined_functions.h](src_v3/user_defined_functions.h). The code have f(R), DGP and general (m(a), beta(a)) models included.
 
+ - As written the code assumes the input P(k) is for LCDM and then uses the growth factor to transform to MG. Should add a flag for this! If this is not what you want then this can be changed in 2LPT.c (see line 350-360)
+
  - A simple code to extract power-spectra from output-files (GADGET / ASCII) can be found in SimplePofk. Will add this and a halo-finder to the code at some point. See [MatchMaker](https://github.com/damonge/MatchMaker) for a FoF halo-finder that can be run on the GADGET output-files.
 
  - The scale-dependent version needs the define SCALEDEPENDENT. This version requires several Fourier transforms per time-step which makes the code ~5 times slower.
