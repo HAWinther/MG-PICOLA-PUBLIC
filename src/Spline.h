@@ -1,3 +1,8 @@
+
+//====================================================
+// These routines are no longer used in the code...
+//====================================================
+
 #ifndef SPLINEHEADER_INC
 #define SPLINEHEADER_INC
 #include <stdio.h>

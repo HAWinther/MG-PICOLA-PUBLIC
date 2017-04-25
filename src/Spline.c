@@ -1,4 +1,8 @@
-//  Spline routines written by Hans Winther (ICG Portsmouth) March 2017
+
+//====================================================
+// These routines are no longer used in the code...
+//====================================================
+
 #include "Spline.h"
 #define MIN(x,y) ((x)>(y) ? (y) : (x))
 
