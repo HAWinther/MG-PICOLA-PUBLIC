@@ -1,3 +1,6 @@
+#ifndef INCVARS
+#define INCVARS
+
 //==========================================================================//
 //  Copyright (c) 2013       Cullan Howlett & Marc Manera,                  //
 //                           Institute of Cosmology and Gravitation,        //
@@ -30,7 +33,6 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-#include "Spline.h"
 
 //===================================================
 // GSL libraries
@@ -43,6 +45,7 @@
 #include <gsl/gsl_sf_hyperg.h> 
 #include <gsl/gsl_sort_double.h>
 #include <gsl/gsl_integration.h>
+#include <gsl/gsl_odeiv2.h>
 
 //===================================================
 // MPI and FFTW libraries
@@ -108,6 +111,17 @@ extern complex_kind * FN13;      // Pointer to the complex, FFT'ed N13 force gri
 extern plan_kind plan;           // The plan for the in-place FFT of the density grid
 extern plan_kind p11,p12,p13;    // Plans for the in-place FFT's of the forces grids 
 
+#ifdef COMPUTE_POFK
+
+extern int    pofk_compute_every_step;  // Flag to turn on this option [1]: compute every step and output; [0]: don't compute at all
+extern int    pofk_nbins;               // Number of bins in P(k) evaluation
+extern int    pofk_bintype;             // Which binning [0]: linear [1]: log spacing 
+extern int    pofk_subtract_shotnoise;  // Subtract shotnoise
+extern double pofk_kmin;                // The minimum k-value in h/Mpc (should be >= 2pi/Box)
+extern double pofk_kmax;                // The maximum k-value in h/Mpc (should be <= 2pi/Box * Nmesh)
+
+#endif
+
 //===================================================
 // Modified gravity variables
 //===================================================
@@ -117,6 +131,8 @@ extern int include_screening;           // 1 to include screening, 0 to keep it 
 extern double aexp_global;              // Global copy of current value of scale factor
 extern int use_lcdm_growth_factors;    
 extern int input_sigma8_is_for_lcdm;
+extern int input_pofk_is_for_lcdm;
+extern int allocate_mg_arrays;
 
 #if defined(FOFRGRAVITY) || defined(MBETAMODEL)
 extern double fofr0;                    // Hu-Sawicky f(R) parameters: f(R0)            
@@ -124,10 +140,8 @@ extern double nfofr;                    // Hu-Sawicky f(R) parameters: n
 #elif defined(DGPGRAVITY)
 extern double Rsmooth_global;           // Smoothing radius for density field (DGP relevant)
 extern double rcH0_DGP;                 // DGP cross-over scale in units of c/H0
-#endif
-
-#if defined(MBETAMODEL)
-extern Spline *phi_of_a_spline;
+#elif defined(BRANSDICKE)
+extern double wBD;
 #endif
 
 extern float_kind *mgarray_one;         // Modified gravity arrays                      
@@ -364,15 +378,6 @@ extern int  ReadParticlesFromFile;
 #define ASCIIFILE  2
 #define GADGETFILE 3
 
-//===================================================
-// FFTW wrappers
-//===================================================
-extern plan_kind my_fftw_mpi_plan_dft_r2c_3d(int nx, int ny, int nz, float_kind   *regrid, complex_kind *imgrid,  MPI_Comm comm, unsigned flags);
-extern plan_kind my_fftw_mpi_plan_dft_c2r_3d(int nx, int ny, int nz, complex_kind *imgrid, float_kind   *regrid,  MPI_Comm comm, unsigned flags);
-extern void my_fftw_destroy_plan(fftw_plan fftwplan);
-extern void my_fftw_execute(fftw_plan fftwplan);
-extern void my_fftw_mpi_cleanup();
-extern void my_fftw_mpi_init();
-extern ptrdiff_t my_fftw_mpi_local_size_3d(int nx, int ny, int nz, MPI_Comm comm, ptrdiff_t *Local_nx, ptrdiff_t *Local_x_start);
-
 extern int mymod(int i, int N);
+
+#endif

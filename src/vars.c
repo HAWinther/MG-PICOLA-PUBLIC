@@ -67,6 +67,17 @@ complex_kind * FN13;      // Pointer to the complex, FFT'ed N13 force grid (use 
 plan_kind plan;           // The plan for the in-place FFT of the density grid
 plan_kind p11,p12,p13;    // Plans for the in-place FFT's of the forces grids 
 
+#ifdef COMPUTE_POFK
+
+int    pofk_compute_every_step;  // Flag to turn on this option [1]: compute every step and output; [0]: don't compute at all
+int    pofk_nbins;               // Number of bins in P(k) evaluation
+int    pofk_bintype;             // Which binning [0]: linear [1]: log spacing 
+int    pofk_subtract_shotnoise;  // Subtract shotnoise
+double pofk_kmin;                // The minimum k-value in h/Mpc (should be >= 2pi/Box)
+double pofk_kmax;                // The maximum k-value in h/Mpc (should be <= 2pi/Box * Nmesh)
+
+#endif
+
 //===================================================
 // Modified gravity variables
 //===================================================
@@ -75,18 +86,21 @@ int modified_gravity_active;      // Main flag [1] is MG [0] is LCDM
 int include_screening;            // 1 to include screening, 0 to keep it linear
 double aexp_global;               // Global copy of current value of scale factor
 int use_lcdm_growth_factors;      // If this is active the growth-factors are those in LCDM
-int input_sigma8_is_for_lcdm;     // If this is active P(k) is rescaled according to
-                                  // the mg growth-factor when making IC
+int input_pofk_is_for_lcdm;       // If this is active then the input P(k) is rescaled according
+                                  // to MG growth-factors. Useful for MG models which are LCDM at early times
+int input_sigma8_is_for_lcdm;     // If this is active the sigma8 in the parameter-file is assumed to be for LCDM
+                                  // Only active if input_pofk_is_for_lcdm is set. Useful to make runs with the same IC
+int allocate_mg_arrays;           // This is usually 1 if we run with MG, however for some cases we don't need the
+                                  // extra arrays, e.g. for simple Geff(a) models, so it's useful to have a flag for this
+
 #if defined(FOFRGRAVITY) || defined(MBETAMODEL)
 double fofr0;                     // Hu-Sawicky f(R) parameters: f(R0)            
 double nfofr;                     // Hu-Sawicky f(R) parameters: n                
 #elif defined(DGPGRAVITY)
 double Rsmooth_global;            // Smoothing radius for density field (DGP relevant)
 double rcH0_DGP;                  // DGP cross-over scale in units of c/H0
-#endif
-
-#if defined(MBETAMODEL)
-Spline *phi_of_a_spline = NULL;
+#elif defined(BRANSDICKE)
+double wBD;                       // The JBD parameter w
 #endif
 
 float_kind * mgarray_one;         // Modified gravity arrays
@@ -239,66 +253,6 @@ int  NumInputParticleFiles;
 int  RamsesOutputNumber;
 int  TypeInputParticleFiles;
 int  ReadParticlesFromFile;
-
-//==============================================================================
-// FFTW Wrappers to avoid having SINGLE_PRECISION-defines messing up the code
-//==============================================================================
-
-inline plan_kind my_fftw_mpi_plan_dft_r2c_3d(int nx, int ny, int nz, float_kind *regrid, complex_kind *imgrid, MPI_Comm comm, unsigned flags){
-  timer_start(_FFT);
-#ifdef SINGLE_PRECISION
-  return fftwf_mpi_plan_dft_r2c_3d(nx, ny, nz, regrid, imgrid, comm, flags);
-#else
-  return fftw_mpi_plan_dft_r2c_3d(nx, ny, nz, regrid, imgrid, comm, flags);
-#endif
-  timer_stop(_FFT);
-}
-inline plan_kind my_fftw_mpi_plan_dft_c2r_3d(int nx, int ny, int nz, complex_kind *imgrid, float_kind *regrid, MPI_Comm comm, unsigned flags){
-  timer_start(_FFT);
-#ifdef SINGLE_PRECISION
-  return fftwf_mpi_plan_dft_c2r_3d(nx, ny, nz, imgrid, regrid, comm, flags);
-#else
-  return fftw_mpi_plan_dft_c2r_3d(nx, ny, nz, imgrid, regrid, comm, flags);
-#endif
-  timer_stop(_FFT);
-}
-inline void my_fftw_destroy_plan(fftw_plan fftwplan){
-#ifdef SINGLE_PRECISION
-  fftwf_destroy_plan(fftwplan);
-#else
-  fftw_destroy_plan(fftwplan);
-#endif
-}
-inline void my_fftw_execute(fftw_plan fftwplan){
-  timer_start(_FFT);
-#ifdef SINGLE_PRECISION
-  fftwf_execute(fftwplan);
-#else
-  fftw_execute(fftwplan);
-#endif
-  timer_stop(_FFT);
-}
-inline void my_fftw_mpi_cleanup(){
-#ifdef SINGLE_PRECISION
-  fftwf_mpi_cleanup();
-#else
-  fftw_mpi_cleanup();
-#endif
-}
-inline void my_fftw_mpi_init(){
-#ifdef SINGLE_PRECISION
-  fftwf_mpi_init();
-#else
-  fftw_mpi_init();
-#endif
-}
-inline ptrdiff_t my_fftw_mpi_local_size_3d(int nx, int ny, int nz, MPI_Comm comm, ptrdiff_t *locnx, ptrdiff_t *locxstart){
-#ifdef SINGLE_PRECISION
-  return fftwf_mpi_local_size_3d(nx, ny, nz, comm, locnx, locxstart);
-#else
-  return fftw_mpi_local_size_3d(nx, ny, nz, comm, locnx, locxstart);
-#endif
-}
 
 inline int mymod(int i, int N){
   int res = i % N;

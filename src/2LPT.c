@@ -351,18 +351,21 @@ void displacement_fields(void) {
 
             //====================================================================================
             // The power-spectrum we read in is assumed to be for LCDM so rescale it to get MG P(k)
+            // We do this here as growth-factors are not availiable when we read in PowerSpec
             //====================================================================================
-            if(modified_gravity_active)
+            if(modified_gravity_active && input_pofk_is_for_lcdm){
               p_of_k *= mg_pofk_ratio(kmag, 1.0);
-            
-            //=============================================
-            // Since we generate at a = 1 here we need to 
-            // multiply by the ratio (sigma8/sigam8_LCDM)^2
-            // if the Sigma8 provided is assumed to be for
-            // a corresponding LCDM simulation
-            //=============================================
-            if( ! input_sigma8_is_for_lcdm)
-              p_of_k /= sigma8_mg_over_sigma8_lcdm_pow2;
+
+              //=============================================
+              // Since we generate at a = 1 here we need to 
+              // multiply by the ratio (sigma8/sigam8_LCDM)^2
+              // if the Sigma8 provided is assumed to be for
+              // a corresponding LCDM simulation
+              //=============================================
+              if( ! input_sigma8_is_for_lcdm)
+                p_of_k /= sigma8_mg_over_sigma8_lcdm_pow2;
+
+            }
 
             delta = pow(Box,-1.5) * sqrt(p_of_k);  // keep at redshift 0.0
 

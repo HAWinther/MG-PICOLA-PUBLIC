@@ -30,14 +30,6 @@
 #include "timer.h"
 #include "msg.h"
 
-// If Use2LPT_STEP = 0 then it's 1LPT only in the time-stepping
-// otherwise use 1. This is mainly for testing purposes
-#define Use2LPT_STEP  1
-
-// If Use2LPT_IC = 0 then it's 1LPT only in the IC generation
-// otherwise use 1. This is mainly for testing purposes
-#define Use2LPT_IC    1
-
 int main(int argc, char **argv) {
 
   //======================================
@@ -47,12 +39,6 @@ int main(int argc, char **argv) {
   ierr = MPI_Comm_rank(MPI_COMM_WORLD, &ThisTask);
   ierr = MPI_Comm_size(MPI_COMM_WORLD, &NTask);
   my_fftw_mpi_init();
-
-  if( (Use2LPT_STEP == 0 || Use2LPT_IC == 0) && ThisTask == 0){
-    printf("\n===========================================\n");
-    printf("Warning: Use2LPT(STEP) = %i  Use2LPT(IC) %i\n", Use2LPT_STEP, Use2LPT_IC);
-    printf("=============================================\n\n");
-  }
 
   // Start timing
   msg_init();
@@ -208,8 +194,9 @@ int main(int argc, char **argv) {
 
     //===========================================================================================
     // Read particle from RAMSES, GADGET or ASCII file(s) and use it to create the displacement-field
-    // which will again be used to regenerate the particle positions (readICFromFile_assign_particles)
     // All methods are in file [readICfromfile.h]
+    // After density(k,zi) has been created we use LCDM growth-factor to bring it to z = 0 and
+    // then call displacement_fields()
     //===========================================================================================
 
     ReadFilesMakeDisplacementField();
@@ -291,9 +278,9 @@ int main(int argc, char **argv) {
             // Initial 2LPT velocity v = Psi^(1) * dD1/dt + Psi^(2) * dD2/dt
             //==============================================================  
 #ifdef SCALEDEPENDENT
-            P[coord].Vel[m] = P[coord].dDdy[m] + P[coord].dD2dy[m] * Use2LPT_IC;
+            P[coord].Vel[m] = P[coord].dDdy[m] + P[coord].dD2dy[m];
 #else
-            P[coord].Vel[m] = P[coord].D[m] * dDdy + P[coord].D2[m] * dD2dy * Use2LPT_IC;
+            P[coord].Vel[m] = P[coord].D[m] * dDdy + P[coord].D2[m] * dD2dy;
 #endif
           } else {
 
@@ -304,15 +291,17 @@ int main(int argc, char **argv) {
 
         //======================================================================================================================
         // Initial 2LPT position: x = q + Psi^(1) D1 + Psi(2) D2 
+        // If we read particles from file then Psi^{(1)} = Psi_true^{(1)} + Psi_true^{(2)} so we don't need to add the 2LPT here
+        // This is a decent approximation for all but the largest k-modes and the read-from-file option is mainly for testing
         //======================================================================================================================
 #ifdef SCALEDEPENDENT
-        P[coord].Pos[0] = periodic_wrap((i + Local_p_start)*(Box / (double)Nsample) + P[coord].D[0] + P[coord].D2[0] * Use2LPT_IC);
-        P[coord].Pos[1] = periodic_wrap( j                 *(Box / (double)Nsample) + P[coord].D[1] + P[coord].D2[1] * Use2LPT_IC);
-        P[coord].Pos[2] = periodic_wrap( k                 *(Box / (double)Nsample) + P[coord].D[2] + P[coord].D2[2] * Use2LPT_IC);   
+        P[coord].Pos[0] = periodic_wrap((i + Local_p_start)*(Box / (double)Nsample) + P[coord].D[0] + P[coord].D2[0] * (1 - ReadParticlesFromFile));
+        P[coord].Pos[1] = periodic_wrap( j                 *(Box / (double)Nsample) + P[coord].D[1] + P[coord].D2[1] * (1 - ReadParticlesFromFile));
+        P[coord].Pos[2] = periodic_wrap( k                 *(Box / (double)Nsample) + P[coord].D[2] + P[coord].D2[2] * (1 - ReadParticlesFromFile));   
 #else
-        P[coord].Pos[0] = periodic_wrap((i + Local_p_start)*(Box / (double)Nsample) + P[coord].D[0] * Di + P[coord].D2[0] * Di2 * Use2LPT_IC);
-        P[coord].Pos[1] = periodic_wrap( j                 *(Box / (double)Nsample) + P[coord].D[1] * Di + P[coord].D2[1] * Di2 * Use2LPT_IC);
-        P[coord].Pos[2] = periodic_wrap( k                 *(Box / (double)Nsample) + P[coord].D[2] * Di + P[coord].D2[2] * Di2 * Use2LPT_IC);   
+        P[coord].Pos[0] = periodic_wrap((i + Local_p_start)*(Box / (double)Nsample) + P[coord].D[0] * Di + P[coord].D2[0] * Di2 * (1 - ReadParticlesFromFile));
+        P[coord].Pos[1] = periodic_wrap( j                 *(Box / (double)Nsample) + P[coord].D[1] * Di + P[coord].D2[1] * Di2 * (1 - ReadParticlesFromFile));
+        P[coord].Pos[2] = periodic_wrap( k                 *(Box / (double)Nsample) + P[coord].D[2] * Di + P[coord].D2[2] * Di2 * (1 - ReadParticlesFromFile));   
 #endif
         if(ThisTask == 0 && coord < 10) printf("Particle [%i] :   %8.3f   %8.3f   %8.3f\n", coord, P[coord].Pos[0], P[coord].Pos[1], P[coord].Pos[2]);
       }
@@ -703,7 +692,7 @@ finalize:
     for(unsigned int n = 0; n < NumPart; n++) {
       for(int axes = 0; axes < 3; axes ++) {
         Disp[axes][n]  -= sumDxyz[axes];
-        force[axes]     = -1.5 * Omega * Disp[axes][n] - UseCOLA * ( P[n].ddDddy[axes] + P[n].ddD2ddy[axes] * Use2LPT_STEP ) / A;
+        force[axes]     = -1.5 * Omega * Disp[axes][n] - UseCOLA * ( P[n].ddDddy[axes] + P[n].ddD2ddy[axes] ) / A;
         P[n].Vel[axes] += force[axes] * dda;
         sumxyz[axes]   += P[n].Vel[axes];
       }
@@ -719,7 +708,7 @@ finalize:
     for(unsigned int n = 0; n < NumPart; n++) {
       for(int axes = 0; axes < 3; axes ++) {
         Disp[axes][n]  -= sumDxyz[axes];
-        force[axes]     = -1.5 * Omega * Disp[axes][n] - UseCOLA * ( P[n].D[axes] * ddDddy + P[n].D2[axes] * ddD2ddy * Use2LPT_STEP) / A;
+        force[axes]     = -1.5 * Omega * Disp[axes][n] - UseCOLA * ( P[n].D[axes] * ddDddy + P[n].D2[axes] * ddD2ddy ) / A;
         P[n].Vel[axes] += force[axes] * dda;
         sumxyz[axes]   += P[n].Vel[axes];
       }
@@ -756,7 +745,7 @@ finalize:
     for(unsigned int n = 0; n < NumPart; n++) {
       for(int axes = 0; axes < 3; axes++){
         P[n].Pos[axes] += (P[n].Vel[axes] - sumxyz[axes]) * dyyy;
-        P[n].Pos[axes]  = periodic_wrap(P[n].Pos[axes] + UseCOLA*( P[n].dDdy[axes] + P[n].dD2dy[axes] * Use2LPT_STEP )); // dDdy is D(AFF) - D(A)
+        P[n].Pos[axes]  = periodic_wrap(P[n].Pos[axes] + UseCOLA*( P[n].dDdy[axes] + P[n].dD2dy[axes] )); // dDdy is D(AFF) - D(A)
       }
     }
 
@@ -770,7 +759,7 @@ finalize:
     for(unsigned int n = 0; n < NumPart; n++) {
       for(int axes = 0; axes < 3; axes++){
         P[n].Pos[axes] += (P[n].Vel[axes] - sumxyz[axes]) * dyyy;
-        P[n].Pos[axes]  = periodic_wrap(P[n].Pos[axes] + UseCOLA*(P[n].D[axes] * deltaD + P[n].D2[axes] * deltaD2 * Use2LPT_STEP ));
+        P[n].Pos[axes]  = periodic_wrap(P[n].Pos[axes] + UseCOLA*(P[n].D[axes] * deltaD + P[n].D2[axes] * deltaD2 ));
       }
     }
 #endif
@@ -876,9 +865,9 @@ finalize:
           for(n = 0, pc = 0; n < NumPart; n++) {
             // Remember to add the ZA and 2LPT velocities back on and convert to PTHalos velocity units
 #ifdef SCALEDEPENDENT
-            for(k = 0; k < 3; k++) block[3 * pc + k] = (float)(velfac*fac*(P[n].Vel[k] - sumxyz[k] + (P[n].dDdy[k] + P[n].dD2dy[k] * Use2LPT_STEP ) * UseCOLA));
+            for(k = 0; k < 3; k++) block[3 * pc + k] = (float)(velfac*fac*(P[n].Vel[k] - sumxyz[k] + (P[n].dDdy[k] + P[n].dD2dy[k] ) * UseCOLA));
 #else
-            for(k = 0; k < 3; k++) block[3 * pc + k] = (float)(velfac*fac*(P[n].Vel[k] - sumxyz[k] + (P[n].D[k] * dDdy + P[n].D2[k] * dD2dy * Use2LPT_STEP ) * UseCOLA));
+            for(k = 0; k < 3; k++) block[3 * pc + k] = (float)(velfac*fac*(P[n].Vel[k] - sumxyz[k] + (P[n].D[k] * dDdy + P[n].D2[k] * dD2dy ) * UseCOLA));
 #endif
             pc++;
             if(pc == blockmaxlen) {
@@ -922,7 +911,7 @@ finalize:
             double P_Vel[3];
             for(int axes = 0; axes < 3; axes++) {
 #ifdef SCALEDEPENDENT
-              P_Vel[axes] = fac*(P[n].Vel[axes] - sumxyz[axes] + (P[n].dDdy[axes] + P[n].dD2dy[axes] * Use2LPT_STEP ) * UseCOLA);
+              P_Vel[axes] = fac*(P[n].Vel[axes] - sumxyz[axes] + (P[n].dDdy[axes] + P[n].dD2dy[axes] ) * UseCOLA);
 #else
               P_Vel[axes] = fac*(P[n].Vel[axes] - sumxyz[axes] + (P[n].D[axes] * dDdy + P[n].D2[axes] * dD2dy) * UseCOLA);
 #endif

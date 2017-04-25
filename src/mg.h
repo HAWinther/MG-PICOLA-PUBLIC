@@ -116,6 +116,27 @@ void EffDensitykToPhiofk(complex_kind* P3D_densityeffk, complex_kind *P3D_phik){
 }
 
 //=====================================================================
+// The main driver for any MG models that only has a modified Geff(a)
+// so that we don't need to compute any fifth-force potential, we 
+// simply rescale the density array (the source for the force)
+//
+// Assuming we have density(k) in P3D when starting this routine
+// as CopyDensityArray has been called in PtoMesh
+//=====================================================================
+
+void ComputeFifthForce_TimeDepGeffModels(){
+  if(ThisTask == 0)
+    printf("\n===> Multiplying with Geff(a) \n");
+  
+  double Geffective = GeffoverG(aexp_global, 0.0);
+
+  for(int j  = 0; j < Total_size; j++){
+    P3D[j][0] *= Geffective;
+    P3D[j][1] *= Geffective;
+  }
+}
+
+//=====================================================================
 // The main driver for any scalar tensor gravity defined by m(a) and
 // beta(a) like f(R) gravity
 //
@@ -326,12 +347,12 @@ void check_real_space_grid(float_kind *grid){
   double minval = 1e100;
   double avg    = 0.0;
   double rms    = 0.0;
-  int ncells = Nmesh * Nmesh * Nmesh;
+  double ncells = pow((double) Nmesh,3);;
 
   for(int ix = 0; ix < Local_nx; ix++){
     for(int iy = 0; iy < Nmesh; iy++){
       for(int iz = 0; iz < Nmesh; iz++){
-        int i = (ix * Nmesh + iy)*2*(Nmesh/2 + 1) + iz;
+        unsigned int i = (ix * Nmesh + iy)*2*(Nmesh/2 + 1) + iz;
         avg += grid[i];
         rms += grid[i]*grid[i];
         if(grid[i] < minval) minval = grid[i];
@@ -346,8 +367,8 @@ void check_real_space_grid(float_kind *grid){
   ierr = MPI_Allreduce(MPI_IN_PLACE, &avg,    1, MPI_DOUBLE, MPI_SUM, MPI_COMM_WORLD);
   ierr = MPI_Allreduce(MPI_IN_PLACE, &rms,    1, MPI_DOUBLE, MPI_SUM, MPI_COMM_WORLD);
 
-  avg /= (double) (ncells);
-  rms = sqrt(rms / (double) (ncells) );
+  avg /= ncells;
+  rms  = sqrt(rms / ncells);
 
   if(ThisTask == 0) printf("     Checking grid: minval = %f   maxval  = %f  avg = %f  rms = %f\n", minval, maxval, avg, rms);
 }
@@ -358,9 +379,10 @@ void check_real_space_grid(float_kind *grid){
 //=============================================
 
 void CopyDensityArray(){
-  for(int i = 0; i < 2*Total_size; i++)
-    mgarray_two[i] = density[i];
-  //memcpy(&mgarray_two[0], &density[0], 2 * Total_size * sizeof(float));
+  if(allocate_mg_arrays){
+    for(int i = 0; i < 2*Total_size; i++)
+      mgarray_two[i] = density[i];
+  }
 }
 
 //=============================================
@@ -369,12 +391,14 @@ void CopyDensityArray(){
 //=============================================
 
 void AllocateMGArrays(){
-  mgarray_one       = (float_kind *)   malloc(2 * Total_size * sizeof(float_kind));
-  mgarray_two       = (float_kind *)   malloc(2 * Total_size * sizeof(float_kind));
-  P3D_mgarray_one   = (complex_kind *) mgarray_one;
-  P3D_mgarray_two   = (complex_kind *) mgarray_two;
-  plan_mg_phinewton = my_fftw_mpi_plan_dft_c2r_3d(Nmesh, Nmesh, Nmesh, P3D_mgarray_one, mgarray_one,     MPI_COMM_WORLD, FFTW_ESTIMATE);
-  plan_mg_phik      = my_fftw_mpi_plan_dft_r2c_3d(Nmesh, Nmesh, Nmesh, mgarray_two,     P3D_mgarray_two, MPI_COMM_WORLD, FFTW_ESTIMATE);
+  if(allocate_mg_arrays){
+    mgarray_one       = (float_kind *)   malloc(2 * Total_size * sizeof(float_kind));
+    mgarray_two       = (float_kind *)   malloc(2 * Total_size * sizeof(float_kind));
+    P3D_mgarray_one   = (complex_kind *) mgarray_one;
+    P3D_mgarray_two   = (complex_kind *) mgarray_two;
+    plan_mg_phinewton = my_fftw_mpi_plan_dft_c2r_3d(Nmesh, Nmesh, Nmesh, P3D_mgarray_one, mgarray_one,     MPI_COMM_WORLD, FFTW_ESTIMATE);
+    plan_mg_phik      = my_fftw_mpi_plan_dft_r2c_3d(Nmesh, Nmesh, Nmesh, mgarray_two,     P3D_mgarray_two, MPI_COMM_WORLD, FFTW_ESTIMATE);
+  }
 }
 
 //=============================================
@@ -383,10 +407,12 @@ void AllocateMGArrays(){
 //=============================================
 
 void FreeMGArrays(){
-  free(mgarray_one);
-  free(mgarray_two);
-  my_fftw_destroy_plan(plan_mg_phinewton);
-  my_fftw_destroy_plan(plan_mg_phik);
+  if(allocate_mg_arrays){
+    free(mgarray_one);
+    free(mgarray_two);
+    my_fftw_destroy_plan(plan_mg_phinewton);
+    my_fftw_destroy_plan(plan_mg_phik);
+  }
 }
 
 //==========================================================
@@ -429,7 +455,6 @@ void ComputeFifthForce_GradientScreening(){
 void Density_to_DPhiNewtonk(complex_kind *densityk, complex_kind *DPhi_i, int axes){
   int iglobal, kmin;
   double RK, KK;
-
 
   // Normalization of the density as when *= -1/k^2 and FFTd gives us Phi(x) in correct units
   // The Phi we compute here is the one that satisfy D_x^2 Phi = 4 pi G a^2 rho(a) delta = 1.5 Omega/a H0^2 delta

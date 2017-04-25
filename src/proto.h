@@ -25,7 +25,7 @@
 // v1.0: This file contains all the prototypes for function used in the code//
 //==========================================================================//
 
-#include "Spline.h"
+#include "wrappers.h"
 
 //===================================================
 // main.c
@@ -44,6 +44,7 @@ void   ComputeFifthForce();
 void   ComputeFifthForce_PotentialScreening();
 void   ComputeFifthForce_DensityScreening();
 void   ComputeFifthForce_GradientScreening();
+void   ComputeFifthForce_TimeDepGeffModels();
 void   check_real_space_grid(float_kind *grid);
 double smoothing_filter(double kR);
 double beta_of_a(double a);
@@ -200,6 +201,8 @@ double periodic_wrap(double x);
 size_t my_fread(void *ptr, size_t size, size_t nmemb, FILE * stream);
 size_t my_fwrite(void *ptr, size_t size, size_t nmemb, FILE * stream);
 
+void compute_power_spectrum(complex_kind *dens_k, double a);
+
 //===================================================
 // read_param.c
 //===================================================
@@ -266,8 +269,6 @@ double sigma2_int(double k, void * params);
 // Read IC from RAMSES / Gadget / Ascii file instead 
 // of computing it [readICfromfile.h]
 //===================================================
-
-void readICFromFile_assign_particles();
 
 void check_realgrid(float_kind *grid, char *desc);
 void check_complexgrid(complex_kind *grid, char *desc);

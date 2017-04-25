@@ -34,6 +34,8 @@ GADGET_STYLE = -DGADGET_STYLE            # If we are running snapshots this writ
 OPTIONS += $(GADGET_STYLE)               # This option is incompatible with LIGHTCONE simulations. 
                                          # For binary outputs with LIGHTCONE simulations use the UNFORMATTED option.
 
+#OPTIONS += -DCOMPUTE_POFK               # Compute P(k) in the code and output. Needs extra runtime parameters
+
 #SINGLE_PRECISION = -DSINGLE_PRECISION	 # Single precision floats and FFTW (else use double precision)
 #OPTIONS += $(SINGLE_PRECISION)
 
@@ -160,8 +162,8 @@ else
   FFTW_INCL = -I/opt/gridware/pkg/libs/fftw3_double/3.3.3/gcc-4.4.7+openmpi-1.8.1/include/
   FFTW_LIBS = -L/opt/gridware/pkg/libs/fftw3_double/3.3.3/gcc-4.4.7+openmpi-1.8.1/lib/ -lfftw3_mpi -lfftw3
 endif
-  GSL_INCL  = -I/opt/apps/libs/gsl/1.16/gcc-4.4.7/include/
-  GSL_LIBS  = -L/opt/apps/libs/gsl/1.16/gcc-4.4.7/lib/  -lgsl -lgslcblas
+  GSL_INCL  = -I/opt/apps/libs/gsl/2.1/gcc-4.4.7/include/
+  GSL_LIBS  = -L/opt/apps/libs/gsl/2.1/gcc-4.4.7/lib/  -lgsl -lgslcblas
   MPI_INCL  = -I/opt/gridware/pkg/mpi/openmpi/1.8.1/gcc-4.4.7/include
   MPI_LIBS  = -L/opt/gridware/pkg/mpi/openmpi/1.8.1/gcc-4.4.7/lib/ -lmpi
 endif
@@ -185,7 +187,7 @@ LIBS   =   -lm $(MPI_LIBs) $(FFTW_LIBS) $(GSL_LIBS)
 
 CFLAGS =   $(OPTIMIZE) $(FFTW_INCL) $(GSL_INCL) $(MPI_INCL) $(OPTIONS)
 
-OBJS   = src/main.o src/cosmo.o src/auxPM.o src/2LPT.o src/power.o src/vars.o src/read_param.o src/timer.o src/msg.o src/Spline.o
+OBJS   = src/main.o src/cosmo.o src/auxPM.o src/2LPT.o src/power.o src/vars.o src/read_param.o src/timer.o src/msg.o src/wrappers.o
 ifdef GENERIC_FNL
 OBJS += src/kernel.o
 endif
@@ -193,7 +195,7 @@ ifdef LIGHTCONE
 OBJS += src/lightcone.o
 endif
 
-INCL   = src/vars.h src/proto.h src/mg.h src/readICfromfile.h src/new_cosmo.h src/Spline.h src/user_defined_functions.h Makefile.fofr
+INCL   = src/vars.h src/proto.h src/mg.h src/readICfromfile.h src/new_cosmo.h src/user_defined_functions.h Makefile.fofr src/wrappers.h
 
 all: $(OBJS) 
 	$(CC) $(CFLAGS) $(OBJS) $(LIBS) -o $(EXEC)

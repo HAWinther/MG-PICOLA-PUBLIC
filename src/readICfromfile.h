@@ -169,8 +169,8 @@ void check_realgrid(float_kind *grid, char *desc){
   ierr = MPI_Allreduce(&avggrid,   &avggrid, 1, MPI_DOUBLE, MPI_SUM, MPI_COMM_WORLD);
   ierr = MPI_Allreduce(&rmsgrid,   &rmsgrid, 1, MPI_DOUBLE, MPI_SUM, MPI_COMM_WORLD);
   
-  avggrid /= (double) (Nmesh*Nmesh*Nmesh);
-  rmsgrid = sqrt(rmsgrid / (double) (Nmesh*Nmesh*Nmesh));
+  avggrid /= pow((double) Nmesh,3);
+  rmsgrid = sqrt(rmsgrid / pow((double) Nmesh,3) );
   
   if(ThisTask == 0) {
     printf("Check grid [%s]  Min: [%e]  Max: [%e]  Avg: [%e]  Rms: [%e]\n", desc, mingrid, maxgrid, avggrid, rmsgrid);
@@ -845,79 +845,6 @@ void AssignDisplacementField(complex_kind *(cdisp[3])){
             cdisp[axes][coord][1] =  kvec[axes] / kmag2 * P3D[coord][0] * grid_corr * rescale_fac;
           }
         }
-      }
-    }
-  }
-}
-
-void readICFromFile_assign_particles(){
-  double A = 1.0/(1.0 + Init_Redshift);
-  double Di_lcdm = growth_DLCDM(A);
-  double dDidy_lcdm = growth_dDLCDMdy(A);
-
-#ifndef SCALEDEPENDENT
-  // The IC we read in are for LCDM so make sure we rescale the initial displacement field
-  // given to the particles so that this becomes correct. For scale-dependent growth this is
-  // not needed here as we don't store D and D2 but recompute them at every step
-  double rescale_1lpt = growth_DLCDM(A) / growth_D(A);
-  double rescale_2lpt = growth_D2LCDM(A) / growth_D2(A);
-#endif
-
-  // ===========================================================================================
-  // Generate the initial particle positions and velocities
-  // If UseCOLA = 0 (non-COLA), then velocity is ds/dy, which is simply the 2LPT IC.
-  // Else set vel = 0 if we subtract LPT. This is the same as the action of the operator L_- from TZE, as initial velocities are in 2LPT.
-  // ===========================================================================================
-
-  // Assign positions, velocities and displacement
-  for(int i = 0; i < Local_np; i++) {
-    for (int j = 0; j < Nsample; j++) {
-      for (int k = 0; k < Nsample; k++) {
-        unsigned int coord = (i * Nsample + j) * Nsample + k;
-
-#ifdef PARTICLE_ID          
-        P[coord].ID = ((unsigned long long)((i + Local_p_start) * Nsample + j)) * (unsigned long long)Nsample + (unsigned long long)k;
-#endif
-
-        // Assign displacementfields to particles
-        for (int m = 0; m < 3; m++) {
-#ifndef SCALEDEPENDENT 
-          P[coord].D[m]  = ZA[m][coord];
-          P[coord].D2[m] = LPT[m][coord];
-#endif
-          if (UseCOLA == 0) {
-
-            //==============================================================================================
-            // When reading particles from file we assume the IC are as in LCDM so we use this growth-factor 
-            // to get the right normalization here. If changing this one probably also need to change the normfac in readICfromfile.h
-            //==============================================================================================
-            P[coord].Vel[m] = ZA[m][coord] * dDidy_lcdm;
-
-          } else {
-
-            P[coord].Vel[m] = 0.0;
-
-          }
-        }
-
-        //==============================================================================================
-        // NB: We don't add the 2LPT contribution here as this is already included in the particle distribution read from file
-        //==============================================================================================
-        P[coord].Pos[0] = periodic_wrap( (i + Local_p_start)*(Box/(double)Nsample) + ZA[0][coord] * Di_lcdm );
-        P[coord].Pos[1] = periodic_wrap( (j                )*(Box/(double)Nsample) + ZA[1][coord] * Di_lcdm );
-        P[coord].Pos[2] = periodic_wrap( (k                )*(Box/(double)Nsample) + ZA[2][coord] * Di_lcdm );
-
-        //==============================================================================================
-        // So far the displacement-field corresponds to LCDM at redshift 0 so rescale it to the correct value
-        //==============================================================================================
-#ifndef SCALEDEPENDENT 
-        if(UseCOLA != 0){
-          for (int m = 0; m < 3; m++) {
-            P[coord].D[m]  *= rescale_1lpt;
-            P[coord].D2[m] *= rescale_2lpt;
-          }
-        }
-#endif
       }
     }
   }

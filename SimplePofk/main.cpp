@@ -24,7 +24,7 @@ using namespace std;
 
 #define _CIC
 
-#if defined(__NGP)
+#if defined(_NGP)
 const std::string gridassignment = "NGP";
 #define powwindow(x) (x)
 #elif defined(_CIC)
@@ -246,22 +246,20 @@ void calculate_pofk(){
   //======================================
   cout << "===> Binning up P(k)\n" << endl;
   int nover2 = ngrid/2;
-  double fac = 1.0/double(ngrid*ngrid*ngrid);
-  fac = fac*fac;
+  double fftw_norm_fac = pow( 1.0/double(ngrid*ngrid*ngrid), 2);
   for(int i = 0; i < ngrid; i++){
     int ii = (i < nover2 ? i : i-ngrid);
     for(int j = 0; j < ngrid; j++){
       int jj = (j < nover2 ? j : j-ngrid);
-      int kk, ind, kind, dind;
-#pragma omp parallel for private(kk,ind,kind,dind)
+#pragma omp parallel for 
       for(int k = 0; k < ngrid; k++){
-        dind = ngrid * omp_get_thread_num();
-        kk = (k < nover2 ? k : k-ngrid);
-        ind = i + ngrid*(j + k*ngrid);
-        kind = int(sqrt(ii*ii + jj*jj + kk*kk) + 0.5);
+        int dind = ngrid * omp_get_thread_num();
+        int kk = (k < nover2 ? k : k-ngrid);
+        unsigned int ind = i + ngrid*(j + k*ngrid);
+        int kind = int(sqrt(ii*ii + jj*jj + kk*kk) + 0.5);
 
         if(kind < ngrid && kind > 0){
-          pofk_t[kind+dind] += (grid[ind][0]*grid[ind][0]+grid[ind][1]*grid[ind][1])*fac / pow2( window(ii,jj,kk) );
+          pofk_t[kind+dind] += (grid[ind][0]*grid[ind][0]+grid[ind][1]*grid[ind][1])*fftw_norm_fac / pow2( window(ii,jj,kk) );
           nmodes_t[kind+dind] += 1.0;
         }
       }

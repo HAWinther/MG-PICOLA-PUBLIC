@@ -41,7 +41,7 @@ void read_outputs(void) {
     fclose(fd);
 
     OutputList = (struct Outputs *)malloc(Noutputs*sizeof(struct Outputs));
- 
+
     Noutputs = 0;
     fd = fopen(OutputRedshiftFile, "r");
     fflush(stdout);
@@ -125,19 +125,19 @@ void read_parameterfile(char * fname) {
   // Get particles from file instead of
   // generating them in the code
   //=======================================
-  
+
   strcpy(tag[nt], "ReadParticlesFromFile");
   addr[nt] = &ReadParticlesFromFile;
   id[nt++] = INT;
-  
+
   strcpy(tag[nt], "InputParticleFileDir");
   addr[nt] = InputParticleFileDir;
   id[nt++] = STRING;
-  
+
   strcpy(tag[nt], "InputParticleFilePrefix");
   addr[nt] = InputParticleFilePrefix;
   id[nt++] = STRING;
-  
+
   strcpy(tag[nt], "TypeInputParticleFiles");
   addr[nt] = &TypeInputParticleFiles;
   id[nt++] = INT;
@@ -145,12 +145,20 @@ void read_parameterfile(char * fname) {
   strcpy(tag[nt], "NumInputParticleFiles");
   addr[nt] = &NumInputParticleFiles;
   id[nt++] = INT;
-  
+
   strcpy(tag[nt], "RamsesOutputNumber");
   addr[nt] = &RamsesOutputNumber;
   id[nt++] = INT;
-  
-  //=======================================
+
+  //===================================
+  // Read modified gravity parameters
+  //===================================
+
+  read_mg_parameters(addr, tag, id, &nt);
+
+  //===================================
+  // Read the standard parameters
+  //===================================
 
   strcpy(tag[nt], "OutputDir");
   addr[nt] = OutputDir;
@@ -235,58 +243,6 @@ void read_parameterfile(char * fname) {
   strcpy(tag[nt], "PrimordialIndex");
   addr[nt] = &PrimordialIndex;
   id[nt++] = FLOAT;
-  
-  //===================================
-  // Read modified gravity parameters
-  //===================================
- 
-  read_mg_parameters(addr, tag, id, &nt);
-
-  /*
-  strcpy(tag[nt], "modified_gravity_active");
-  addr[nt] = &modified_gravity_active;
-  id[nt++] = INT;
-  
-  strcpy(tag[nt], "use_lcdm_growth_factors");
-  addr[nt] = &use_lcdm_growth_factors;
-  id[nt++] = INT;
-  
-  strcpy(tag[nt], "input_sigma8_is_for_lcdm");
-  addr[nt] = &input_sigma8_is_for_lcdm;
-  id[nt++] = INT;
-  
-  strcpy(tag[nt], "include_screening");
-  addr[nt] = &include_screening;
-  id[nt++] = INT;
-
-#if defined(FOFRGRAVITY)
-  
-  // f(R) gravity
-  strcpy(tag[nt], "fofr0");
-  addr[nt] = &fofr0;
-  id[nt++] = FLOAT;
-
-  strcpy(tag[nt], "nfofr");
-  addr[nt] = &nfofr;
-  id[nt++] = FLOAT;
-
-#elif defined(DGPGRAVITY)
-  
-  // DGP gravity
-  strcpy(tag[nt], "Rsmooth");
-  addr[nt] = &Rsmooth_global;
-  id[nt++] = FLOAT;
-  
-  strcpy(tag[nt], "rcH0_DGP");
-  addr[nt] = &rcH0_DGP;
-  id[nt++] = FLOAT;
-
-#else
-
-  // Here comes the general case
-
-#endif
-  */
 
   strcpy(tag[nt], "UnitVelocity_in_cm_per_s");
   addr[nt] = &UnitVelocity_in_cm_per_s;
@@ -370,26 +326,26 @@ void read_parameterfile(char * fname) {
       for(i = 0, j = -1; i < nt; i++) {
         if(strcmp(buf1, tag[i]) == 0)  {
           j = i;
-	      tag[i][0] = 0;
-	      break;
-	    }
+          tag[i][0] = 0;
+          break;
+        }
       }
-      
+
       if(j >= 0) {
-	    switch (id[j]) {
-	      case FLOAT:
-	        *((double *) addr[j]) = atof(buf2);
-	        break;
-	      case STRING:
-	        strcpy((char *)addr[j], buf2);
-	        break;
-	      case INT:
-	        *((int *) addr[j]) = atoi(buf2);
-	        break;
-	    }
+        switch (id[j]) {
+          case FLOAT:
+            *((double *) addr[j]) = atof(buf2);
+            break;
+          case STRING:
+            strcpy((char *)addr[j], buf2);
+            break;
+          case INT:
+            *((int *) addr[j]) = atoi(buf2);
+            break;
+        }
       } else {
         if(ThisTask == 0) fprintf(stdout,"\nERROR: In file %s:  Tag '%s' not allowed or multiple defined.\n\n",fname,buf1);
-	    errorFlag = 1;
+        errorFlag = 1;
       }
     }
     fclose(fd);
@@ -446,22 +402,22 @@ void read_parameterfile(char * fname) {
   }
 #endif
 #ifdef LOCAL_FNL 
-   if(PrimordialIndex != 1.0) {
-     if (ThisTask == 0) printf("\nERROR: Local non-gaussianity with tilted power spectrum requires the GENERIC_FNL option in the Makefile\n\n");
-     FatalError((char *)"read_param.c", 362);
-   }
+  if(PrimordialIndex != 1.0) {
+    if (ThisTask == 0) printf("\nERROR: Local non-gaussianity with tilted power spectrum requires the GENERIC_FNL option in the Makefile\n\n");
+    FatalError((char *)"read_param.c", 362);
+  }
 #endif 
 #ifdef ORTHO_FNL 
-   if(PrimordialIndex != 1.0) {
-     if (ThisTask == 0) printf("\nERROR: Orthogonal non-gaussianity with tilted power spectrum requires the GENERIC_FNL option in the Makefile\n\n"); 
-     FatalError((char *)"read_param.c", 368);
-   }
+  if(PrimordialIndex != 1.0) {
+    if (ThisTask == 0) printf("\nERROR: Orthogonal non-gaussianity with tilted power spectrum requires the GENERIC_FNL option in the Makefile\n\n"); 
+    FatalError((char *)"read_param.c", 368);
+  }
 #endif 
 #ifdef EQUIL_FNL 
-   if(PrimordialIndex != 1.0) {
-     if (ThisTask == 0) printf("\nERROR: Equilateral non-gaussianity with tilted power spectrum requires the GENERIC_FNL option in the Makefile\n\n");
-     FatalError((char *)"read_param.c", 374);
-   }
+  if(PrimordialIndex != 1.0) {
+    if (ThisTask == 0) printf("\nERROR: Equilateral non-gaussianity with tilted power spectrum requires the GENERIC_FNL option in the Makefile\n\n");
+    FatalError((char *)"read_param.c", 374);
+  }
 #endif 
 
 #ifndef GAUSSIAN

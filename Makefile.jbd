@@ -1,7 +1,7 @@
 # ===================
 # The executable name
 # ===================
-EXEC = MG_PICOLA_MBETA
+EXEC = MG_PICOLA_JBD
 
 # ========================================
 # Choose the machine you are running on. 
@@ -15,13 +15,12 @@ MACHINE  = WINTHERMACBOOK
 # ========================
 OPTIMIZE  = -O3 -Wall -std=c99 
 
-# ====================================================================
-# Various C preprocessor directives that change the way PICOLA is made
-# ====================================================================
+# =======================================================================
+# Various C preprocessor directives that change the way MG-PICOLA is made
+# =======================================================================
 
-MGMODEL  = -DMBETAMODEL                  # General (m,beta) parametrisation
-OPTIONS += $(MGMODEL) -DSCALEDEPENDENT   # The scaledependent version is so far incompatible with LIGHTCONE
-                                         # so use LCDM growth-factors for lightcone sims
+MGMODEL  = -DBRANSDICKE
+OPTIONS += $(SMOOTHFILTER) $(MGMODEL) 
 
 GAUSSIAN = -DGAUSSIAN                    # Switch this if you want gaussian initial conditions (fnl otherwise)
 OPTIONS += $(GAUSSIAN) 
@@ -195,7 +194,7 @@ ifdef LIGHTCONE
 OBJS += src/lightcone.o
 endif
 
-INCL   = src/vars.h src/proto.h src/mg.h src/readICfromfile.h src/new_cosmo.h src/wrappers.h src/user_defined_functions.h Makefile.mbeta
+INCL   = src/vars.h src/proto.h src/mg.h src/readICfromfile.h src/new_cosmo.h src/user_defined_functions.h src/wrappers.h Makefile.jbd
 
 all: $(OBJS) 
 	$(CC) $(CFLAGS) $(OBJS) $(LIBS) -o $(EXEC)

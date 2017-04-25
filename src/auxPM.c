@@ -354,9 +354,11 @@ void PtoMesh(void) {
   // FFT the density field
   my_fftw_execute(plan);
 
-  // For testing. Compute P(k) every time-step
-  // As currently written this is P(k) in the co-moving frame
-  // compute_power_spectrum(P3D);
+  // Compute matter P(k) every time-step
+#ifdef COMPUTE_POFK
+  if(pofk_compute_every_step)
+    compute_power_spectrum(P3D, aexp_global);
+#endif
 
   timer_stop(_PtoMesh);
   return;
@@ -371,6 +373,16 @@ void Forces(void) {
   double RK, KK, grid_corr;
   double Scale = 2. * M_PI / Box;
   complex_kind dens;
+
+  //==========================================================
+  // Add fifth-force potential to the newtonian potential
+  //==========================================================
+  if(modified_gravity_active && allocate_mg_arrays){
+    for(int i = 0; i < Total_size; i++){
+      P3D[i][0] += P3D_mgarray_two[i][0];
+      P3D[i][1] += P3D_mgarray_two[i][1];
+    }
+  }
 
   //==========================================================
   // We need global values for i as opposed to local values
@@ -410,18 +422,10 @@ void Forces(void) {
         grid_corr = 1.0;
 
         //==========================================================
-        // Newtonian potential
+        // Gravitational potential
         //==========================================================
         dens[0] = (     P3D[ind][0]*KK*grid_corr)/pow((double)Nmesh,3);
         dens[1] = (-1.0*P3D[ind][1]*KK*grid_corr)/pow((double)Nmesh,3);
-
-        //==========================================================
-        // Add fifth-force potential
-        //==========================================================
-        if(modified_gravity_active){
-          dens[0] += (     P3D_mgarray_two[ind][0]*KK*grid_corr)/pow((double)Nmesh,3);
-          dens[1] += (-1.0*P3D_mgarray_two[ind][1]*KK*grid_corr)/pow((double)Nmesh,3);
-        }
 
         //==========================================================
         // dens now holds the total potential so we can solve for the force. 
@@ -441,18 +445,10 @@ void Forces(void) {
           dd[1] = -j;
 
           //==========================================================
-          // Newtonian potential
+          // Gravitiational potential
           //==========================================================
           dens[0] = (     P3D[ind][0]*KK*grid_corr)/pow((double)Nmesh,3) ;
           dens[1] = (-1.0*P3D[ind][1]*KK*grid_corr)/pow((double)Nmesh,3) ;
-
-          //==========================================================
-          // Add fifth-force potential
-          //==========================================================
-          if(modified_gravity_active){
-            dens[0] += (     P3D_mgarray_two[ind][0]*KK*grid_corr)/pow((double)Nmesh,3);
-            dens[1] += (-1.0*P3D_mgarray_two[ind][1]*KK*grid_corr)/pow((double)Nmesh,3);
-          }
 
           //==========================================================
           // dens now holds the total potential so we can solve for the force. 
@@ -478,11 +474,11 @@ void Forces(void) {
   // end of the force array. Skip over tasks without any slices.
   //============================================================================
   ierr = MPI_Sendrecv(&(N11[0]), 2*alloc_slice*sizeof(float_kind), MPI_BYTE, LeftTask, 0,
-                      &(N11[2*last_slice]), 2*alloc_slice*sizeof(float_kind),MPI_BYTE,RightTask, 0, MPI_COMM_WORLD, &status);
+      &(N11[2*last_slice]), 2*alloc_slice*sizeof(float_kind),MPI_BYTE,RightTask, 0, MPI_COMM_WORLD, &status);
   ierr = MPI_Sendrecv(&(N12[0]), 2*alloc_slice*sizeof(float_kind), MPI_BYTE, LeftTask, 0,
-                      &(N12[2*last_slice]), 2*alloc_slice*sizeof(float_kind),MPI_BYTE,RightTask, 0, MPI_COMM_WORLD, &status);
+      &(N12[2*last_slice]), 2*alloc_slice*sizeof(float_kind),MPI_BYTE,RightTask, 0, MPI_COMM_WORLD, &status);
   ierr = MPI_Sendrecv(&(N13[0]), 2*alloc_slice*sizeof(float_kind), MPI_BYTE, LeftTask, 0,
-                      &(N13[2*last_slice]), 2*alloc_slice*sizeof(float_kind),MPI_BYTE,RightTask, 0, MPI_COMM_WORLD, &status);
+      &(N13[2*last_slice]), 2*alloc_slice*sizeof(float_kind),MPI_BYTE,RightTask, 0, MPI_COMM_WORLD, &status);
 
   timer_stop(_Forces);
   return;
@@ -621,57 +617,220 @@ size_t my_fwrite(void *ptr, size_t size, size_t nmemb, FILE * stream) {
 }
 
 //===========================================================================
-// For testing compute P(k) = <|density(k)|^2>
-// As currently written this is P(k) in the co-moving frame
+// Defines the binning for the power-spectrum estimation
 //===========================================================================
-void compute_power_spectrum(complex_kind *P3D){
-  int nbins = Nmesh;
+#define LINEAR_SPACING 0
+#define LOG_SPACING    1
+inline int pofk_bin_index(double kmag, double kmin, double kmax, int nbins, int bintype){
+
+  // Linear bins
+  if(bintype == LINEAR_SPACING) {
+    int index = (int)( (kmag - kmin) / (kmax - kmin) * nbins + 0.5);
+    return index;
+  }
+
+  // Logarithmic bins
+  if(bintype == LOG_SPACING) {
+    if(kmag <= 0.0) return -1;
+    int index = (int)( log(kmag/kmin)/log(kmax/kmin) * nbins + 0.5);
+    return index;
+  }
+
+  return 0;
+}
+inline double k_from_index(int index, double kmin, double kmax, int nbins, int bintype){
+
+  if(bintype == LINEAR_SPACING) {
+    double kmag = kmin + (kmax - kmin)/(double)(nbins) * index;
+    return kmag * 2.0 * M_PI / Box;
+  }
+  
+  if(bintype == LOG_SPACING) {
+    double kmag = exp(log(kmin) + log(kmax/kmin)/(double)(nbins) * index);
+    return kmag * 2.0 * M_PI / Box;
+  }
+
+  return 0.0;
+}
+
+//===========================================================================
+// Compute P(k,a) = <|density(k,a)|^2>
+// Assumes dens_k has the fourier transform of the density field
+// The scale-factor is just use to make the output-name
+//===========================================================================
+void compute_power_spectrum(complex_kind *dens_k, double a){
+
+  //=======================================================
+  // Define the binning. Bintype: 0 = Linear; 1 = Logspaced
+  // Every integer k-mode: kmin = 0, kmax = Nmesh/2, 
+  // nbins = Nmesh/2+1 and bintype = 0
+  //=======================================================
+  
+#ifdef COMPUTE_POFK
+
+  // Get parameters from parameterfile
+  int nbins              = pofk_nbins;                     // Number of bins in k
+  int bintype            = pofk_bintype;;                  // Linear [0] Logarithmic [1]
+  int subtract_shotnoise = pofk_subtract_shotnoise;        // Shot-noise subtraction
+  double kmin            = pofk_kmin * Box / (2.0 * M_PI); // Min 'integer' wave-number
+  double kmax            = pofk_kmax * Box / (2.0 * M_PI); // Max 'integer' wave-number
+
+#else
+
+  // Fiducial parameters
+  int nbins              = Nmesh/2;
+  int bintype            = LINEAR_SPACING;
+  int subtract_shotnoise = 1;
+  double kmin            = 0.0;
+  double kmax            = Nmesh/2.0;
+
+#endif
+  
+  // Sanity checks. Adjust parameters to sane values
+  if( ! (bintype == LINEAR_SPACING || bintype == LOG_SPACING) ){
+    if(ThisTask == 0) printf("pofk: Unknown bintype [%i]. Will use linear-spacing\n", bintype);
+    bintype = LINEAR_SPACING;
+  }
+  if(! (subtract_shotnoise == 0 || subtract_shotnoise == 1)){
+    if(ThisTask == 0) printf("pofk: Unknown shotnoise option [%i] != 0 or 1. Setting it to [1] = true\n", subtract_shotnoise);
+    subtract_shotnoise = 1;
+  }
+  if( nbins <= 0 ){
+    if(ThisTask == 0) printf("pofk: Nbins = [%i] < 0. Using nbins = [%i] instead\n", nbins, Nmesh);
+    nbins = Nmesh;
+  }
+  int adjustrange = 0;
+  if(kmin > kmax || kmin <= 0.0){
+    // Use fiducial values
+    if(bintype == LINEAR_SPACING) kmin = 0.0;
+    if(bintype == LOG_SPACING)    kmin = 1.0;
+    kmax = (double) Nmesh;
+    adjustrange = 1;
+  }
+  if(kmax > Nmesh || kmax <= 0.0){
+    kmax = (double) Nmesh; 
+    adjustrange = 1;
+  }
+  if(ThisTask == 0 && adjustrange) 
+    printf("pofk: We had to adjust the k-range kmin = [%5.3f] kmax = [%5.3f]  h/Mpc \n", 2.0 * M_PI / Box * kmin, 2.0 * M_PI / Box * kmax);
+
+  unsigned int coord;
+  double pofk, kmag, grid_corr_x, grid_corr_y, grid_corr_z, grid_corr = 1.0;
+  int d[3], nk;
+
   double *pofk_bin     = malloc(sizeof(double) * nbins);
   double *pofk_bin_all = malloc(sizeof(double) * nbins);
   double *n_bin        = malloc(sizeof(double) * nbins);
   double *n_bin_all    = malloc(sizeof(double) * nbins);
+  double *k_bin        = malloc(sizeof(double) * nbins);
+  double *k_bin_all    = malloc(sizeof(double) * nbins);
 
   // FFT normalization factor for |density(k)|^2
-  double fac = 1.0/pow((double) Nmesh, 6);
+  double fftw_norm_fac = pow( 1.0/(double) (Nmesh * Nmesh * Nmesh), 2);
 
-  for(int i = 0; i < nbins; i++)
-    pofk_bin[i] = pofk_bin_all[i] = n_bin[i] = n_bin_all[i] = 0.0;
+  for(int i = 0; i < nbins; i++){
+    pofk_bin[i] = pofk_bin_all[i] = 0.0;
+    n_bin[i]    = n_bin_all[i]    = 0.0;
+    k_bin[i]    = k_bin_all[i]    = 0.0;
+  }
 
+  // Loop over all modes and add up P(k). We use the symmetry F[i,j,k] = F^*[-i-j,-k] to 
+  // get the negative k modes that FFTW does not store
   for (int i = 0; i < Local_nx; i++) {
     int iglobal = i + Local_x_start;
+
+    // |kx| component
+    d[0] = iglobal > Nmesh/2 ? Nmesh - iglobal : iglobal;
+
+    // Window-function (Sqrt[W]) for kx
+    grid_corr_x = d[0] == 0 ? 1.0 : sin((PI*d[0])/(double)Nmesh)/((PI*d[0])/(double)Nmesh);
+
     for (int j = 0 ; j < (unsigned int)(Nmesh/2+1); j++) {
-      for (int k = 0; k < (unsigned int) (Nmesh/2+1); k++) {
-        unsigned int coord = (i*Nmesh+j)*(Nmesh/2+1)+k;
 
-        // Compute k-vector and its norm
-        double d[3] = {iglobal > Nmesh/2 ? iglobal-Nmesh : iglobal, j, k};
-        double kmag2_int = d[0] * d[0] + d[1] * d[1] + d[2] * d[2];
-        double kmag_int = sqrt(kmag2_int);
+      // |ky| component
+      d[1] = j;
 
-        // Deconvolve window function (CIC)
-        double grid_corr = 1.0;
-        for(int axes = 0; axes < 3; axes++){
-          if (d[axes] != 0) grid_corr *= sin((PI*d[axes])/(double)Nmesh)/((PI*d[axes])/(double)Nmesh);
-        }
-        grid_corr = pow(1.0 / grid_corr, 4.0) * fac;
+      // Window-function (Sqrt[W]) for ky
+      grid_corr_y = d[1] == 0 ? 1.0 : sin((PI*d[1])/(double)Nmesh)/((PI*d[1])/(double)Nmesh);
 
-        // Add to bins
-        double pofk = (P3D[coord][0] * P3D[coord][0] + P3D[coord][1] * P3D[coord][1]) * grid_corr;
-        int nk = (int) (kmag_int + 0.5); 
-        if( nk  < nbins && nk > 0 ){
-          pofk_bin[nk] += pofk;
+      //============================
+      // Do the k = 0 mode
+      //============================
+      d[2] = 0;
+      grid_corr_z = 1.0;
+      kmag = sqrt( d[0] * d[0] + d[1] * d[1] + d[2] * d[2] ) + 1e-100;
+      nk = pofk_bin_index(kmag, kmin, kmax, nbins, bintype);
+      if(nk >= 0 && nk < nbins){
+        coord = (i*Nmesh+j)*(Nmesh/2+1) + d[2];
+        grid_corr = 1.0 / pow(grid_corr_x * grid_corr_y * grid_corr_z, 4.0) * fftw_norm_fac;
+        pofk = (dens_k[coord][0] * dens_k[coord][0] + dens_k[coord][1] * dens_k[coord][1]) * grid_corr;
+        pofk_bin[nk] += 1.0*pofk;
+        k_bin[nk]    += 1.0*kmag;
+        n_bin[nk]    += 1.0;
+
+        // Mirror around y-axis
+        if ((j != (unsigned int)(Nmesh/2)) && (j != 0)) {
+          coord = (i*Nmesh+(Nmesh-j))*(Nmesh/2+1) + d[2];
+          pofk = (dens_k[coord][0] * dens_k[coord][0] + dens_k[coord][1] * dens_k[coord][1]) * grid_corr;
+          pofk_bin[nk] += 1.0*pofk;
+          k_bin[nk]    += 1.0*kmag;
           n_bin[nk]    += 1.0;
         }
+      }
+      
+      //============================
+      // Do the k = N/2 mode
+      //============================
+      d[2] = Nmesh/2;
+      grid_corr_z = 2.0 / PI;
+      kmag = sqrt( d[0] * d[0] + d[1] * d[1] + d[2] * d[2] );
+      nk = pofk_bin_index(kmag, kmin, kmax, nbins, bintype);
+      if(nk >= 0 && nk < nbins){
+        coord = (i*Nmesh+j)*(Nmesh/2+1) + d[2];
+        grid_corr = 1.0 / pow(grid_corr_x * grid_corr_y * grid_corr_z, 4.0) * fftw_norm_fac;
+        pofk = (dens_k[coord][0] * dens_k[coord][0] + dens_k[coord][1] * dens_k[coord][1]) * grid_corr;
+        pofk_bin[nk] += 1.0*pofk;
+        k_bin[nk]    += 1.0*kmag;
+        n_bin[nk]    += 1.0;
 
-        // Add the mirror along the y-axis
+        // Mirror around y-axis
         if ((j != (unsigned int)(Nmesh/2)) && (j != 0)) {
-          coord = (i*Nmesh + (Nmesh-j))*(Nmesh/2+1)+k;
-         
-          // Add to bins
-          if( nk  < nbins && nk > 0 ){
-            pofk = (P3D[coord][0] * P3D[coord][0] + P3D[coord][1] * P3D[coord][1]) * grid_corr;
-            pofk_bin[nk] += pofk;
-            n_bin[nk]    += 1.0;
+          coord = (i*Nmesh+(Nmesh-j))*(Nmesh/2+1) + d[2];
+          pofk = (dens_k[coord][0] * dens_k[coord][0] + dens_k[coord][1] * dens_k[coord][1]) * grid_corr;
+          pofk_bin[nk] += 1.0*pofk;
+          k_bin[nk]    += 1.0*kmag;
+          n_bin[nk]    += 1.0;
+        }
+      }
+
+      for (int k = 1; k < (unsigned int) (Nmesh/2); k++) {
+
+        // |kz| component
+        d[2] = k;
+
+        // Window-function (Sqrt[W]) for kz
+        grid_corr_z = sin((PI*d[2])/(double)Nmesh)/((PI*d[2])/(double)Nmesh);
+
+        //============================
+        // Do the general mode
+        //============================
+        kmag = sqrt( d[0] * d[0] + d[1] * d[1] + d[2] * d[2] );
+        nk = pofk_bin_index(kmag, kmin, kmax, nbins, bintype);
+        if(nk >= 0 && nk < nbins){
+          coord = (i*Nmesh+j)*(Nmesh/2+1) + d[2];
+          grid_corr = 1.0 / pow(grid_corr_x * grid_corr_y * grid_corr_z, 4.0) * fftw_norm_fac;
+          pofk = (dens_k[coord][0] * dens_k[coord][0] + dens_k[coord][1] * dens_k[coord][1]) * grid_corr;
+          pofk_bin[nk] += 2.0*pofk;
+          k_bin[nk]    += 2.0*kmag;
+          n_bin[nk]    += 2.0;
+
+          // Mirror around y-axis
+          if ((j != (unsigned int)(Nmesh/2)) && (j != 0)) {
+            coord = (i*Nmesh + (Nmesh-j))*(Nmesh/2+1) + d[2];
+            pofk = (dens_k[coord][0] * dens_k[coord][0] + dens_k[coord][1] * dens_k[coord][1]) * grid_corr;
+            pofk_bin[nk] += 2.0*pofk;
+            k_bin[nk]    += 2.0*kmag;
+            n_bin[nk]    += 2.0;
           }
         }
       }
@@ -681,15 +840,38 @@ void compute_power_spectrum(complex_kind *P3D){
   // Communicate
   MPI_Allreduce(pofk_bin, pofk_bin_all, nbins, MPI_DOUBLE, MPI_SUM, MPI_COMM_WORLD);
   MPI_Allreduce(n_bin,    n_bin_all,    nbins, MPI_DOUBLE, MPI_SUM, MPI_COMM_WORLD);
+  MPI_Allreduce(k_bin,    k_bin_all,    nbins, MPI_DOUBLE, MPI_SUM, MPI_COMM_WORLD);
 
+  // Normalize and subtract shotnoise
+  for(int i = 0; i < nbins; i++){
+    if(n_bin_all[i] > 0){
+      pofk_bin[i] = (pofk_bin_all[i] / n_bin_all[i]) * pow( Box, 3);
+      if(subtract_shotnoise) pofk_bin[i] -= pow(Box / (double) Nsample, 3);
+      k_bin[i]    = (k_bin_all[i]    / n_bin_all[i]) * 2.0 * M_PI / Box;
+    }
+  }
+
+  // Write output to file
+  double znow = 1.0/a - 1.0;
   if(ThisTask == 0){
-    printf("Output P(k) at a = %f \n", aexp_global);
+    
+    // Make filename
+    char filename[1000];
+    int zint = (int) (znow);
+    int zfrac = (int)((znow - zint)*1000);
+    sprintf(filename, "%s/pofk_%s_z%d.%03d.txt", OutputDir, FileBase, zint, zfrac);
+    printf("Writing power-spectrum to file: [%s]\n", filename);
+
+    FILE *fp = fopen(filename,"w");
+    fprintf(fp,"#  k_bin (h/Mpc)        P(k) (Mpc/h)^3     k_mean_bin (h/Mpc)     Delta = k^3P(k)/2pi^2\n");
     for(int i = 1; i < nbins; i++){
       if(n_bin_all[i] > 0){
-        pofk_bin[i] = pofk_bin_all[i] / n_bin_all[i] - 1.0/pow((double) Nsample, 3);
+        double k_of_bin = k_from_index(i, kmin, kmax, nbins, bintype);
+        double Delta = pofk_bin[i] * k_of_bin * k_of_bin * k_of_bin / 2.0 / M_PI / M_PI;
+        fprintf(fp, "%10.5f   %10.5f   %10.5f   %10.5f\n", k_of_bin,  pofk_bin[i], k_bin[i], Delta);
       }
-      printf("%8.3f   %8.3f\n", i * 2 * M_PI / Box, pofk_bin[i] * pow( Box, 3 ) );
     }
+    fclose(fp);
   }
 
   // Free memory
@@ -697,4 +879,7 @@ void compute_power_spectrum(complex_kind *P3D){
   free(pofk_bin_all);
   free(n_bin);
   free(n_bin_all);
+  free(k_bin);
+  free(k_bin_all);
 }
+

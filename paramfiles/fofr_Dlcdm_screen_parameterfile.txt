@@ -10,7 +10,8 @@ fofr0                    1e-5           % The value of f_R(R) at the present tim
 nfofr                    1.0            % The index in f_R ~ (1/R)^n
 include_screening        1              % Include screening [1] or not [0]
 use_lcdm_growth_factors  1              % Use growth-factors computed in LCDM
-input_sigma8_is_for_lcdm 1             % If Sigma8 provided below is for LCDM then we rescale P(k)
+input_sigma8_is_for_lcdm 1              % If Sigma8 provided below is for LCDM then we rescale P(k)
+input_pofk_is_for_lcdm   1              % If the input P(k) is for LCDM we get the correct MG P(k) by *= (D/DLCDM)^2
 
 % =============================== %
 % Read IC Particles From File
