@@ -120,6 +120,7 @@ double Factor_2LPT(double a);
 // For modified gravity models defined by m(a) beta(a)
 double phi_of_a(double a);
 void   compute_phi_of_a();
+double phi_of_a_from_spline(double a);
 double integrand_phiofa(double x, void *params);
 
 double mg_pofk_ratio(double k, double a);  // Ratio of P_MG(k,a) / P_LCDM(k,a)

@@ -150,6 +150,14 @@ void compute_phi_of_a(){
   free(phi_arr);
   free(err_arr);
 }
+
+//================================================
+// Spline lookup of the function computed above
+//================================================
+double phi_of_a_from_spline(double a){
+  return Lookup_GSL_Spline(&SplineContainer.phi_of_a_spline, log(a));
+}
+
 #endif
 
 double Qfactor(double a) { 

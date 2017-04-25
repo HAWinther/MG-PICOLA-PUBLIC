@@ -346,7 +346,8 @@ double phi_of_a(double a){
   // E.g. for the symmetron we have
   // return 3.0 * Omega / pow3(assb_symm) * pow2(range_symm / 2998.0);
 
-  return Lookup_GSL_Spline(&SplineContainer.phi_of_a_spline, log(a));
+  // Use what we computed in src/new_cosmo.h::compute_phi_of_a()
+  return phi_of_a_from_spline(a);
 }
 #endif
 
