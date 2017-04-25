@@ -1,0 +1,151 @@
+\documentclass[usenatbib]{article}
+\usepackage{url,times,graphicx,amsmath,amsfonts,amssymb,color,epsfig,varioref,subfigure,comment,natbib}
+\usepackage{color}
+
+\title{\texttt{MG-PICOLA} Documentation}
+\author{Hans Winther}
+
+\begin{document}
+\maketitle
+
+\section*{Introduction}
+
+This code is based on the \texttt{L-PICOLA} code written by Cullan Howlett \& Marc Manera. For a documentation of \texttt{L-PICOLA} see the \texttt{L-PICOLA} GITHub page.
+
+\subsection*{Compilation}
+Requires the FFTW3 library (needs to be compiled with --enable-float to use the SINGLE\_PRECISION option).
+\newline
+\newline
+Requires GSL (GNU Scientific Library)
+\newline
+\newline
+Compile the code as make -f Makefile.model and run as mpirun -np 1 MG\_PICOLA\_MODEL paramfile.txt. See paramfiles for some example parameter-files.
+
+\subsection*{Random notes}
+
+The scale-dependent version needs the define SCALEDEPENDENT. This version requires several Fourier transforms per time-step which makes the code ~5 times slower.
+\newline
+\newline
+The lightcone version of the code have not been tested, but should work fine for the scale-independent version of the case (i.e. using LCDM growth-factors).
+\newline
+\newline
+Some optimizations should be done in the SCALEDEPENDENT versions with respect to Output(). Currently we recompute the LPT fields twice here. Should be changed.
+\newline
+\newline
+When running with a modified model note that what the code calls $\Lambda$CDM is the cosmological model which has no modifications to the growth-rate of perturbations (i.e. not fifth-forces). However if the background is modified then this will be what we call $\Lambda$CDM.
+\newline
+\newline
+The original fitting functions for the $\Lambda$CDM growth-functions can be found as \textbf{*\_LCDMFit} in \textbf{src/new\_cosmo.h}.
+\newline
+\newline
+The time-variable in the integration of growth-factors is ${\rm d}y = \frac{{\rm d}a}{E(a)a^3}$.
+\newline
+\newline
+Functions of scale (Fourier wavenumber) require $k$ to be in units of $h/$Mpc ($2\pi/B$ times the integer wave-number where $B$ is the box-size).
+
+\section*{Modifying the code}
+
+If one wants to add a new model then one likely only needs to modify the file \textbf{src/user\_defined\_functions.h}. This requires the user to specify functions like $\mu(k,a) = \frac{G_{\rm eff}(k,a)}{G}$, the Hubble-function $E(a) = H(a)/H_0$ and it's derivatives, a screening method and screening-function (if the model has screening) plus adding relevant parameters to the code.
+\newline
+\newline
+If one needs to do any initialization, computing different stuff in a new model then this can be done in the function \textbf{src/user\_defined\_functions.h::init\_modified\_version()}.
+
+\section*{Parameter file}
+The code uses the same parameter-file as \texttt{PICOLA} with some additions. Note that even if some of the features below and not used the way the parameters are read requires them to be in the parameter-file. In this case the particular values does not matter so just add them with arbitrary values. The main flags are:
+\begin{itemize}
+
+\item \textbf{modified\_gravity\_active = 0, 1} Main flag to turn on or off the modifications of gravity.
+
+\item \textbf{include\_screening = 0, 1} Main flag to turn on or off the screening method of Winther \& Ferreira 2015.
+
+\end{itemize}
+
+\subsection*{Initial conditions}
+
+\begin{itemize}
+
+\item \textbf{input\_pofk\_is\_for\_lcdm = 0, 1}  The input power-spectrum is assumed to be for $\Lambda$CDM and we will use the MG growth-factor to rescale it.
+
+\item \textbf{input\_sigma8\_is\_for\_lcdm = 0, 1} Only used if input\_pofk\_is\_for\_lcdm = 1. Useful if one wants to do MG and $\Lambda$CDM simulations with exactly the same IC. The power-spectrum is normalized according to the linear $\Lambda$CDM model. This means the linear $\sigma_8$ for a MG run will be different than what is in the parameter-file.
+
+\end{itemize}
+
+The code can also read IC from file:
+
+\begin{itemize}
+
+\item \textbf{ReadParticlesFromFile = 0, 1} Main flag to read Ramses / Gadget snapshots and using this as the IC instead of generating the IC in the code. Useful to run COLA sim
+ulations with the same IC as previous full N-body simulations.
+
+\item \textbf{TypeInputParticleFiles = integer}  Ramses is 1, ascii is 2 and gadget is 3.
+
+\item \textbf{NumInputParticleFiles = integer} How many Ramses / Gadget / Ascii files there are to read.
+
+\item \textbf{InputParticleFileDir = string} Path to the folder containing the snapshot.
+
+\item \textbf{InputParticleFilePrefix = string} Prefix of the particle-filenames, e.g. gadget in /InputParticleFileDir/gadget.0. Ignored for Ramses-files as we assume it's the standard `part\_0000X.out0000Y` format.
+
+\item \textbf{RamsesOutputNumber = integer} The number X in part\_0000X.out0000Y. Ignored for ascii / gadget
+
+\end{itemize}
+
+\subsection*{Power-spectrum evaluation}
+
+The code can do a simple power-spectrum evaluation. This requires the code to be compiled with the define DCOMPUTE\_POFK. If this define is not set then the parameters below should not be in the parameter-file.
+
+\begin{itemize}
+
+\item \textbf{pofk\_compute\_every\_step = 0, 1} Main flag to turn on off P(k) evaluation at every step.
+
+\item \textbf{pofk\_bintype = integer} Linear spacing (0) or logarithmic spacing (1) of the bins.
+
+\item \textbf{pofk\_nbins = integer} Number of bins between kmin and kmax.
+
+\item \textbf{pofk\_kmin = float} Minimum wavenumber in h/Mpc (should be larger or equal to the fundamental wavenumber $2\pi/$Box).
+
+\item \textbf{pofk\_kmax = float} Maximum wavenumber in h/Mpc (should be smaller than the Nyquist frequency since we cannot trust the spectra above it).
+
+\item \textbf{pofk\_subtract\_shotnoise = 0, 1} Flag to turn on or off shotnoise subtraction.
+
+\end{itemize}
+
+\subsection*{DGP model}
+
+The normal-branch DGP model with a $\Lambda$CDM background. The requires the code to be compiled with the define DGPGRAVITY and a choice of smoothing-filter GAUSSIANFILTER (standard), TOPHATFILTER or SHARPKFILTER.
+
+\begin{itemize}
+
+\item \textbf{Rsmooth = float} The radius in (Mpc$/h$) of the Fourier space smoothing kernel which we use to smooth the density field with for density-screening. The smoothing kernel itself is set in the Makefile (gaussian, tophat or sharp-k).
+
+\item \textbf{rcH0\_DGP = float} The crossover-scale $r_cH_0/c$. Typical values for cosmological simulations are in the range $0.5-5$, i.e. $r_c = 1.5 - 15$ Gpc/h.
+
+\end{itemize}
+
+\subsection*{$f(R)$ gravity}
+
+This is the Hu-Sawicky $f(R)$ model. If true growth-factors then this requires the code to be compiled with the define SCALEDEPENDENT (in addition to FOFRGRAVITY). Otherwise use the flag \textbf{use\_lcdm\_growth\_factors = 1}.
+
+\begin{itemize}
+
+\item \textbf{fofr0 = float} The value of $f_R$ in the cosmological background today. Typical values for comological simulations are $10^{-4}-10^{-6}$.
+
+\item \textbf{n\_fofr = float} The value of $n$ in the Hu-Sawicky $f(R)$ function. $n=1$ is the fiducial value and the most commonly used in the literature.
+
+\end{itemize}
+
+\subsection*{$\{m(a),\beta(a)\}$ models}
+
+This is implemented in the code, and one should just have to specify $m(a)$ and $\beta(a)$ in \textbf{src/user\_defined\_functions.h} and add relevant parameters to the parameter-file to be able to use this. The integration of $\phi(a)$ needed for the screening method is done automatically (in \textbf{src/new\_cosmo.h::compute\_phi\_of\_a()}) however one should double check that this gives the correct results. This requires the code to be compiled with the define MBETAMODEL.
+
+\subsection*{Jordan-Brans-Dicke model}
+
+The JBD model has a modified background (the code uses a rough approximation here so this should be changed to numerically integrating the equations) and modified growth of perturbations. There is no screening. This requires the code to be compiled with the define BRANSDICKE.
+
+\begin{itemize}
+
+\item \textbf{wBD} The JBD parameter.
+
+\end{itemize}
+
+
+\end{document}
