@@ -667,6 +667,7 @@ double fofr_pi_factor(double k, double a){
 //        x (1+cos^2 + 2a4H2/beff gamma2)                  //
 //=========================================================//
 double second_order_kernel(double k, double k1, double k2, double costheta, double a){
+  if(! modified_gravity_active) return 0.0;
 #if defined(FOFRGRAVITY)
 
   double a3     = a*a*a;
