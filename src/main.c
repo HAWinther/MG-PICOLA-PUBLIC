@@ -814,11 +814,11 @@ finalize:
       data.omega_l        = 1.0 - Omega;
       data.HubbleParam    = HubbleParam;
       data.redshift       = 1.0/A - 1.0;
-      data.Local_p_start  = Local_p_start;
-      data.norm_vel       = Hubble / A * UnitVelocity_in_cm_per_s / 1.0e5;
+      data.Local_p_start  = (int)Local_p_start;
       data.P              = P;
       data.growth_dDdy    = &growth_dDdy;
       data.growth_dD2dy   = &growth_dD2dy;
+      data.norm_vel       = (Hubble / A) * (UnitVelocity_in_cm_per_s / 1.0e6);
       sprintf(data.OutputDir, OutputDir);
       sprintf(data.FileBase,  FileBase);
       
@@ -1001,9 +1001,10 @@ finalize:
     char buf[300];
     double Z = (1.0/A) - 1.0;
 
-    int * Local_p_start_table    = malloc(sizeof(int) * NTask);
-    unsigned int * Noutput_table = malloc(sizeof(unsigned int) * NTask);
-    MPI_Allgather(&Local_p_start, 1, MPI_INT, Local_p_start_table, 1, MPI_INT, MPI_COMM_WORLD); 
+    int *Local_p_start_table    = malloc(sizeof(int) * NTask);
+    unsigned int *Noutput_table = malloc(sizeof(unsigned int) * NTask);
+    int local_p_start_int = (int)Local_p_start;
+    MPI_Allgather(&local_p_start_int, 1, MPI_INT, Local_p_start_table, 1, MPI_INT, MPI_COMM_WORLD); 
     MPI_Allgather(&NumPart, 1, MPI_UNSIGNED, Noutput_table, 1, MPI_UNSIGNED, MPI_COMM_WORLD); 
 
     if (ThisTask == 0) { // Added info_ to filename

@@ -152,12 +152,13 @@ void MatchMaker(struct PicolaToMatchMakerData data){
   Param.norm_vel        = data.norm_vel;
   Param.h               = data.HubbleParam;
   Param.NumPart         = NumPart;
+  Param.Local_p_start   = data.Local_p_start;
   Param.P               = data.P;
   Param.growth_dDdy     = data.growth_dDdy;
   Param.growth_dD2dy    = data.growth_dD2dy;
   sprintf(Param.OutputDir,"%s", data.OutputDir);
   sprintf(Param.FileBase, "%s", data.FileBase);
-  Param.mp              = 27.7459457*Param.omega_m*pow(Param.boxsize,3)/Param.n_part;
+  Param.mp              = 27.754995426625320709691*Param.omega_m*pow(Param.boxsize,3)/Param.n_part;
 
   // Make output name
   int z     = Param.redshift;
@@ -186,19 +187,22 @@ void MatchMaker(struct PicolaToMatchMakerData data){
   // particles from the right
   //===============================================================
 
-  // Compute offset from PICOLA p-table
-  int * Local_p_start_table = malloc(sizeof(int) * Param.n_nodes);
-  MPI_Allgather(&Param.Local_p_start, 1, MPI_INT, Local_p_start_table, 1, MPI_INT, MPI_COMM_WORLD); 
-  Param.x_offset = Local_p_start_table[Param.i_node] * (Param.boxsize / (double)Param.n_part_1d); 
-  free(Local_p_start_table);
-  
-  // Communicate offset to the right
+  // Compute offset (position of left boundary) from PICOLA p-table
+  Param.x_offset = Local_p_start * (Param.boxsize / (double)Param.n_part_1d); 
+
+  // Get offset from the right and send to the left
   int tag = 100;
   MPI_Status stat;
-  MPI_Sendrecv(&Param.x_offset,   1,MPI_FLOAT,Param.i_node_left ,tag,
-      &Param.x_offset_right,1,MPI_LONG,Param.i_node_right,tag,
+  MPI_Sendrecv(&Param.x_offset,1,MPI_FLOAT,Param.i_node_left ,tag,
+      &Param.x_offset_right,1,MPI_FLOAT,Param.i_node_right,tag,
       MPI_COMM_WORLD,&stat);
 
+  // Compute size of current domain dx_domain 
+  Param.dx_domain = Param.x_offset_right - Param.x_offset;
+  if(Param.dx_domain < 0.0) Param.dx_domain += Param.boxsize;
+
+  printf("Task [%i]  x_left = %f  x_right = %f  dx_domain = %f\n", Param.i_node, Param.x_offset, Param.x_offset_right, Param.dx_domain); // xxx 
+  
   mm_msg_printf("Allocating particles and translating them to MatchMaker\n");
   Particles *particles = malloc(sizeof(Particles));
   picola_to_matchmaker_particles(particles);
@@ -280,8 +284,7 @@ void picola_to_matchmaker_particles(Particles *particles){
   // Allocate partices
   //==============================
   unsigned long long np_tot = Param.n_part;
-  float lbox_f              = (float)(Param.boxsize);
-  float dx_domain           = lbox_f/Param.n_nodes;
+  float dx_domain           = Param.dx_domain;
   int this_node             = Param.i_node;
 
   // Translate from code vel to true velocity
@@ -357,10 +360,6 @@ void picola_to_matchmaker_particles(Particles *particles){
       &(particles->p[particles->np_indomain]),particles->np_fromright,
       ParticleMPI,Param.i_node_right,tag,
       MPI_COMM_WORLD,&stat);
-
-  // Recompute dx_domain (needed for cases where NCPU does not divide Nsample)
-  dx_domain = Param.x_offset_right - Param.x_offset;
-  if(dx_domain < 0.0) dx_domain += Param.boxsize;
 
   // Add offset to received particles
   lint i_off = particles->np_indomain;

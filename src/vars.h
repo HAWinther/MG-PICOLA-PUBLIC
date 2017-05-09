@@ -412,7 +412,7 @@ struct PicolaToMatchMakerData {
   double dx_extra;
   double b_fof;
   double norm_vel;
-  ptrdiff_t Local_p_start;
+  int Local_p_start;
   struct part_data *P;
   unsigned int NumPart;
   char FileBase[500]; 

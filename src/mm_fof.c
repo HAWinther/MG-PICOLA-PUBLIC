@@ -83,7 +83,7 @@ void init_fof(void){
   float ipd=Param.boxsize/pow((double)(Param.n_part),1./3.);
   float dx[3];
 
-  dx[0]=Param.boxsize/Param.n_nodes+Param.dx_extra;
+  dx[0]=Param.dx_domain+Param.dx_extra;
   dx[1]=Param.boxsize;
   dx[2]=Param.boxsize;
 
@@ -182,8 +182,7 @@ static int get_neighbors(lint ip0,Cell *cll,Particle *p,lint fof_id)
   return n_new_neighbors;
 }
 
-static Cell *gather_particles_in_cells(Particles *particles) 
-{
+static Cell *gather_particles_in_cells(Particles *particles) {
   lint i;
   Cell *cll=malloc(Ngrid_tot*sizeof(Cell));
   if(cll==NULL)
@@ -397,8 +396,7 @@ static Cell *gather_particles_in_cells(Particles *particles)
   return cll;
 }
 
-static FoFGroup *assign_particles_to_fof(Particles *particles,Cell *cll,lint *n_fof_out)
-{
+static FoFGroup *assign_particles_to_fof(Particles *particles,Cell *cll,lint *n_fof_out){
   lint i;
   lint n_fof=1;
   Particle *p=particles->p;

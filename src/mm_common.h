@@ -70,7 +70,7 @@ typedef struct {
   
   const struct part_data *P; // PICOLA particles
   
-  ptrdiff_t Local_p_start;   // Index for where the PICOLA particle-grid starts
+  int Local_p_start;   // Index for where the PICOLA particle-grid starts
 
   // Growth-functions of a
   double (*growth_dDdy)(double);
@@ -83,6 +83,7 @@ typedef struct {
   int i_node_right;
   float x_offset;
   float x_offset_right;
+  float dx_domain;
 } Parameters;
 Parameters Param;
 
