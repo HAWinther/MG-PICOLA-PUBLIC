@@ -76,6 +76,8 @@ int    pofk_subtract_shotnoise;  // Subtract shotnoise
 double pofk_kmin;                // The minimum k-value in h/Mpc (should be >= 2pi/Box)
 double pofk_kmax;                // The maximum k-value in h/Mpc (should be <= 2pi/Box * Nmesh)
 
+int    pofk_compute_rsd_pofk;    // Flag to turn on computing P0,P2,P4 RSD multipole spectra. Average over 2 axes.
+                                 // Compute every step: [1], Compute when outputting [2], Don't compute [0]
 #endif
 
 //===================================================
@@ -259,4 +261,14 @@ inline int mymod(int i, int N){
   if(res < 0) res += N;
   return res;
 }
+
+#ifdef MATCHMAKER_HALOFINDER
+int mm_run_matchmaker;     // Run matchmaker every time we output 
+int mm_output_pernode;     // One file (0) or one per task (1)
+int mm_output_format;      // Ascii (0), binary (2), fits (1). Fits require cfitsio library + define MATCHMAKER_USEFITS
+int mm_min_npart_halo;     // Minimum number of particles per halo (20)
+double mm_alloc_factor;    // Alloc factor. How much extra memory per node (1.25).
+double mm_linking_length;  // FoF linking length (0.2)
+double mm_dx_extra_mpc;    // Buffer radius for FoF search in units of the boxsize (3.0 Mpc/h)
+#endif
 

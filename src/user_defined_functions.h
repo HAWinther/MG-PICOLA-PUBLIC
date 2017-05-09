@@ -53,8 +53,14 @@ void init_modified_version(){
     printf("============================================\n");
     printf("Running with Modified Gravity, f(R) gravity \n");
     printf("============================================\n");
-    printf("  f(R0)                   = %f  \n", fofr0);
-    printf("  n                       = %f  \n", nfofr);
+    printf("  f(R0)                   = %f\n", fofr0);
+    printf("  n                       = %f\n", nfofr);
+    printf("  Modified gravity active = %i\n", modified_gravity_active);
+    printf("  Include screening       = %i\n", include_screening);
+    printf("  Use LCDM growthfactor   = %i\n", use_lcdm_growth_factors);
+    printf("  Input P(k) is for LCDM  = %i\n", input_pofk_is_for_lcdm);
+    printf("  Sigma8 is for LCDM      = %i\n", input_sigma8_is_for_lcdm);
+    printf("\n");
     fflush(stdout);
   }
 
@@ -64,8 +70,14 @@ void init_modified_version(){
     printf("============================================\n");
     printf("Running with Modified Gravity, nDGP gravity \n");
     printf("============================================\n");
-    printf("  rcH0                    =   %f\n", rcH0_DGP);
-    printf("  Rsmooth (Mpc/h)         =   %f\n", Rsmooth_global);
+    printf("  rcH0                    = %f\n", rcH0_DGP);
+    printf("  Rsmooth (Mpc/h)         = %f\n", Rsmooth_global);
+    printf("  Modified gravity active = %i\n", modified_gravity_active);
+    printf("  Include screening       = %i\n", include_screening);
+    printf("  Use LCDM growthfactor   = %i\n", use_lcdm_growth_factors);
+    printf("  Input P(k) is for LCDM  = %i\n", input_pofk_is_for_lcdm);
+    printf("  Sigma8 is for LCDM      = %i\n", input_sigma8_is_for_lcdm);
+    printf("\n");
     fflush(stdout);
   }
 
@@ -75,6 +87,12 @@ void init_modified_version(){
     printf("============================================\n");
     printf("Running with Modified Gravity, (m(a),b(a))  \n");
     printf("============================================\n");
+    printf("  Modified gravity active = %i\n", modified_gravity_active);
+    printf("  Include screening       = %i\n", include_screening);
+    printf("  Use LCDM growthfactor   = %i\n", use_lcdm_growth_factors);
+    printf("  Input P(k) is for LCDM  = %i\n", input_pofk_is_for_lcdm);
+    printf("  Sigma8 is for LCDM      = %i\n", input_sigma8_is_for_lcdm);
+    printf("\n");
     fflush(stdout);
   }
 
@@ -94,6 +112,10 @@ void init_modified_version(){
     printf("============================================\n");
     printf("Running with the Jordan-Brans-Dicke model   \n");
     printf("============================================\n");
+    printf("  Modified gravity active = %i\n", modified_gravity_active);
+    printf("  Input P(k) is for LCDM  = %i\n", input_pofk_is_for_lcdm);
+    printf("  Sigma8 is for LCDM      = %i\n", input_sigma8_is_for_lcdm);
+    printf("\n");
     fflush(stdout);
   }
 
@@ -143,6 +165,34 @@ void read_mg_parameters(void **addr, char (*tag)[50], int *id, int (*nt)){
   addr[(*nt)] = &include_screening;
   id[(*nt)++] = INT;
 
+#ifdef MATCHMAKER_HALOFINDER
+
+  strcpy(tag[(*nt)], "mm_run_matchmaker");
+  addr[(*nt)] = &mm_run_matchmaker;
+  id[(*nt)++] = INT;
+  
+  strcpy(tag[(*nt)], "mm_output_pernode");
+  addr[(*nt)] = &mm_output_pernode;
+  id[(*nt)++] = INT;
+  
+  strcpy(tag[(*nt)], "mm_output_format");
+  addr[(*nt)] = &mm_output_format;
+  id[(*nt)++] = INT;
+  
+  strcpy(tag[(*nt)], "mm_min_npart_halo");
+  addr[(*nt)] = &mm_min_npart_halo;
+  id[(*nt)++] = INT;
+  
+  strcpy(tag[(*nt)], "mm_linking_length");
+  addr[(*nt)] = &mm_linking_length;
+  id[(*nt)++] = FLOAT;
+
+  strcpy(tag[(*nt)], "mm_dx_extra_mpc");
+  addr[(*nt)] = &mm_dx_extra_mpc;
+  id[(*nt)++] = FLOAT;
+  
+#endif
+
 #ifdef COMPUTE_POFK
 
   //=======================================
@@ -151,6 +201,10 @@ void read_mg_parameters(void **addr, char (*tag)[50], int *id, int (*nt)){
 
   strcpy(tag[(*nt)], "pofk_compute_every_step");
   addr[(*nt)] = &pofk_compute_every_step;
+  id[(*nt)++] = INT;
+  
+  strcpy(tag[(*nt)], "pofk_compute_rsd_pofk");
+  addr[(*nt)] = &pofk_compute_rsd_pofk;
   id[(*nt)++] = INT;
 
   strcpy(tag[(*nt)], "pofk_nbins");
@@ -217,6 +271,19 @@ void read_mg_parameters(void **addr, char (*tag)[50], int *id, int (*nt)){
 
 #endif
 }
+
+#if defined(BRANSDICKE)
+
+void   read_JBD_background_from_file();
+double JBD_Hubble(double a);
+double JBD_dHubbleda(double a);
+double JBD_GeffOverG(double a);
+
+GSL_Spline JBD_GeffSpline;
+GSL_Spline JBD_HSpline;
+GSL_Spline JBD_dHdaSpline;
+
+#endif
 
 //=========================================================//
 // Hubble function and derivative                          //

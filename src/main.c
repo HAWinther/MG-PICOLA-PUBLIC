@@ -91,12 +91,6 @@ int main(int argc, char **argv) {
     printf("================\n");
     printf("Run Parameters\n");
     printf("================\n");
-    printf("Parameters:\n");
-    printf("  Modified gravity active = %i\n", modified_gravity_active);
-    printf("  Include screening       = %i\n", include_screening);
-    printf("  Use LCDM growthfac      = %i\n", use_lcdm_growth_factors);
-    printf("  sigma8 is for LCDM      = %i\n", input_sigma8_is_for_lcdm);
-    printf("\n");
     printf("Cosmology:\n");
     printf("  Omega Matter(z=0) = %lf\n",Omega);
     printf("  Omega Baryon(z=0) = %lf\n",OmegaBaryon);
@@ -189,6 +183,7 @@ int main(int argc, char **argv) {
   // AFF is the scale factor to which we should drift the particle positions.
   //===========================================================================================
   double AI = A, AF = A, AFF = A;  
+  aexp_global = A;
 
   if(ReadParticlesFromFile){
 
@@ -771,7 +766,7 @@ finalize:
   // Output the data
   //=================
   void Output(double A, double AF, double AFF, double dDdy, double dD2dy) {
-    timer_start(_WriteOutput);
+    timer_set_category(_Output);
     FILE * fp; 
     char buf[300];
     int nprocgroup, groupTask, masterTask;
@@ -799,6 +794,48 @@ finalize:
     assign_displacment_field_to_particles(A, AF, AFF, FIELD_dDdy, LPT_ORDER_TWO);
     if(ThisTask == 0) printf("\n");
 #endif
+
+#ifdef MATCHMAKER_HALOFINDER
+    //==================================================================================================================
+    // Run FoF halofinder. NB: For scaledependent case we must have dD/dy and dD2/dy in the P->dDdy and P->dD2dy vectors
+    // This is the case here. As currently written we duplicate particles in this routine which requires extra memory.
+    //==================================================================================================================
+    if(mm_run_matchmaker) {
+      struct PicolaToMatchMakerData data;
+      data.output_format  = mm_output_format;
+      data.output_pernode = mm_output_pernode;
+      data.np_min         = mm_min_npart_halo;
+      data.dx_extra       = mm_dx_extra_mpc;
+      data.b_fof          = mm_linking_length;
+      data.boxsize        = Box;
+      data.NumPart        = NumPart;
+      data.n_part_1d      = Nsample;
+      data.omega_m        = Omega;
+      data.omega_l        = 1.0 - Omega;
+      data.HubbleParam    = HubbleParam;
+      data.redshift       = 1.0/A - 1.0;
+      data.Local_p_start  = Local_p_start;
+      data.norm_vel       = Hubble / A * UnitVelocity_in_cm_per_s / 1.0e5;
+      data.P              = P;
+      data.growth_dDdy    = &growth_dDdy;
+      data.growth_dD2dy   = &growth_dD2dy;
+      sprintf(data.OutputDir, OutputDir);
+      sprintf(data.FileBase,  FileBase);
+      
+      timer_start(_HaloFinding);
+      MatchMaker(data);
+      timer_stop(_HaloFinding);
+    }
+#endif
+
+#ifdef COMPUTE_POFK
+    if(pofk_compute_rsd_pofk == 2){
+      // Compute the RSD power-spectrum
+      compute_RSD_powerspectrum(A, 1);
+    }
+#endif
+    
+    timer_start(_WriteOutput);
 
 #ifdef GADGET_STYLE
     size_t bytes;
@@ -951,6 +988,7 @@ finalize:
 #endif
 
     timer_stop(_WriteOutput);
+    timer_set_category(_TimeStepping);
     return;
   }
 

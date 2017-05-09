@@ -1,3 +1,6 @@
+#ifndef INCPROTO
+#define INCPROTO
+
 //==========================================================================//
 //  Copyright (c) 2013       Cullan Howlett & Marc Manera,                  //
 //                           Institute of Cosmology and Gravitation,        //
@@ -202,8 +205,6 @@ double periodic_wrap(double x);
 size_t my_fread(void *ptr, size_t size, size_t nmemb, FILE * stream);
 size_t my_fwrite(void *ptr, size_t size, size_t nmemb, FILE * stream);
 
-void compute_power_spectrum(complex_kind *dens_k, double a);
-
 //===================================================
 // read_param.c
 //===================================================
@@ -303,3 +304,18 @@ double fofr_pi_factor(double k, double a);
 double second_order_kernel(double k, double k1, double k2, double costheta, double a);
 void   integrate_up_kernel(int ik_grid_x, int ik_grid_y, int ik_grid_z, complex_kind *deltak_grid, float_kind *result);
 #endif
+
+#ifdef COMPUTE_POFK
+void compute_power_spectrum(complex_kind *dens_k, double a);
+void adjust_pofk_parameters(int *nbins, int *bintype, int *subtract_shotnoise, double *kmin, double *kmax);
+void compute_RSD_powerspectrum(double A, int dDdy_set_in_particles);
+void PtoMesh_RSD(float_kind *dens, int axis, double A);
+void bin_up_RSD_power_spectrum(complex_kind *dens_k, struct RSD_Pofk_Data *pofk_data);
+#endif
+
+#ifdef MATCHMAKER_HALOFINDER
+void MatchMaker(struct PicolaToMatchMakerData);
+#endif
+
+#endif
+

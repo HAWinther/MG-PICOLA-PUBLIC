@@ -2,9 +2,10 @@
 #define TIMER_H 1
 
 enum Category {
-              _Init, 
+               _Init, 
                _GenerateIC, 
-               _TimeStepping
+               _TimeStepping,
+               _Output
               };
 
 enum SubCategory {
@@ -22,7 +23,9 @@ enum SubCategory {
                   _NonGaussianIC, 
                   _DisplacementFields, 
                   _OutputLightcone, 
-                  _DriftLightcone
+                  _DriftLightcone,
+                  _PofkComputation,
+                  _HaloFinding
                  };
 
 void timer_set_category(enum Category new_cat);

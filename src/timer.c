@@ -2,13 +2,14 @@
 #include "msg.h"
 #include "timer.h"
 
-#define nCategory 3
+#define nCategory 4
 static const char * CatName[]= {"Init        ", 
                                 "GenerateIC  ", 
-                                "TimeStepping"
+                                "TimeStepping",
+                                "Output      "
                                };
 
-#define nSubCategory 15
+#define nSubCategory 17
 static const char * SubName[]= {"",                      
                                 "Kick                 ",            
                                 "Drift                ",         
@@ -23,7 +24,9 @@ static const char * SubName[]= {"",
                                 "NonGaussianIC        ", 
                                 "DisplacementFields   ",
                                 "OutputLightcone      ",
-                                "DriftLightcone       "
+                                "DriftLightcone       ",
+                                "PofkComputation      ",
+                                "HaloFinding          "
                                };
 static int initialized = 0;
 static enum Category Cat;

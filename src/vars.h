@@ -113,14 +113,25 @@ extern plan_kind p11,p12,p13;    // Plans for the in-place FFT's of the forces g
 
 #ifdef COMPUTE_POFK
 
-extern int    pofk_compute_every_step;  // Flag to turn on this option [1]: compute every step and output; [0]: don't compute at all
-extern int    pofk_nbins;               // Number of bins in P(k) evaluation
-extern int    pofk_bintype;             // Which binning [0]: linear [1]: log spacing 
-extern int    pofk_subtract_shotnoise;  // Subtract shotnoise
-extern double pofk_kmin;                // The minimum k-value in h/Mpc (should be >= 2pi/Box)
-extern double pofk_kmax;                // The maximum k-value in h/Mpc (should be <= 2pi/Box * Nmesh)
+extern int    pofk_compute_every_step;     // Flag to turn on this option [1]: compute every step and output; [0]: don't compute at all
+extern int    pofk_nbins;                  // Number of bins in P(k) evaluation
+extern int    pofk_bintype;                // Which binning [0]: linear [1]: log spacing 
+extern int    pofk_subtract_shotnoise;     // Subtract shotnoise
+extern double pofk_kmin;                   // The minimum k-value in h/Mpc (should be >= 2pi/Box)
+extern double pofk_kmax;                   // The maximum k-value in h/Mpc (should be <= 2pi/Box * Nmesh)
 
+extern int    pofk_compute_rsd_pofk;       // Flag to turn on computing P0,P2,P4 RSD multipole spectra. Average over 2 axes.
+                                           // Compute every step: [1], Compute when outputting [2], Don't compute [0]
 #endif
+
+struct RSD_Pofk_Data{
+  int nbins;
+  double *n;
+  double *k;
+  double *P0;
+  double *P2;
+  double *P4;
+};
 
 //===================================================
 // Modified gravity variables
@@ -379,5 +390,46 @@ extern int  ReadParticlesFromFile;
 #define GADGETFILE 3
 
 extern int mymod(int i, int N);
+
+#ifdef MATCHMAKER_HALOFINDER
+
+//===============================================================
+// This contains all information from PICOLA needed by MatchMaker
+// ToDo: modify the code so that all external input is in obtained
+// from this struct so we have complete control over what data is
+// used
+//===============================================================
+struct PicolaToMatchMakerData {
+  int output_format;
+  int output_pernode;
+  int np_min;
+  int n_part_1d;
+  double omega_m;
+  double omega_l;
+  double HubbleParam;
+  double boxsize;
+  double redshift;
+  double dx_extra;
+  double b_fof;
+  double norm_vel;
+  ptrdiff_t Local_p_start;
+  struct part_data *P;
+  unsigned int NumPart;
+  char FileBase[500]; 
+  char OutputDir[500];
+
+  double (* growth_dDdy)(double);
+  double (* growth_dD2dy)(double);
+};
+
+extern int mm_run_matchmaker;
+extern int mm_output_pernode;
+extern int mm_output_format;
+extern int mm_min_npart_halo;
+extern double mm_alloc_factor;
+extern double mm_linking_length;
+extern double mm_dx_extra_mpc;
+
+#endif
 
 #endif
