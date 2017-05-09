@@ -3,7 +3,7 @@
 
 //==========================================================================//
 //                                                                          //
-// MG-PICOLA written by Hans Winther (ICG Portsmouth) March 2017            //
+//  MG-PICOLA written by Hans Winther (ICG Portsmouth) March 2017           //
 //                                                                          //
 // This file contains all the modified gravity modifications to the         //
 // MG-PICOLA code needed to solve the scalar field equation including       //

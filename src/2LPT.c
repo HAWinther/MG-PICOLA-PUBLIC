@@ -1443,6 +1443,15 @@ void displacement_fields(void) {
 
 #ifdef SCALEDEPENDENT
 
+//==========================================================================//
+//                                                                          //
+//  MG-PICOLA written by Hans Winther (ICG Portsmouth) March 2017           //
+//                                                                          //
+// The rest of this file contains methods to compute scale-dependent        //
+// displacement fields and communication between different tasks   .        //
+//                                                                          //
+//==========================================================================//
+
 void store_initial_displacement_field(complex_kind *(cdisp[3]), complex_kind *(cdisp2[3])){
 
   //=============================================================

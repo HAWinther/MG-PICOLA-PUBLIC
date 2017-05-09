@@ -1,111 +1,113 @@
+#ifndef READICFROMFILEINC
+#define READICFROMFILEINC
 #include "msg.h"
 #include "timer.h"
 
-//==================================================================
-//
-// MG-PICOLA written by Hans Winther (ICG Portsmouth) March 2017            
-//
-// This file contains methods we need to read particle files
-// and use this to set the IC and reconstruct the displacement-field
-// from this. Currently we have implemented RAMSES, GADGET and ASCII formats.
-//
-// NB: GAUSSIAN, SHARPK or TOPHAT  needs to be defined
-// 
-// NB: We assume that the IC are such that LCDM and MG have the same IC
-// at the initial redshift. Thus we use the LCDM growth-factor to bring the
-// displacmentfield to redshift 0 here. In main.c after assigning particles
-// (if UseCOLA == 1) we rescale the displacement-field to make it the MG
-// displacmentfield again
-//
-// Activated if ReadParticlesFromFile == 1
-//
-// -----------------------------------------------------------------
-// For the parameter file we need to add:
-// -----------------------------------------------------------------
-// NumInputParticleFiles   2                  % Number of input-files
-// InputParticleFileDir    /path/output_00001 % Directory containing files
-// InputParticleFilePrefix part               % Fileprefix in /path/fileprefix.X with X = 1,2,..,N. 
-//                                            % Not used for RAMSES
-// RamsesOutputNumber      1                  % The X in [part_0000X.out00001].
-//                                            % Not used for ASCII and GADGET
-// TypeInputParticleFiles  1                  % RAMSESFILE = 1 and ASCIIFILE = 2 and GADGETFILE = 3
-// -----------------------------------------------------------------
-//
-// For ASCII files we assume the format [numpart; X1 Y1 Z1 mass; X2 Y2 Z2 mass; ... ]
-// where X,Y,Z are in [0,1]
-//
-// -----------------------------------------------------------------
-// Code needed to add to [main.c]:
-// -----------------------------------------------------------------
-// if(ReadParticlesFromFile)
-//  ReadFilesMakeDisplacementField();
-// else
-//  displacement_fields();
-// }
-// 
-// ...
-// 
-// -----------------------------------------------------------------
-// Code needed to add to [2LPC.c]:
-// -----------------------------------------------------------------
-// if(ReadParticlesFromFile){
-//   AssignDisplacementField(cdisp);
-// else
-//   ... loop containing standard IC generation ...
-//
-// -----------------------------------------------------------------
-// Code needed to add to [read_param.c]:
-// -----------------------------------------------------------------
-// if(ReadParticlesFromFile){
-//  strcpy(tag[nt], "InputParticleFileDir");
-//  addr[nt] = InputParticleFileDir;
-//  id[nt++] = STRING;
-//  
-//  strcpy(tag[nt], "InputParticleFilePrefix");
-//  addr[nt] = InputParticleFilePrefix;
-//  id[nt++] = STRING;
-//  
-//  strcpy(tag[nt], "TypeInputParticleFiles");
-//  addr[nt] = &TypeInputParticleFiles;
-//  id[nt++] = INT;
-//
-//  strcpy(tag[nt], "NumInputParticleFiles");
-//  addr[nt] = &NumInputParticleFiles;
-//  id[nt++] = INT;
-//  
-//  strcpy(tag[nt], "RamsesOutputNumber");
-//  addr[nt] = &RamsesOutputNumber;
-//  id[nt++] = INT;
-//
-//  strcpy(tag[nt], "ReadParticlesFromFile");
-//  addr[nt] = &ReadParticlesFromFile;
-//  id[nt++] = INT;
-// }
-// 
-// -----------------------------------------------------------------
-// Code needed to add to [vars.h]:
-// -----------------------------------------------------------------
-//  extern char InputParticleFileDir[200];
-//  extern char InputParticleFilePrefix[200];
-//  extern int  NumInputParticleFiles;
-//  extern int  RamsesOutputNumber;
-//  extern int  TypeInputParticleFiles;
-//  extern int  ReadParticlesFromFile;
-//  #define RAMSESFILE 1
-//  #define ASCIIFILE  2
-//  #define GADGETFILE 3
-//
-// -----------------------------------------------------------------
-// Code needed to add to [vars.c]:
-// -----------------------------------------------------------------
-//  char InputParticleFileDir[200];
-//  char InputParticleFilePrefix[200];
-//  int  NumInputParticleFiles;
-//  int  RamsesOutputNumber;
-//  int  TypeInputParticleFiles;
-//  int  ReadParticlesFromFile;
-//
-//==================================================================
+//==========================================================================//
+//                                                                          //
+//  MG-PICOLA written by Hans Winther (ICG Portsmouth) March 2017           //
+//                                                                          //
+// This file contains methods we need to read particle file and use this    //
+// to set the IC and reconstruct the displacement-field from this.          //
+// Currently we have implemented RAMSES, GADGET and ASCII formats.          //
+//                                                                          //
+// NB: A smoothing filter (GAUSSIAN, SHARPK or TOPHAT) needs to be defined  //
+//                                                                          //
+// NB: We assume that the IC are such that LCDM and MG have the same IC     //
+// at the initial redshift. Thus we use the LCDM growth-factor to bring the //
+// displacmentfield to redshift 0 here. In main.c after assigning particles //
+// (if UseCOLA == 1) we rescale the displacement-field to make it the MG    //
+// displacmentfield again                                                   //
+//                                                                          //
+// Activated if ReadParticlesFromFile == 1                                  //
+//                                                                          //
+// -----------------------------------------------------------------        //
+// For the parameter file we need to add:                                   //
+// -----------------------------------------------------------------        //
+// NumInputParticleFiles   2                  % Number of input-files       //
+// InputParticleFileDir    /path/output_00001 % Directory containing files  //
+// InputParticleFilePrefix part          % Fileprefix in /path/fileprefix.X //
+//                                       % Not used for RAMSES              //
+// RamsesOutputNumber      1             % The X in [part_0000X.out00001]   //
+//                                       % Not used for ASCII and GADGET    //
+// TypeInputParticleFiles  1  % RAMSESFILE=1 ; ASCIIFILE=2 ; GADGETFILE = 3 //
+// -----------------------------------------------------------------        //
+//                                                                          //
+// For ASCII files we assume the format                                     //
+// [numpart; X1 Y1 Z1 mass; X2 Y2 Z2 mass; ... ] where X,Y,Z are in [0,1]   //
+//                                                                          //
+// -----------------------------------------------------------------        //
+// Code needed to add to [main.c]:                                          //
+// -----------------------------------------------------------------        //
+// if(ReadParticlesFromFile)                                                //
+//  ReadFilesMakeDisplacementField();                                       //
+// else                                                                     //
+//  displacement_fields();                                                  //
+// }                                                                        //
+//                                                                          //
+// ...                                                                      //
+//                                                                          //
+// -----------------------------------------------------------------        //
+// Code needed to add to [2LPC.c]:                                          //
+// -----------------------------------------------------------------        //
+// if(ReadParticlesFromFile){                                               //
+//   AssignDisplacementField(cdisp);                                        //
+// else                                                                     //
+//   ... loop containing standard IC generation ...                         //
+//                                                                          //
+// -----------------------------------------------------------------        //
+// Code needed to add to [read_param.c]:                                    //
+// -----------------------------------------------------------------        //
+// if(ReadParticlesFromFile){                                               //
+//  strcpy(tag[nt], "InputParticleFileDir");                                //
+//  addr[nt] = InputParticleFileDir;                                        //
+//  id[nt++] = STRING;                                                      //
+//                                                                          //
+//  strcpy(tag[nt], "InputParticleFilePrefix");                             //
+//  addr[nt] = InputParticleFilePrefix;                                     //
+//  id[nt++] = STRING;                                                      //
+//                                                                          //
+//  strcpy(tag[nt], "TypeInputParticleFiles");                              //
+//  addr[nt] = &TypeInputParticleFiles;                                     //
+//  id[nt++] = INT;                                                         //
+//                                                                          //
+//  strcpy(tag[nt], "NumInputParticleFiles");                               //
+//  addr[nt] = &NumInputParticleFiles;                                      //
+//  id[nt++] = INT;                                                         //
+//                                                                          //
+//  strcpy(tag[nt], "RamsesOutputNumber");                                  //
+//  addr[nt] = &RamsesOutputNumber;                                         //
+//  id[nt++] = INT;                                                         //
+//                                                                          //
+//  strcpy(tag[nt], "ReadParticlesFromFile");                               //
+//  addr[nt] = &ReadParticlesFromFile;                                      //
+//  id[nt++] = INT;                                                         //
+// }                                                                        //
+//                                                                          //
+// -----------------------------------------------------------------        //
+// Code needed to add to [vars.h]:                                          //
+// -----------------------------------------------------------------        //
+//  extern char InputParticleFileDir[200];                                  //
+//  extern char InputParticleFilePrefix[200];                               //
+//  extern int  NumInputParticleFiles;                                      //
+//  extern int  RamsesOutputNumber;                                         //
+//  extern int  TypeInputParticleFiles;                                     //
+//  extern int  ReadParticlesFromFile;                                      //
+//  #define RAMSESFILE 1                                                    //
+//  #define ASCIIFILE  2                                                    //
+//  #define GADGETFILE 3                                                    //
+//                                                                          //
+// -----------------------------------------------------------------        //
+// Code needed to add to [vars.c]:                                          //
+// -----------------------------------------------------------------        //
+//  char InputParticleFileDir[200];                                         //
+//  char InputParticleFilePrefix[200];                                      //
+//  int  NumInputParticleFiles;                                             //
+//  int  RamsesOutputNumber;                                                //
+//  int  TypeInputParticleFiles;                                            //
+//  int  ReadParticlesFromFile;                                             //
+//                                                                          //
+//============================================================================
 
 //==================================================================
 // The RAMSES header
@@ -668,19 +670,6 @@ void ReadFilesMakeDisplacementField(void){
     printf("=================================\n");
   }
 
-  //====================================
-  // For testing. Output particles to ascii file
-  // FILE *fp;
-  // if(ThisTask == 0){
-  //   if( (fp = fopen("output_particles.1","w")) == NULL){
-  //     printf("Error: cannot open file [%s]\n", "output_particles.1");
-  //     MPI_Abort(MPI_COMM_WORLD, 1);
-  //     exit(1);
-  //   }
-  //   fprintf(fp,"%i\n", NumPart);
-  // }
-  //====================================
-
   // Loop over particle files and read particles
   int npart_read = 0, NumPart_local = 0;
   double maxxyz = -1e100, minxyz = 1e100;
@@ -701,18 +690,6 @@ void ReadFilesMakeDisplacementField(void){
       printf("Read so far: %i  Part in current file %i\n", npart_read, npart_file); 
     }
 
-    //====================================
-    // Output the particles to a ascii file
-    // if(ThisTask == 0){
-    //   for(int i = 0; i < npart_file; i++){
-    //     if(TypeInputParticleFiles == 3)
-    //       fprintf(fp, "%e %e %e 1.0\n", pos_flt[i], pos_flt[i + npart_file], pos_flt[i + 2*npart_file]);
-    //     else
-    //       fprintf(fp, "%e %e %e 1.0\n", pos[i], pos[i + npart_file], pos[i + 2*npart_file]);
-    //   }
-    // }
-    //====================================
-
     // Process particles [note assuming density array has been init to -1 before running this]
     NumPart_local += ProcessParticlesSingleFile(buffer, npart_file);
 
@@ -728,11 +705,6 @@ void ReadFilesMakeDisplacementField(void){
     }
   }
  
-  //====================================
-  // Output the particles to a ascii file
-  // if(ThisTask == 0) fclose(fp);
-  //====================================
-
   if(ThisTask == 0) {
     printf("Particles in particle files has Min_xyz: [%e]  Max_xyz: [%e]\n", minxyz, maxxyz);
   }
@@ -751,7 +723,7 @@ void ReadFilesMakeDisplacementField(void){
   free(temp_density);
 
   // Check density field
-  check_realgrid(density, "density-field");
+  // check_realgrid(density, "density-field");
 
   if(ThisTask == 0) printf("Fourier transforming density field...\n");
 
@@ -764,7 +736,8 @@ void ReadFilesMakeDisplacementField(void){
   for(int i = 0; i < 2*Total_size; i++) density[i] *= normfac;
 
   // Compute some quantities (min / max / avg of density)
-  check_complexgrid(P3D, "density-field-k");
+  // check_complexgrid(P3D, "density-field-k");
+  
   timer_stop(_ReadParticlesFromFile);
 
   // We now have delta(k, z = 0) in P3D and are is ready to compute the displacement-field
@@ -893,4 +866,6 @@ void write_gadget_header(FILE *fp, double A){
   my_fwrite(&header, sizeof(header), 1, fp);
   my_fwrite(&dummy,  sizeof(dummy),  1, fp);
 }
+#endif
+
 #endif

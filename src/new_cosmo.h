@@ -1,6 +1,9 @@
+#ifndef NEWCOSMOINC
+#define NEWCOSMOINC
+
 //==========================================================================//
 //                                                                          //
-// MG-PICOLA written by Hans Winther (ICG Portsmouth) March 2017            //
+//  MG-PICOLA written by Hans Winther (ICG Portsmouth) March 2017           //
 //                                                                          //
 // This file contains updated cosmology functions needed to solve the       //
 // general growth ODEs plus look-up functions                               //
@@ -790,7 +793,7 @@ void calculate_scale_dependent_growth_factor(){
   Create_GSL_2D_Spline(&SplineContainer.ddD2ddy_of_scale_spline, x_arr, logk_arr, ddD2ddy_k_x, npts, nk);
 
   // Output some info about the splines
-  if(ThisTask == 0){
+  if(ThisTask == 0 && modified_gravity_active){
     printf("\n===============================================\n");
     printf("Scale-dependent growth-factor relative to LCDM: \n");
     printf("===============================================\n");
@@ -955,4 +958,6 @@ void check_error_approx(){
     printf("%f    %f\n", k , res);
   }
 }
+#endif
+
 #endif
