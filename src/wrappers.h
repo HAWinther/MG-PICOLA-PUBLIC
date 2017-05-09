@@ -19,8 +19,8 @@
 
 plan_kind my_fftw_mpi_plan_dft_r2c_3d(int nx, int ny, int nz, float_kind *regrid, complex_kind *imgrid, MPI_Comm comm, unsigned flags);
 plan_kind my_fftw_mpi_plan_dft_c2r_3d(int nx, int ny, int nz, complex_kind *imgrid, float_kind *regrid, MPI_Comm comm, unsigned flags);
-void      my_fftw_destroy_plan(fftw_plan fftwplan);
-void      my_fftw_execute(fftw_plan fftwplan);
+void      my_fftw_destroy_plan(plan_kind fftwplan);
+void      my_fftw_execute(plan_kind fftwplan);
 void      my_fftw_mpi_cleanup();
 void      my_fftw_mpi_init();
 ptrdiff_t my_fftw_mpi_local_size_3d(int nx, int ny, int nz, MPI_Comm comm, ptrdiff_t *locnx, ptrdiff_t *locxstart);

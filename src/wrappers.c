@@ -17,11 +17,11 @@ inline plan_kind my_fftw_mpi_plan_dft_c2r_3d(int nx, int ny, int nz, complex_kin
   timer_stop(_FFT);
 }
 
-inline void my_fftw_destroy_plan(fftw_plan fftwplan){
+inline void my_fftw_destroy_plan(plan_kind fftwplan){
   fftwf_destroy_plan(fftwplan);
 }
 
-inline void my_fftw_execute(fftw_plan fftwplan){
+inline void my_fftw_execute(plan_kind fftwplan){
   timer_start(_FFT);
   fftwf_execute(fftwplan);
   timer_stop(_FFT);
