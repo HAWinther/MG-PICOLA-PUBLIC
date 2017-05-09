@@ -6,7 +6,7 @@ The code extends the [COLA (COmoving Lagrangian Acceleration)](https://arxiv.org
 
 This code is based on the [L-PICOLA](https://github.com/CullanHowlett/l-picola) code written by Cullan Howlett & Marc Manera. For a documentation of L-PICOLA see [L-PICOLA/Documentation](https://github.com/CullanHowlett/l-picola/tree/master/Documentation)
  
- - See doc/note.pdf for some (preliminary) documentation.
+ - See [doc/note.pdf](doc/note.pdf) for some (preliminary) documentation.
 
  - Requires the [FFTW3 library](http://www.fftw.org/download.html) (needs to be compiled with --enable-float to use the SINGLE\_PRECISION option).
 
