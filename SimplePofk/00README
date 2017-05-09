@@ -1,3 +1,13 @@
-Simple code to extract power-spectrum from simulation data 
-Accepts GADGET1, RAMSES and ASCII input files
+Simple code(s) to extract power-spectrum from simulation data 
+
+SimplePofk         -> OpenMP version for matter P(k)
+SimplePofk_MPI     -> MPI version for matter P(k)
+SimplePofk_RSD_MPI -> MPI version for redshift space multipoles P0(k), P2(k) and P4(k)
+
+OpenMP version accepts GADGET1, RAMSES and ASCII input files
+MPI version so far accepts GADGET1 and ASCII
+
+calcPofkSimple is a script to more easily run the [SimplePofk] version.
+Just compile and set path to executable
+
 Written by Hans A. Winther 2017

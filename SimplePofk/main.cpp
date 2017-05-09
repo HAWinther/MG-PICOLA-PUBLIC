@@ -20,10 +20,6 @@ using namespace std;
 // Hans A. Winther 2015
 //======================================
 
-#define _SUBTRACTSHOTNOISE
-
-#define _CIC
-
 #if defined(_NGP)
 const std::string gridassignment = "NGP";
 #define powwindow(x) (x)
