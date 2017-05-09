@@ -89,23 +89,63 @@ ulations with the same IC as previous full N-body simulations.
 
 \end{itemize}
 
-\subsection*{Power-spectrum evaluation}
+\subsection*{Halo Finding}
 
-The code can do a simple power-spectrum evaluation. This requires the code to be compiled with the define DCOMPUTE\_POFK. If this define is not set then the parameters below should not be in the parameter-file.
+The code has the FoF halo-finder MatchMaker\footnote{See https://github.com/damonge/MatchMaker} written by David Alonso included. This has not been properly tested yet so use with care. It also require some memory (the way I merged it in is quite inefficient as it copies particles we have into a the MM struct, with some tweek we should be able to use the PICOLA particles directly). To use this option compile the code with the define MATCHMAKER\_HALOFINDER and add the following options to the parameterfile:
 
 \begin{itemize}
 
-\item \textbf{pofk\_compute\_every\_step = 0, 1} Main flag to turn on off P(k) evaluation at every step.
+\item \textbf{mm\_run\_matchmaker = 0, 1} Main flag to turn on halo-finding. Will compute the halo-catalog every time we output.
 
-\item \textbf{pofk\_bintype = integer} Linear spacing (0) or logarithmic spacing (1) of the bins.
+\item \textbf{mm\_output\_pernode = 0, 1} One output-file per node (1) or one file in total (0).
 
-\item \textbf{pofk\_nbins = integer} Number of bins between kmin and kmax.
+\item \textbf{mm\_output\_format = 0, 1, 2} Ascii (0), Fits (1) or Binary (2). Fits require the cfitsio library plus being compiled with the define MATCHMAKER\_USEFITS.
 
-\item \textbf{pofk\_kmin = float} Minimum wavenumber in h/Mpc (should be larger or equal to the fundamental wavenumber $2\pi/$Box).
+\item \textbf{mm\_min\_npart\_halo = int} The minimum number of particles in the FoF groups for we to define it a halo.
 
-\item \textbf{pofk\_kmax = float} Maximum wavenumber in h/Mpc (should be smaller than the Nyquist frequency since we cannot trust the spectra above it).
+\item \textbf{mm\_linking\_length = float} The FoF linking length in terms of the mean inter-particle distance ($0.2$ is a commonly used value).
+
+\item \textbf{mm\_dx\_extra\_mpc = float} Size of buffer region in the same units as the boxsize. $3.0$ Mpc$/h$ is a safe value to use.
+
+\end{itemize}
+
+\subsection*{Power-spectrum evaluation}
+
+The code can do a simple power-spectrum evaluation. This requires the code to be compiled with the define COMPUTE\_POFK. If this define is not set then the parameters below should not be in the parameter-file. If the values entered does not make sense the code will adjust this to the fiducial value. The computation is done right after we have computed $\delta(k)$ which is needed for forces so there is basically no cost associated with computing this.
+
+\begin{itemize}
+
+\item \textbf{pofk\_compute\_every\_step = 0, 1} Main flag to turn on off $P(k)$ evaluation at every step.
+
+\item \textbf{pofk\_bintype = integer} Linear spacing (0) or logarithmic spacing (1) of the bins. Put to 0 to use fiducial value [LINEAR]
+
+\item \textbf{pofk\_nbins = integer} Number of bins between kmin and kmax. Put to 0 to use fiducial value [Nmesh]
+
+\item \textbf{pofk\_kmin = float} Minimum wavenumber in h/Mpc. Fiducial value [0.0]
+
+\item \textbf{pofk\_kmax = float} Maximum wavenumber in h/Mpc (should be smaller than $\sim \sqrt{3}\cdot 2\pi/\text{Box}\cdot\text{Nmesh}$). Put to 0 to use fiducial value [$2\pi/B\cdot \text{Nmesh}$]
 
 \item \textbf{pofk\_subtract\_shotnoise = 0, 1} Flag to turn on or off shotnoise subtraction.
+
+\end{itemize}
+
+The code can also compute the first multipole moments $P_0,P_2,P_4$ of the redshift space power-spectrum in the global parallel plane approximation (we average over 2 axes) $P_\ell(k) = (2\ell+1)\left<L_\ell(\mu)|\delta(k)|^2\right>$ where $L_\ell$ is the Legendre polynomial and $\mu = k_z/k = \cos\theta$. This requires 2 extra FFTs. For the scale-dependent version of the code, if the COLA method is in use, we require [P[i].dDdy] to contain $dD/dy$ apposed to $\Delta D$ as needed for the time-stepping. This is to be able to add the COLA velocity field to the particles. This is availiable when we output so it's a bit cheaper to compute it there.
+
+\begin{itemize}
+\item \textbf{pofk\_compute\_rsd\_pofk = 0, 1, 2} Main flag to turn on off RSD $P_\ell(k)$ evaluation. Compute RSD power-spectrum at every step (1), every time we output (2) or not at all (0).
+\end{itemize}
+
+\subsection*{Massive neutrinos}
+
+Not added to the repository yet. Include massive neutrinos (only for the scaledependent version of the code so far). Requires CAMB (or similar, but read routines for other formats not inclued yet) transfer functions for massive neutrinos.
+
+\begin{itemize}
+
+\item \textbf{nu\_include\_massive\_neutrinos = 0, 1} Main flag to include massive neutrinos.
+
+\item \textbf{nu\_sum\_mass = float} The sum of neutrino masses in eV. This is translated into $\Omega_\nu$ and the CDM+baryon density is put to $\Omega_{cb} = \Omega - \Omega_\nu$.
+
+\item \textbf{nu\_transfer\_info\_file = string} Path to the info-file which again contains a list of filenames with redshifts to CAMB transfer-functions.
 
 \end{itemize}
 
