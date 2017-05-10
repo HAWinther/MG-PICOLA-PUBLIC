@@ -7,14 +7,11 @@
 #ifdef SINGLE_PRECISION
 
 inline plan_kind my_fftw_mpi_plan_dft_r2c_3d(int nx, int ny, int nz, float_kind *regrid, complex_kind *imgrid, MPI_Comm comm, unsigned flags){
-  timer_start(_FFT);
   return fftwf_mpi_plan_dft_r2c_3d(nx, ny, nz, regrid, imgrid, comm, flags);
 }
 
 inline plan_kind my_fftw_mpi_plan_dft_c2r_3d(int nx, int ny, int nz, complex_kind *imgrid, float_kind *regrid, MPI_Comm comm, unsigned flags){
-  timer_start(_FFT);
   return fftwf_mpi_plan_dft_c2r_3d(nx, ny, nz, imgrid, regrid, comm, flags);
-  timer_stop(_FFT);
 }
 
 inline void my_fftw_destroy_plan(plan_kind fftwplan){
@@ -43,13 +40,10 @@ inline ptrdiff_t my_fftw_mpi_local_size_3d(int nx, int ny, int nz, MPI_Comm comm
 
 inline plan_kind my_fftw_mpi_plan_dft_r2c_3d(int nx, int ny, int nz, float_kind *regrid, complex_kind *imgrid, MPI_Comm comm, unsigned flags){
   return fftw_mpi_plan_dft_r2c_3d(nx, ny, nz, regrid, imgrid, comm, flags);
-  timer_stop(_FFT);
 }
 
 inline plan_kind my_fftw_mpi_plan_dft_c2r_3d(int nx, int ny, int nz, complex_kind *imgrid, float_kind *regrid, MPI_Comm comm, unsigned flags){
-  timer_start(_FFT);
   return fftw_mpi_plan_dft_c2r_3d(nx, ny, nz, imgrid, regrid, comm, flags);
-  timer_stop(_FFT);
 }
 
 inline void my_fftw_destroy_plan(fftw_plan fftwplan){
