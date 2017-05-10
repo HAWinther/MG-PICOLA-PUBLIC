@@ -97,7 +97,7 @@ void write_halos_ascii(char *fname,lint n_halos,FoFHalo *fhal)
 
   fo=my_fopen(fname,"w");
   if(Param.i_node==0)
-    fprintf(fo,"#ID NP Mass x_avg[3] x_rms[3] v_avg[3] v_rms[3]\n");
+    fprintf(fo,"#ID[1] NP[2] Mass[3] x_avg[4,5,6] x_rms[7,8,9] v_avg[10,11,12] v_rms[13,14,15] b[16] c[17] L[18,19,20] Ea[21,22,23] Eb[24,25,26] Ec[27,28,29]\n");
   for(ii=0;ii<n_halos;ii++) {
     fprintf(fo,"%ld %d %E ",(long)ii,fhal[ii].np,fhal[ii].m_halo);
     fprintf(fo,"%E %E %E ",
@@ -108,6 +108,16 @@ void write_halos_ascii(char *fname,lint n_halos,FoFHalo *fhal)
         fhal[ii].v_avg[0],fhal[ii].v_avg[1],fhal[ii].v_avg[2]);
     fprintf(fo,"%E %E %E ",
         fhal[ii].v_rms[0],fhal[ii].v_rms[1],fhal[ii].v_rms[2]);
+    fprintf(fo,"%E %E ",
+        fhal[ii].b,fhal[ii].c);
+    fprintf(fo,"%E %E %E ",
+        fhal[ii].lam[0],fhal[ii].lam[1],fhal[ii].lam[2]);
+    fprintf(fo,"%E %E %E ",
+        fhal[ii].ea[0],fhal[ii].ea[1],fhal[ii].ea[2]);
+    fprintf(fo,"%E %E %E ",
+        fhal[ii].eb[0],fhal[ii].eb[1],fhal[ii].eb[2]);
+    fprintf(fo,"%E %E %E ",
+        fhal[ii].ec[0],fhal[ii].ec[1],fhal[ii].ec[2]);
     fprintf(fo,"\n");
   }
   fclose(fo);
