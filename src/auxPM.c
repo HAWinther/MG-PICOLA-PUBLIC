@@ -385,7 +385,7 @@ void Forces(void) {
   // Add fifth-force potential to the newtonian potential
   //==========================================================
   if(modified_gravity_active && allocate_mg_arrays){
-    for(int i = 0; i < Total_size; i++){
+    for(unsigned int i = 0; i < Total_size; i++){
       P3D[i][0] += P3D_mgarray_two[i][0];
       P3D[i][1] += P3D_mgarray_two[i][1];
     }

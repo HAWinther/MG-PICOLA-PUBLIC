@@ -130,7 +130,7 @@ void ComputeFifthForce_TimeDepGeffModels(){
   
   double Geffective = GeffoverG(aexp_global, 0.0);
 
-  for(int j  = 0; j < Total_size; j++){
+  for(unsigned int j  = 0; j < Total_size; j++){
     P3D[j][0] *= Geffective;
     P3D[j][1] *= Geffective;
   }
@@ -171,7 +171,7 @@ void ComputeFifthForce_PotentialScreening(){
   //=====================================================================
   // Compute density_effective(x) and store it in mgarray_two
   //=====================================================================
-  for(int j  = 0; j < 2*Total_size; j++){
+  for(unsigned int j  = 0; j < 2*Total_size; j++){
     mgarray_two[j] *= screening_factor_potential(aexp_global, mgarray_one[j]);
   }
 
@@ -211,7 +211,7 @@ void ComputeFifthForce_DensityScreening(){
   //=====================================================================
   if( ! include_screening ){
 
-    for(int i = 0; i < 2 * Total_size; i++){
+    for(unsigned int i = 0; i < 2 * Total_size; i++){
       mgarray_two[i] = density[i] * coupling;
     }
     return;
@@ -238,7 +238,7 @@ void ComputeFifthForce_DensityScreening(){
   // Compute density_effective(x) and store it in mgarray_two
   //=====================================================================
   double maxscreen = 0.0, minscreen = 1e100, avgscreen = 0.0;
-  for(int j = 0; j < 2 * Total_size; j++){
+  for(unsigned int j = 0; j < 2 * Total_size; j++){
     double screenfac = screening_factor_density(aexp_global, mgarray_one[j]);
     mgarray_two[j] *= coupling * screenfac;
     if(screenfac > maxscreen) maxscreen = screenfac;
@@ -380,7 +380,7 @@ void check_real_space_grid(float_kind *grid){
 
 void CopyDensityArray(){
   if(allocate_mg_arrays){
-    for(int i = 0; i < 2*Total_size; i++)
+    for(unsigned int i = 0; i < 2*Total_size; i++)
       mgarray_two[i] = density[i];
   }
 }
@@ -426,22 +426,25 @@ void ComputeFifthForce_GradientScreening(){
 
   // Make temp array to store density
   float_kind *density_temp = malloc(sizeof(float_kind)*Total_size);
-  for(int i = 0; i < Total_size; i++) density_temp[i] = mgarray_two[i];
+  for(unsigned int i = 0; i < 2*Total_size; i++) density_temp[i] = mgarray_two[i];
 
-  for(int i = 0; i < Total_size; i++) mgarray_two[i] = 0.0;
+  for(unsigned int i = 0; i < 2*Total_size; i++) mgarray_two[i] = 0.0;
+  
   Density_to_DPhiNewtonk(P3D, P3D_mgarray_one, 0);
   my_fftw_execute(plan_mg_phinewton);
-  for(int i = 0; i < Total_size; i++) mgarray_two[i] += mgarray_one[i]*mgarray_one[i];
+  for(unsigned int i = 0; i < 2*Total_size; i++) mgarray_two[i] += mgarray_one[i]*mgarray_one[i];
+  
   Density_to_DPhiNewtonk(P3D, P3D_mgarray_one, 1);
   my_fftw_execute(plan_mg_phinewton);
-  for(int i = 0; i < Total_size; i++) mgarray_two[i] += mgarray_one[i]*mgarray_one[i];
+  for(unsigned int i = 0; i < 2*Total_size; i++) mgarray_two[i] += mgarray_one[i]*mgarray_one[i];
+  
   Density_to_DPhiNewtonk(P3D, P3D_mgarray_one, 2);
   my_fftw_execute(plan_mg_phinewton);
-  for(int i = 0; i < Total_size; i++) mgarray_two[i] += mgarray_one[i]*mgarray_one[i];
+  for(unsigned int i = 0; i < 2*Total_size; i++) mgarray_two[i] += mgarray_one[i]*mgarray_one[i];
 
   // We now have (DPhi)^2 in units of (h/Mpc)^2 in mgarray_two so we can compute
   // effective density
-  for(int i = 0; i < Total_size; i++) 
+  for(unsigned int i = 0; i < 2*Total_size; i++) 
     mgarray_two[i] = coupling_function(aexp_global) * density_temp[i] * screening_function_gradient(aexp_global, mgarray_one[i]);
   free(density_temp);
 

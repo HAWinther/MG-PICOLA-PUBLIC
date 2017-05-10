@@ -7,11 +7,11 @@
 #ifdef SINGLE_PRECISION
 
 inline plan_kind my_fftw_mpi_plan_dft_r2c_3d(int nx, int ny, int nz, float_kind *regrid, complex_kind *imgrid, MPI_Comm comm, unsigned flags){
-  return fftwf_mpi_plan_dft_r2c_3d(nx, ny, nz, regrid, imgrid, comm, flags);
+  return fftwf_mpi_plan_dft_r2c_3d((ptrdiff_t)nx, (ptrdiff_t)ny, (ptrdiff_t)nz, regrid, imgrid, comm, flags);
 }
 
 inline plan_kind my_fftw_mpi_plan_dft_c2r_3d(int nx, int ny, int nz, complex_kind *imgrid, float_kind *regrid, MPI_Comm comm, unsigned flags){
-  return fftwf_mpi_plan_dft_c2r_3d(nx, ny, nz, imgrid, regrid, comm, flags);
+  return fftwf_mpi_plan_dft_c2r_3d((ptrdiff_t)nx, (ptrdiff_t)ny, (ptrdiff_t)nz, imgrid, regrid, comm, flags);
 }
 
 inline void my_fftw_destroy_plan(plan_kind fftwplan){
@@ -33,17 +33,17 @@ inline void my_fftw_mpi_init(){
 }
 
 inline ptrdiff_t my_fftw_mpi_local_size_3d(int nx, int ny, int nz, MPI_Comm comm, ptrdiff_t *locnx, ptrdiff_t *locxstart){
-  return fftwf_mpi_local_size_3d(nx, ny, nz, comm, locnx, locxstart);
+  return fftwf_mpi_local_size_3d((ptrdiff_t)nx, (ptrdiff_t)ny, (ptrdiff_t)nz, comm, locnx, locxstart);
 }
 
 #else
 
 inline plan_kind my_fftw_mpi_plan_dft_r2c_3d(int nx, int ny, int nz, float_kind *regrid, complex_kind *imgrid, MPI_Comm comm, unsigned flags){
-  return fftw_mpi_plan_dft_r2c_3d(nx, ny, nz, regrid, imgrid, comm, flags);
+  return fftw_mpi_plan_dft_r2c_3d((ptrdiff_t)nx, (ptrdiff_t)ny, (ptrdiff_t)nz, regrid, imgrid, comm, flags);
 }
 
 inline plan_kind my_fftw_mpi_plan_dft_c2r_3d(int nx, int ny, int nz, complex_kind *imgrid, float_kind *regrid, MPI_Comm comm, unsigned flags){
-  return fftw_mpi_plan_dft_c2r_3d(nx, ny, nz, imgrid, regrid, comm, flags);
+  return fftw_mpi_plan_dft_c2r_3d((ptrdiff_t)nx, (ptrdiff_t)ny, (ptrdiff_t)nz, imgrid, regrid, comm, flags);
 }
 
 inline void my_fftw_destroy_plan(fftw_plan fftwplan){
@@ -65,7 +65,7 @@ inline void my_fftw_mpi_init(){
 }
 
 inline ptrdiff_t my_fftw_mpi_local_size_3d(int nx, int ny, int nz, MPI_Comm comm, ptrdiff_t *locnx, ptrdiff_t *locxstart){
-  return fftw_mpi_local_size_3d(nx, ny, nz, comm, locnx, locxstart);
+  return fftw_mpi_local_size_3d((ptrdiff_t)nx, (ptrdiff_t)ny, (ptrdiff_t)nz, comm, locnx, locxstart);
 }
 
 #endif

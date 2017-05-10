@@ -28,6 +28,7 @@
 #include "vars.h"
 #include "proto.h"
 #include "readICfromfile.h"
+#include <limits.h>
 
 //================
 // Set some units
@@ -98,6 +99,15 @@ void initialize_ffts(void) {
   last_slice = Local_nx*alloc_slice;
   Total_size = alloc_local+alloc_slice;
 
+  // Sanity check
+  unsigned long long max_unsigned_int = (unsigned long long) UINT_MAX;
+  unsigned long long max_coord = (unsigned long long)(2 * Total_size);
+  if(max_coord > max_unsigned_int){
+    printf("Error: the number of gridnodes on a single task is larger than unsigned int can hold %llu > %llu !\n", max_coord, max_unsigned_int);
+    MPI_Abort(MPI_COMM_WORLD,1);
+    exit(1);
+  }
+
   free(Slab_to_task_local);
 
   return;
@@ -119,6 +129,15 @@ void initialize_parts(void) {
       Local_np++;
       if (i < Local_p_start) Local_p_start = i;
     }
+  }
+  
+  // Sanity check
+  unsigned long long max_unsigned_int = (unsigned long long) UINT_MAX;
+  unsigned long long max_part_coord = (unsigned long long) Local_np * (unsigned long long) Nsample * (unsigned long long) Nsample;
+  if(max_part_coord > max_unsigned_int){
+    printf("Error: the number of particles on a single task is larger than unsigned int can hold %llu > %llu !\n", max_part_coord, max_unsigned_int);
+    MPI_Abort(MPI_COMM_WORLD,1);
+    exit(1);
   }
 
   Local_np_table = malloc(sizeof(int) * NTask);

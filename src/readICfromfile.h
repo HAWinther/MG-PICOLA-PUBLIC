@@ -661,7 +661,7 @@ void ReadFilesMakeDisplacementField(void){
   // Initialize density array and FFT plan
   density = malloc(2*Total_size*sizeof(float_kind));
   P3D  = (complex_kind *) density;
-  for(int i = 0; i < 2*Total_size; i++) density[i] = -1.0;
+  for(unsigned int i = 0; i < 2*Total_size; i++) density[i] = -1.0;
   plan = my_fftw_mpi_plan_dft_r2c_3d(Nmesh, Nmesh, Nmesh, density, P3D, MPI_COMM_WORLD, FFTW_ESTIMATE);
 
   if(ThisTask == 0) {
@@ -733,7 +733,7 @@ void ReadFilesMakeDisplacementField(void){
   // Account for FFTW normalization and use LCDM growth-factor to bring the density-field to redshift 0
   double normfac = 1.0/(double)(Nmesh*Nmesh*Nmesh);
   normfac *= growth_DLCDM(1.0) / growth_DLCDM(1.0/(1.0+Init_Redshift));
-  for(int i = 0; i < 2*Total_size; i++) density[i] *= normfac;
+  for(unsigned int i = 0; i < 2*Total_size; i++) density[i] *= normfac;
 
   // Compute some quantities (min / max / avg of density)
   // check_complexgrid(P3D, "density-field-k");
