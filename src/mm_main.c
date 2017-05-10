@@ -150,6 +150,7 @@ void MatchMaker(struct PicolaToMatchMakerData data){
   Param.omega_l         = data.omega_l;
   Param.redshift        = data.redshift;
   Param.norm_vel        = data.norm_vel;
+  Param.norm_pos        = data.norm_pos;
   Param.h               = data.HubbleParam;
   Param.NumPart         = NumPart;
   Param.Local_p_start   = data.Local_p_start;
@@ -158,7 +159,13 @@ void MatchMaker(struct PicolaToMatchMakerData data){
   Param.growth_dD2dy    = data.growth_dD2dy;
   sprintf(Param.OutputDir,"%s", data.OutputDir);
   sprintf(Param.FileBase, "%s", data.FileBase);
-  Param.mp              = 27.754995426625320709691*Param.omega_m*pow(Param.boxsize,3)/Param.n_part;
+  Param.mp              = data.mass_part;
+ 
+  // Check that the particle mass is OK
+  double mass_expected = 27.7549954*Param.omega_m*pow(Param.boxsize,3)/Param.n_part;
+  if( fabs(mass_expected / Param.mp - 1.0) > 0.01){
+    mm_msg_printf("Warning: particle mass differs from expected %f != %f\n", mass_expected, Param.mp);
+  }
 
   // Make output name
   int z     = Param.redshift;
@@ -201,8 +208,10 @@ void MatchMaker(struct PicolaToMatchMakerData data){
   Param.dx_domain = Param.x_offset_right - Param.x_offset;
   if(Param.dx_domain < 0.0) Param.dx_domain += Param.boxsize;
 
-  printf("Task [%i]  x_left = %f  x_right = %f  dx_domain = %f\n", Param.i_node, Param.x_offset, Param.x_offset_right, Param.dx_domain); // xxx 
-  
+#ifdef MATCHMAKER_DEBUG
+  printf("Task [%i]  Holds positions %f < x < %f  dx_domain = %f\n", Param.i_node, Param.x_offset, Param.x_offset_right, Param.dx_domain);
+#endif
+
   mm_msg_printf("Allocating particles and translating them to MatchMaker\n");
   Particles *particles = malloc(sizeof(Particles));
   picola_to_matchmaker_particles(particles);
@@ -250,7 +259,7 @@ void picola_to_matchmaker_particles(Particles *particles){
   lint np_toleft = 0;
   float edge_total_left = Param.x_offset;
   for(j=0;j<Param.NumPart;j++) {
-    float x = Param.P[j].Pos[0] - edge_total_left;
+    float x = Param.norm_pos * Param.P[j].Pos[0] - edge_total_left;
     if(x <= Param.dx_extra){
       np_toleft++;
     }
@@ -290,6 +299,9 @@ void picola_to_matchmaker_particles(Particles *particles){
   // Translate from code vel to true velocity
   float norm_vel = Param.norm_vel;
 
+  // Translate from code pos to pos in Mpc/h
+  float norm_pos = Param.norm_pos;
+
 #ifndef SCALEDEPENDENT
   double A     = 1.0 / (1.0 + Param.redshift);
   double dDdy  = Param.growth_dDdy(A);
@@ -312,18 +324,18 @@ void picola_to_matchmaker_particles(Particles *particles){
       // This assumes that dDdy acctually contains dD/dy instead DeltaD which we need for time-stepping
       // This is fine as we call it from the output-routine
       for(ax = 0; ax < 3; ax++){
-        x[ax] = Param.P[j].Pos[ax];
+        x[ax] = norm_pos*Param.P[j].Pos[ax];
         v[ax] = norm_vel*(Param.P[j].Vel[ax] + (Param.P[j].dDdy[ax] + Param.P[j].dD2dy[ax]));
       }
 #else
       for(ax = 0; ax < 3; ax++){
-        x[ax] = Param.P[j].Pos[ax];
+        x[ax] = norm_pos*Param.P[j].Pos[ax];
         v[ax] = norm_vel*(Param.P[j].Vel[ax] + (Param.P[j].D[ax] * dDdy + Param.P[j].D2[ax] * dD2dy));
       }
 #endif
     } else {
       for(ax = 0; ax < 3; ax++){
-        x[ax] = Param.P[j].Pos[ax];
+        x[ax] = norm_pos*Param.P[j].Pos[ax];
         v[ax] = norm_vel*Param.P[j].Vel[ax];
       }
     }
@@ -332,7 +344,7 @@ void picola_to_matchmaker_particles(Particles *particles){
     x[0] -= edge_total_left;
     for(ax = 0; ax < 3; ax++){
       p[j].x[ax] = x[ax];
-      p[j].v[ax] = norm_vel*v[ax];
+      p[j].v[ax] = v[ax];
     }
     p[j].id     = id;
     p[j].fof_id =  0;

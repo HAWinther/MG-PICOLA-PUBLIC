@@ -30,7 +30,7 @@
 
 #define MATCHMAKER_LONGIDS
 
-#define MASS_FACTOR 1.0E10
+#define MATCHMAKER_MASS_FACTOR 1.0E10
 
 #define N_IDS_NEW_MAX 1000000
 
@@ -65,6 +65,7 @@ typedef struct {
   double omega_l;            // Omega_Lambda
   double redshift;           // Redshift
   double norm_vel;           // From PICOLA v to peculiar v in km/s
+  double norm_pos;           // From PICOLA pos to pos in Mpc/h
   double h;                  // Hubble parameter
   double mp;                 // Particle mass
   

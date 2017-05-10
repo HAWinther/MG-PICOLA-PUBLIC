@@ -807,7 +807,6 @@ finalize:
       data.np_min         = mm_min_npart_halo;
       data.dx_extra       = mm_dx_extra_mpc;
       data.b_fof          = mm_linking_length;
-      data.boxsize        = Box;
       data.NumPart        = NumPart;
       data.n_part_1d      = Nsample;
       data.omega_m        = Omega;
@@ -818,7 +817,15 @@ finalize:
       data.P              = P;
       data.growth_dDdy    = &growth_dDdy;
       data.growth_dD2dy   = &growth_dD2dy;
-      data.norm_vel       = (Hubble / A) * (UnitVelocity_in_cm_per_s / 1.0e6);
+     
+      // Particle mass in 10^{10} Msun/h (10^{10} = MATCHMAKER_MASS_FACTOR)
+      data.mass_part      = (3.0 * Omega * Hubble * Hubble * Box * Box * Box) / (8.0 * PI * G * TotNumPart);
+
+      // If user units we convert to Mpc/h and km/s in MatchMaker
+      data.boxsize        = Box * lengthfac;
+      data.norm_pos       = lengthfac;
+      data.norm_vel       = Hubble / (A*A) * UnitLength_in_cm / 3.085678e24;
+      
       sprintf(data.OutputDir, OutputDir);
       sprintf(data.FileBase,  FileBase);
       

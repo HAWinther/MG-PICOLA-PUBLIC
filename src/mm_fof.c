@@ -552,7 +552,7 @@ static FoFHalo *get_halos(lint *n_halos_out,lint n_fof,FoFGroup *fg,Particles *p
   if(fh==NULL)
     mm_msg_abort(123,"Unable to allocate memory for halos\n");  
 
-  double mass_particle=MASS_FACTOR*Param.mp;
+  double mass_particle=MATCHMAKER_MASS_FACTOR*Param.mp;
   for(i=0;i<n_halos;i++) {
     lint j;
     double inertia_here[9];

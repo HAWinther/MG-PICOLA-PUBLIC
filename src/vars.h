@@ -412,6 +412,8 @@ struct PicolaToMatchMakerData {
   double dx_extra;
   double b_fof;
   double norm_vel;
+  double norm_pos;
+  double mass_part;
   int Local_p_start;
   struct part_data *P;
   unsigned int NumPart;
