@@ -1,8 +1,15 @@
 #include <gsl/gsl_errno.h>
 #include <gsl/gsl_odeiv2.h>
 #include <gsl/gsl_integration.h>
+#include "wrappers.h"
+
 #define JBD_EPSILON_CONVERGENCE 1e-6
 #define JBD_REDSHIFT_START      1e6
+#define JBD_NPOINTS             10000
+
+GSL_Spline JBD_GeffSpline;
+GSL_Spline JBD_HSpline;
+GSL_Spline JBD_dHdaSpline;
 
 //=============================================================================
 // 
@@ -11,13 +18,20 @@
 // today.
 //
 // Input:    OmegaMh2, OmegaRh2, OmegaVh2, w, npts
-// Returns:  Arrays with loga[], Geff[], H[], dHda[] with npts points
-//           Hubble-parameter
+// Returns:  HubbleParameter. 
+//
+// After we are done solving then H(a), dHda(a) and Geff(a) is availiable
+// externally from the functions listed below
+//
+// void   JBD_Solve_Background(double w, double omegamh2, double omegavh2, double omegarh2, double *h);
+// double JBD_Hubble_of_a(double a);
+// double JBD_dHubbleda_of_a(double a);
+// double JBD_GeffG_of_a(double a);
 //
 //=============================================================================
 
 //=============================================================================
-// List of functions defined below
+// List of internal functions
 //=============================================================================
 
 double JBD_HubbleFunction(double x, double y, double dy);
@@ -30,9 +44,6 @@ double JBD_OmegaPhi(double x, double y, double dy);
 double JBD_GeffOverG(double y);
 int    JBD_ode(double x, const double y[], double dydx[], void *params);
 void   JBD_solve_ode(double yi, double dyi, double *x_arr, double *y_arr, double *dy_arr);
-void   JBD_Solve_Background(double w, double omegamh2, double omegavh2, double omegarh2, 
-                            double *loga, double *Geff, double *H, double *dHda,
-                            double *h, int npts);
 
 //=============================================================================
 // Cosmological and model parameters
@@ -55,6 +66,19 @@ struct Parameters {
 
   int ThisTask;     // MPI parameter
 } gg;
+
+//=============================================================================
+// Lookup-functions for use after we have done the calculation
+//=============================================================================
+double JBD_Hubble_of_a(double a){
+  return Lookup_GSL_Spline(&JBD_HSpline, log(a));
+}
+double JBD_dHubbleda_of_a(double a){
+  return Lookup_GSL_Spline(&JBD_HSpline, log(a));
+}
+double JBD_GeffG_of_a(double a){
+  return Lookup_GSL_Spline(&JBD_HSpline, log(a));
+}
 
 //=============================================================================
 // The Hubble function in terms of x = log(a), y = log(phi/phi0) and dy = dy/dx
@@ -202,9 +226,7 @@ void JBD_find_correct_IC_using_bisection(){
   }
 }
 
-void JBD_Solve_Background(double w, double omegamh2, double omegavh2, double omegarh2, 
-    double *loga, double *Geff, double *H, double *dHda,
-    double *h, int npts){
+void JBD_Solve_Background(double w, double omegamh2, double omegavh2, double omegarh2, double *h){
   
   //=========================================
   // Set the parameters needed by the solver
@@ -213,7 +235,7 @@ void JBD_Solve_Background(double w, double omegamh2, double omegavh2, double ome
   gg.Omegam0h2 = omegamh2;
   gg.Omegar0h2 = omegarh2;
   gg.Omegav0h2 = omegavh2;
-  gg.npts      = npts;
+  gg.npts      = JBD_NPOINTS;
   gg.zini      = JBD_REDSHIFT_START;
   gg.epsilon   = JBD_EPSILON_CONVERGENCE;
  
@@ -227,15 +249,28 @@ void JBD_Solve_Background(double w, double omegamh2, double omegavh2, double ome
   // The Hubble parameter we find
   *h = JBD_HubbleFunction(0.0, gg.y_arr[gg.npts-1], gg.dy_arr[gg.npts-1]);
   
-  // Allocate and fill in the resturn arrays
+  // Make arrays for splining
+  double *loga = malloc(sizeof(double)*gg.npts);
+  double *H    = malloc(sizeof(double)*gg.npts);
+  double *dHda = malloc(sizeof(double)*gg.npts);
+  double *Geff = malloc(sizeof(double)*gg.npts);
   for(int i = 0; i < gg.npts; i++){
     loga[i] = gg.x_arr[i];
     Geff[i] = JBD_GeffOverG(gg.y_arr[i]);
     H[i]    = JBD_HubbleFunction(gg.x_arr[i], gg.y_arr[i], gg.dy_arr[i]) / (*h);
     dHda[i] = JBD_dHubbleFunctiondx(gg.x_arr[i], gg.y_arr[i], gg.dy_arr[i])/(*h) * exp(-gg.x_arr[i]);
   }
+  
+  // Spline up results
+  Create_GSL_Spline(&JBD_GeffSpline, loga, Geff, gg.npts);
+  Create_GSL_Spline(&JBD_HSpline,    loga, H,    gg.npts);
+  Create_GSL_Spline(&JBD_dHdaSpline, loga, dHda, gg.npts);
 
   // Free up memory
+  free(loga);
+  free(Geff);
+  free(H);
+  free(dHda);
   free(gg.x_arr);
   free(gg.y_arr);
   free(gg.dy_arr);

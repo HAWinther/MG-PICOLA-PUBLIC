@@ -286,17 +286,15 @@ int main(int argc, char **argv) {
 
         //======================================================================================================================
         // Initial 2LPT position: x = q + Psi^(1) D1 + Psi(2) D2 
-        // If we read particles from file then Psi^{(1)} = Psi_true^{(1)} + Psi_true^{(2)} so we don't need to add the 2LPT here
-        // This is a decent approximation for all but the largest k-modes and the read-from-file option is mainly for testing
         //======================================================================================================================
 #ifdef SCALEDEPENDENT
-        P[coord].Pos[0] = periodic_wrap((i + Local_p_start)*(Box / (double)Nsample) + P[coord].D[0] + P[coord].D2[0] * (1 - ReadParticlesFromFile));
-        P[coord].Pos[1] = periodic_wrap( j                 *(Box / (double)Nsample) + P[coord].D[1] + P[coord].D2[1] * (1 - ReadParticlesFromFile));
-        P[coord].Pos[2] = periodic_wrap( k                 *(Box / (double)Nsample) + P[coord].D[2] + P[coord].D2[2] * (1 - ReadParticlesFromFile));   
+        P[coord].Pos[0] = periodic_wrap((i + Local_p_start)*(Box / (double)Nsample) + P[coord].D[0] + P[coord].D2[0]);
+        P[coord].Pos[1] = periodic_wrap( j                 *(Box / (double)Nsample) + P[coord].D[1] + P[coord].D2[1]);
+        P[coord].Pos[2] = periodic_wrap( k                 *(Box / (double)Nsample) + P[coord].D[2] + P[coord].D2[2]);   
 #else
-        P[coord].Pos[0] = periodic_wrap((i + Local_p_start)*(Box / (double)Nsample) + P[coord].D[0] * Di + P[coord].D2[0] * Di2 * (1 - ReadParticlesFromFile));
-        P[coord].Pos[1] = periodic_wrap( j                 *(Box / (double)Nsample) + P[coord].D[1] * Di + P[coord].D2[1] * Di2 * (1 - ReadParticlesFromFile));
-        P[coord].Pos[2] = periodic_wrap( k                 *(Box / (double)Nsample) + P[coord].D[2] * Di + P[coord].D2[2] * Di2 * (1 - ReadParticlesFromFile));   
+        P[coord].Pos[0] = periodic_wrap((i + Local_p_start)*(Box / (double)Nsample) + P[coord].D[0] * Di + P[coord].D2[0] * Di2);
+        P[coord].Pos[1] = periodic_wrap( j                 *(Box / (double)Nsample) + P[coord].D[1] * Di + P[coord].D2[1] * Di2);
+        P[coord].Pos[2] = periodic_wrap( k                 *(Box / (double)Nsample) + P[coord].D[2] * Di + P[coord].D2[2] * Di2);   
 #endif
         if(ThisTask == 0 && coord < 10) printf("Particle [%i] :   %8.3f   %8.3f   %8.3f\n", coord, P[coord].Pos[0], P[coord].Pos[1], P[coord].Pos[2]);
       }

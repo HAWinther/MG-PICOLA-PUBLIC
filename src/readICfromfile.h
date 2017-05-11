@@ -13,17 +13,17 @@
 //                                                                          //
 // NB: A smoothing filter (GAUSSIAN, SHARPK or TOPHAT) needs to be defined  //
 //                                                                          //
-// NB: We assume that the IC are such that LCDM and MG have the same IC     //
-// at the initial redshift. Thus we use the LCDM growth-factor to bring the //
-// displacmentfield to redshift 0 here. In main.c after assigning particles //
-// (if UseCOLA == 1) we rescale the displacement-field to make it the MG    //
-// displacmentfield again                                                   //
+// NB: We assume that the IC are from LCDM. Thus we use the LCDM            //
+// growth-factor to bring the displacmentfield to redshift 0 here.          //
+// We also assume that the redshift of the snapshot is the same as          //
+// Init_Redshift in the parameterfile                                       //
 //                                                                          //
 // Activated if ReadParticlesFromFile == 1                                  //
 //                                                                          //
 // -----------------------------------------------------------------        //
 // For the parameter file we need to add:                                   //
 // -----------------------------------------------------------------        //
+// ReadParticlesFromFile   1                  % Main flag to activate this  //
 // NumInputParticleFiles   2                  % Number of input-files       //
 // InputParticleFileDir    /path/output_00001 % Directory containing files  //
 // InputParticleFilePrefix part          % Fileprefix in /path/fileprefix.X //
@@ -52,37 +52,13 @@
 // -----------------------------------------------------------------        //
 // if(ReadParticlesFromFile){                                               //
 //   AssignDisplacementField(cdisp);                                        //
-// else                                                                     //
+// } else {                                                                 //
 //   ... loop containing standard IC generation ...                         //
 //                                                                          //
 // -----------------------------------------------------------------        //
 // Code needed to add to [read_param.c]:                                    //
 // -----------------------------------------------------------------        //
-// if(ReadParticlesFromFile){                                               //
-//  strcpy(tag[nt], "InputParticleFileDir");                                //
-//  addr[nt] = InputParticleFileDir;                                        //
-//  id[nt++] = STRING;                                                      //
-//                                                                          //
-//  strcpy(tag[nt], "InputParticleFilePrefix");                             //
-//  addr[nt] = InputParticleFilePrefix;                                     //
-//  id[nt++] = STRING;                                                      //
-//                                                                          //
-//  strcpy(tag[nt], "TypeInputParticleFiles");                              //
-//  addr[nt] = &TypeInputParticleFiles;                                     //
-//  id[nt++] = INT;                                                         //
-//                                                                          //
-//  strcpy(tag[nt], "NumInputParticleFiles");                               //
-//  addr[nt] = &NumInputParticleFiles;                                      //
-//  id[nt++] = INT;                                                         //
-//                                                                          //
-//  strcpy(tag[nt], "RamsesOutputNumber");                                  //
-//  addr[nt] = &RamsesOutputNumber;                                         //
-//  id[nt++] = INT;                                                         //
-//                                                                          //
-//  strcpy(tag[nt], "ReadParticlesFromFile");                               //
-//  addr[nt] = &ReadParticlesFromFile;                                      //
-//  id[nt++] = INT;                                                         //
-// }                                                                        //
+// (Reading of all the parameters above from the paramfile)                 //
 //                                                                          //
 // -----------------------------------------------------------------        //
 // Code needed to add to [vars.h]:                                          //

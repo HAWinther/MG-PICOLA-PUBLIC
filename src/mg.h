@@ -445,7 +445,7 @@ void ComputeFifthForce_GradientScreening(){
   // We now have (DPhi)^2 in units of (h/Mpc)^2 in mgarray_two so we can compute
   // effective density
   for(unsigned int i = 0; i < 2*Total_size; i++) 
-    mgarray_two[i] = coupling_function(aexp_global) * density_temp[i] * screening_function_gradient(aexp_global, mgarray_one[i]);
+    mgarray_two[i] = coupling_function(aexp_global) * density_temp[i] * screening_factor_gradient(aexp_global, mgarray_one[i]);
   free(density_temp);
 
   my_fftw_execute(plan_mg_phik);

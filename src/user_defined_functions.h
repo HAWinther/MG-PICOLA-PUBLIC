@@ -32,14 +32,6 @@
 //                                                         //
 //=========================================================//
 
-#if defined(BRANSDICKE)
-
-GSL_Spline JBD_GeffSpline;
-GSL_Spline JBD_HSpline;
-GSL_Spline JBD_dHdaSpline;
-
-#endif
-
 //=========================================================//
 // This functions is called right after parameters have    //
 // been read                                               //
@@ -127,15 +119,8 @@ void init_modified_version(){
     fflush(stdout);
   }
 
-  // Solve the background
-  int npts = 10000;
   double h;
-  double *loga = malloc(sizeof(double)*npts);
-  double *H    = malloc(sizeof(double)*npts);
-  double *dHda = malloc(sizeof(double)*npts);
-  double *Geff = malloc(sizeof(double)*npts);
-  
-  JBD_Solve_Background(wBD, Omegah2, Omegavh2, Omegarh2, loga, Geff, H, dHda, &h, npts);
+  JBD_Solve_Background(wBD, Omegah2, Omegavh2, Omegarh2, &h);
   
   // Set the values we find
   HubbleParam = h;
@@ -149,16 +134,6 @@ void init_modified_version(){
     printf(" wBD      = %f\n", wBD);
     printf(" We find OmegaM     : %f\n", Omega);
     printf(" We find HubbleParam: %f\n", HubbleParam);
-    printf(" Making splines with  %i points\n", npts);
-    fflush(stdout);
-  }
-
-  // Make splines
-  Create_GSL_Spline(&JBD_GeffSpline, loga, Geff, npts);
-  Create_GSL_Spline(&JBD_HSpline,    loga, H,    npts);
-  Create_GSL_Spline(&JBD_dHdaSpline, loga, dHda, npts);
-  
-  if(ThisTask == 0){
     printf("\nTest of JBD splines: \n");
     printf("GeffG(a=1.0) = %7.3f\n", GeffoverG(1.0, 0.0));
     printf("GeffG(a=0.5) = %7.3f\n", GeffoverG(0.5, 0.0));
@@ -167,13 +142,9 @@ void init_modified_version(){
     printf("H(a=0.5) = %7.3f  HLCDM(a=0.5) = %7.3f\n", hubble(0.5), sqrt(Omega/(0.5*0.5*0.5) + 1.0 - Omega));
     printf("H(a=0.1) = %7.3f  HLCDM(a=0.1) = %7.3f\n", hubble(0.1), sqrt(Omega/(0.1*0.1*0.1) + 1.0 - Omega));
     fflush(stdout);
+    fflush(stdout);
   }
 
-  // Clean up
-  free(loga);
-  free(Geff);
-  free(H);
-  free(dHda);
 #endif
 
   //=================================================================
@@ -348,7 +319,7 @@ double hubble(double a){
 
 #if defined(BRANSDICKE)
 
-  return Lookup_GSL_Spline(&JBD_HSpline, log(a));
+  return JBD_Hubble_of_a(a);
 
 #elif defined(EQUATIONOFSTATE)  
 
@@ -366,7 +337,7 @@ double dhubbleda(double a){
 
 #if defined(BRANSDICKE)
 
-  return Lookup_GSL_Spline(&JBD_dHdaSpline, log(a));
+  return JBD_dHubbleda_of_a(a);
 
 #elif defined(EQUATIONOFSTATE)  
 
@@ -497,7 +468,7 @@ double coupling_function(double a){
 
 #elif defined(BRANSDICKE)
 
-  return Lookup_GSL_Spline(&JBD_GeffSpline, log(a)) - 1.0;
+  return JBD_GeffG_of_a(a) - 1.0;
 
 #else
 
@@ -642,11 +613,11 @@ double screening_factor_density(double a, double density){
 // For a P(X) lagrangian with a conformal                  //
 // coupling e^{beta phi / Mpl} we have                     //
 // P_X^2 X = (2beta^2) Mpl^2  |DPhi|^2 determining X       //
-// and then screening_function is then Min[1, 1/P_X ]      //
+// and then screening_factor is then Min[1, 1/P_X ]      //
 // In this case the coupling above is 2beta^2 / P_X(a)     //
 //=========================================================//
 
-double screening_function_gradient(double a, double DPhi2){
+double screening_factor_gradient(double a, double DPhi2){
   if( ! include_screening ) return 1.0;
 
 #if defined(KMOFLAGE)
@@ -676,7 +647,7 @@ double screening_function_gradient(double a, double DPhi2){
 // SCALEDEPENDENT is not defined                           //
 //=========================================================//
 double Factor_2LPT(double a){
-  if(! modified_gravity_active) return 1.0;
+  if(! modified_gravity_active || use_lcdm_growth_factors) return 1.0;
 
 #if defined(FOFRGRAVITY) || defined(MBETAMODEL)
 
@@ -723,7 +694,7 @@ double fofr_pi_factor(double k, double a){
 //        x (1+cos^2 + 2a4H2/beff gamma2)                  //
 //=========================================================//
 double second_order_kernel(double k, double k1, double k2, double costheta, double a){
-  if(! modified_gravity_active) return 0.0;
+  if(! modified_gravity_active || use_lcdm_growth_factors) return 0.0;
 #if defined(FOFRGRAVITY)
 
   double a3     = a*a*a;

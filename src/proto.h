@@ -55,7 +55,7 @@ double mass2_of_a(double a);
 double coupling_function(double a);
 double screening_factor_potential(double a, double phinewton);
 double screening_factor_density(double a, double density);
-double screening_function_gradient(double a, double DPhi2);
+double screening_factor_gradient(double a, double DPhi2);
 void   DivideByLaplacian(complex_kind *densityk, complex_kind *phinewtonk);
 void   Density_to_DPhiNewtonk(complex_kind *densityk, complex_kind *DPhi_i, int axes);
 void   EffDensitykToPhiofk(complex_kind* P3D_densityeffk, complex_kind *P3D_phik);
@@ -67,9 +67,10 @@ void   AllocateMGArrays();
 void   FreeMGArrays();
 
 #ifdef BRANSDICKE
-void   JBD_Solve_Background(double w, double omegamh2, double omegavh2, double omegarh2, 
-                            double *loga, double *Geff, double *H, double *dHda,
-                            double *h, int npts);
+void   JBD_Solve_Background(double w, double omegamh2, double omegavh2, double omegarh2, double *h);
+double JBD_Hubble_of_a(double a);
+double JBD_dHubbleda_of_a(double a);
+double JBD_GeffG_of_a(double a);
 #endif
 
 //===================================================
