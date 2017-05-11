@@ -102,7 +102,10 @@ double nfofr;                     // Hu-Sawicky f(R) parameters: n
 double Rsmooth_global;            // Smoothing radius for density field (DGP relevant)
 double rcH0_DGP;                  // DGP cross-over scale in units of c/H0
 #elif defined(BRANSDICKE)
-double wBD;                       // The JBD parameter w
+double wBD;                      // The Brans-Dicke parameter
+double Omegah2;                  // The physical matter density parameter Omega * h^2
+double Omegarh2;                 // The physical radiation density parameter Omegar * h^2
+double Omegavh2;                 // The physical dark energy density parameter Omegav * h^2
 #endif
 
 float_kind * mgarray_one;         // Modified gravity arrays

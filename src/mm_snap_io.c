@@ -97,7 +97,7 @@ void write_halos_ascii(char *fname,lint n_halos,FoFHalo *fhal)
 
   fo=my_fopen(fname,"w");
   if(Param.i_node==0)
-    fprintf(fo,"#ID[1] NP[2] Mass[3] x_avg[4,5,6] x_rms[7,8,9] v_avg[10,11,12] v_rms[13,14,15] b[16] c[17] L[18,19,20] Ea[21,22,23] Eb[24,25,26] Ec[27,28,29]\n");
+    fprintf(fo,"#ID[1] NP[2] Mass[3] x_avg[4,5,6] x_rms[7,8,9] v_avg[10,11,12] v_rms[13,14,15] b[16] c[17] L[18,19,20] Ea[21,22,23] Eb[24,25,26] Ec[27,28,29] Units: Mass in [Msun/h] Pos are in [%E Mpc/h], Vel are comoving dx/dt in [km/s]\n", 1.0 / Param.norm_pos);
   for(ii=0;ii<n_halos;ii++) {
     fprintf(fo,"%ld %d %E ",(long)ii,fhal[ii].np,fhal[ii].m_halo);
     fprintf(fo,"%E %E %E ",

@@ -273,7 +273,7 @@ void SmoothDensityField(complex_kind *densityk, complex_kind *densityk_smooth, d
   double normfactor = 1.0/pow((double)Nmesh,3);
 
   if(ThisTask == 0) {
-    printf("\n===> Compute smoothing factor for wavenumbers in k_min = %f h/Mpc  ->  k_max = %f h/Mpc\n",  2.0 * PI/ Box * Rsmooth,  2.0 * PI/ Box * Rsmooth * Nmesh / 2.0);
+    printf("\n===> Compute smoothing factor for wavenumbers in k_min = %f h/Mpc  ->  k_max = %f h/Mpc\n",  2.0 * PI / Box, 2.0 * PI / Box * Nmesh * sqrt(3.0));
     printf(  "===> The filter supression factor is f(kmin) = %f  and  f(kmax) = %f\n",  smoothing_filter(2.0 * PI/ Box * Rsmooth),  smoothing_filter(2.0 * PI/ Box * Rsmooth * Nmesh / 2.0) );
   }
 

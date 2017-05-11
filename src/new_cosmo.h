@@ -657,6 +657,7 @@ double mg_sigma8_enhancement(double a){
   // sigma8 = Int P(k) * growth_factor^2 * k^3 dlog(k) * W^2(know*R8)
   //=================================================================
 
+  // In units of h/Mpc
   const double kmin = 0.001;
   const double kmax = 100.0;
   const int npts    = 1000;
@@ -730,7 +731,7 @@ void calculate_scale_dependent_growth_factor(){
   const double xini = log(aini);
   const double xend = log(1.0/(1.0 + zend));
 
-  // Limits for k-space growth-factor. Boxsize is assume to be in units of h/Mpc
+  // Limits for k-space growth-factor. k is here in units of h/Mpc
   const double kmin = 2.0 * M_PI / Box * 0.5;
   const double kmax = 2.0 * M_PI / Box * Nmesh * sqrt(3.0) * 2.0;
   const int    nk   = 1000;
@@ -928,6 +929,7 @@ void check_error_approx(){
   double k,k1,k2,res;
   int verbose = 0;
 
+  // kmin/kmax are in units of h/Mpc
   const double kmin = 2.0 * M_PI / Box * 0.5;
   const double kmax = 2.0 * M_PI / Box * Nmesh * sqrt(3.0) * 2.0;
   int npts = 30;

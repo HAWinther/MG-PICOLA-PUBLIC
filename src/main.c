@@ -782,7 +782,7 @@ finalize:
     // and recompute it to give dDdy which we need to set velocites below
     float *tmp_buffer_D1 = malloc(sizeof(float) * NumPart * 3);
     float *tmp_buffer_D2 = malloc(sizeof(float) * NumPart * 3);
-    for(int i = 0; i < NumPart; i++){
+    for(unsigned int i = 0; i < NumPart; i++){
       for(int axes = 0; axes < 3; axes++){
         tmp_buffer_D1[3*i + axes] = P[i].dDdy[axes];
         tmp_buffer_D2[3*i + axes] = P[i].dD2dy[axes];
@@ -805,7 +805,6 @@ finalize:
       data.output_format  = mm_output_format;
       data.output_pernode = mm_output_pernode;
       data.np_min         = mm_min_npart_halo;
-      data.dx_extra       = mm_dx_extra_mpc;
       data.b_fof          = mm_linking_length;
       data.NumPart        = NumPart;
       data.n_part_1d      = Nsample;
@@ -821,14 +820,20 @@ finalize:
       // Particle mass in 10^{10} Msun/h (10^{10} = MATCHMAKER_MASS_FACTOR)
       data.mass_part      = (3.0 * Omega * Hubble * Hubble * Box * Box * Box) / (8.0 * PI * G * TotNumPart);
 
-      // If user units we convert to Mpc/h and km/s in MatchMaker
-      data.boxsize        = Box * lengthfac;
+      // We use user-units in MatchMaker
       data.norm_pos       = lengthfac;
-      data.norm_vel       = Hubble / (A*A) * UnitLength_in_cm / 3.085678e24;
+      data.boxsize        = Box * lengthfac;
+      data.dx_extra       = mm_dx_extra_mpc * lengthfac;
+
+      // We work with comoving velocity [ dx/dt ] in km/s in MatchMaker
+      data.norm_vel       = (Hubble / A / A);
       
       sprintf(data.OutputDir, OutputDir);
       sprintf(data.FileBase,  FileBase);
-      
+
+      // Could perhaps try to free some memory here just to make sure we don't run out? 
+      // If not in memory mode then we can do this. Consider adding this here
+
       timer_start(_HaloFinding);
       MatchMaker(data);
       timer_stop(_HaloFinding);
@@ -983,7 +988,7 @@ finalize:
 #ifdef SCALEDEPENDENT
 
     // Copy back copy of [deltaD] to [dDdy] and free up memory
-    for(int i = 0; i < NumPart; i++){
+    for(unsigned int i = 0; i < NumPart; i++){
       for(int axes = 0; axes < 3; axes++){
         P[i].dDdy[axes]  = tmp_buffer_D1[3*i + axes];
         P[i].dD2dy[axes] = tmp_buffer_D2[3*i + axes];

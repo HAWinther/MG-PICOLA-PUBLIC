@@ -32,6 +32,14 @@
 //                                                         //
 //=========================================================//
 
+#if defined(BRANSDICKE)
+
+GSL_Spline JBD_GeffSpline;
+GSL_Spline JBD_HSpline;
+GSL_Spline JBD_dHdaSpline;
+
+#endif
+
 //=========================================================//
 // This functions is called right after parameters have    //
 // been read                                               //
@@ -119,6 +127,53 @@ void init_modified_version(){
     fflush(stdout);
   }
 
+  // Solve the background
+  int npts = 10000;
+  double h;
+  double *loga = malloc(sizeof(double)*npts);
+  double *H    = malloc(sizeof(double)*npts);
+  double *dHda = malloc(sizeof(double)*npts);
+  double *Geff = malloc(sizeof(double)*npts);
+  
+  JBD_Solve_Background(wBD, Omegah2, Omegavh2, Omegarh2, loga, Geff, H, dHda, &h, npts);
+  
+  // Set the values we find
+  HubbleParam = h;
+  Omega       = Omegah2 / HubbleParam / HubbleParam;
+  
+  if(ThisTask == 0){
+    printf("Calling JBD Background Solver: \n");
+    printf(" OmegaMh2 = %f\n", Omegah2);
+    printf(" OmegaRh2 = %f\n", Omegarh2);
+    printf(" OmegaVh2 = %f\n", Omegavh2);
+    printf(" wBD      = %f\n", wBD);
+    printf(" We find OmegaM     : %f\n", Omega);
+    printf(" We find HubbleParam: %f\n", HubbleParam);
+    printf(" Making splines with  %i points\n", npts);
+    fflush(stdout);
+  }
+
+  // Make splines
+  Create_GSL_Spline(&JBD_GeffSpline, loga, Geff, npts);
+  Create_GSL_Spline(&JBD_HSpline,    loga, H,    npts);
+  Create_GSL_Spline(&JBD_dHdaSpline, loga, dHda, npts);
+  
+  if(ThisTask == 0){
+    printf("\nTest of JBD splines: \n");
+    printf("GeffG(a=1.0) = %7.3f\n", GeffoverG(1.0, 0.0));
+    printf("GeffG(a=0.5) = %7.3f\n", GeffoverG(0.5, 0.0));
+    printf("GeffG(a=0.1) = %7.3f\n", GeffoverG(0.1, 0.0));
+    printf("H(a=1.0) = %7.3f  HLCDM(a=1.0) = %7.3f\n", hubble(1.0), 1.0);
+    printf("H(a=0.5) = %7.3f  HLCDM(a=0.5) = %7.3f\n", hubble(0.5), sqrt(Omega/(0.5*0.5*0.5) + 1.0 - Omega));
+    printf("H(a=0.1) = %7.3f  HLCDM(a=0.1) = %7.3f\n", hubble(0.1), sqrt(Omega/(0.1*0.1*0.1) + 1.0 - Omega));
+    fflush(stdout);
+  }
+
+  // Clean up
+  free(loga);
+  free(Geff);
+  free(H);
+  free(dHda);
 #endif
 
   //=================================================================
@@ -152,7 +207,7 @@ void read_mg_parameters(void **addr, char (*tag)[50], int *id, int (*nt)){
   strcpy(tag[(*nt)], "use_lcdm_growth_factors");
   addr[(*nt)] = &use_lcdm_growth_factors;
   id[(*nt)++] = INT;
-  
+
   strcpy(tag[(*nt)], "input_pofk_is_for_lcdm");
   addr[(*nt)] = &input_pofk_is_for_lcdm;
   id[(*nt)++] = INT;
@@ -170,19 +225,19 @@ void read_mg_parameters(void **addr, char (*tag)[50], int *id, int (*nt)){
   strcpy(tag[(*nt)], "mm_run_matchmaker");
   addr[(*nt)] = &mm_run_matchmaker;
   id[(*nt)++] = INT;
-  
+
   strcpy(tag[(*nt)], "mm_output_pernode");
   addr[(*nt)] = &mm_output_pernode;
   id[(*nt)++] = INT;
-  
+
   strcpy(tag[(*nt)], "mm_output_format");
   addr[(*nt)] = &mm_output_format;
   id[(*nt)++] = INT;
-  
+
   strcpy(tag[(*nt)], "mm_min_npart_halo");
   addr[(*nt)] = &mm_min_npart_halo;
   id[(*nt)++] = INT;
-  
+
   strcpy(tag[(*nt)], "mm_linking_length");
   addr[(*nt)] = &mm_linking_length;
   id[(*nt)++] = FLOAT;
@@ -190,7 +245,7 @@ void read_mg_parameters(void **addr, char (*tag)[50], int *id, int (*nt)){
   strcpy(tag[(*nt)], "mm_dx_extra_mpc");
   addr[(*nt)] = &mm_dx_extra_mpc;
   id[(*nt)++] = FLOAT;
-  
+
 #endif
 
 #ifdef COMPUTE_POFK
@@ -202,7 +257,7 @@ void read_mg_parameters(void **addr, char (*tag)[50], int *id, int (*nt)){
   strcpy(tag[(*nt)], "pofk_compute_every_step");
   addr[(*nt)] = &pofk_compute_every_step;
   id[(*nt)++] = INT;
-  
+
   strcpy(tag[(*nt)], "pofk_compute_rsd_pofk");
   addr[(*nt)] = &pofk_compute_rsd_pofk;
   id[(*nt)++] = INT;
@@ -264,6 +319,18 @@ void read_mg_parameters(void **addr, char (*tag)[50], int *id, int (*nt)){
   strcpy(tag[(*nt)], "wBD");
   addr[(*nt)] = &wBD;
   id[(*nt)++] = FLOAT;
+  
+  strcpy(tag[(*nt)], "Omegah2");
+  addr[(*nt)] = &Omegah2;
+  id[(*nt)++] = FLOAT;
+  
+  strcpy(tag[(*nt)], "Omegar2");
+  addr[(*nt)] = &Omegarh2;
+  id[(*nt)++] = FLOAT;
+  
+  strcpy(tag[(*nt)], "Omegav2");
+  addr[(*nt)] = &Omegavh2;
+  id[(*nt)++] = FLOAT;
 
 #else
 
@@ -271,19 +338,6 @@ void read_mg_parameters(void **addr, char (*tag)[50], int *id, int (*nt)){
 
 #endif
 }
-
-#if defined(BRANSDICKE)
-
-void   read_JBD_background_from_file();
-double JBD_Hubble(double a);
-double JBD_dHubbleda(double a);
-double JBD_GeffOverG(double a);
-
-GSL_Spline JBD_GeffSpline;
-GSL_Spline JBD_HSpline;
-GSL_Spline JBD_dHdaSpline;
-
-#endif
 
 //=========================================================//
 // Hubble function and derivative                          //
@@ -294,10 +348,12 @@ double hubble(double a){
 
 #if defined(BRANSDICKE)
 
-  // Approximation: will add full solution here
-  double OmegaCC = 1.0 - Omega;
-  double deltaOmega = - wBD/(6.0*(1.0 + wBD)*(1.0 + wBD)) + 1.0/(1.0 + wBD);
-  return sqrt( pow(a, -1.0/(1.0 + wBD)) * ( Omega/(a*a*a) + OmegaCC + deltaOmega ) / (1.0 + deltaOmega) );
+  return Lookup_GSL_Spline(&JBD_HSpline, log(a));
+
+#elif defined(EQUATIONOFSTATE)  
+
+  // w(a) = w0 + wa(1-a)
+  return sqrt( Omega/(a*a*a) + (1.0 - Omega) * exp( 3.0 * w_a * (a-1) - 3*(1 + w_0 + w_a) * log(a))  );
 
 #else
 
@@ -310,10 +366,11 @@ double dhubbleda(double a){
 
 #if defined(BRANSDICKE)
 
-  // Approximation: will add full solution here
-  double H = hubble(a);
-  double deltaOmega = -wBD/(6.0*(1.0 + wBD)*(1.0 + wBD)) + 1.0/(1.0 + wBD);
-  return  -1.0/(2.0 * H * a * (1.0 + deltaOmega)) * ( 3.0 * Omega/(a*a*a) ) -  H/(2.0 * a * (1.0 + wBD));
+  return Lookup_GSL_Spline(&JBD_dHdaSpline, log(a));
+
+#elif defined(EQUATIONOFSTATE)  
+
+  return 1.0/(2.0 * hubble(a)) * ( -3.0 * Omega / (a*a*a*a) + (1.0 - Omega) * ( 3.0 * w_a - 3.0*(1.0 + w_0 + w_a) / a ) * exp( 3.0 * w_a * (a-1) - 3*(1 + w_0 + w_a) * log(a)) );
 
 #else
 
@@ -440,8 +497,7 @@ double coupling_function(double a){
 
 #elif defined(BRANSDICKE)
 
-  // Approximation: will add full solution here
-  return pow(a, -1.0/(1.0 + wBD)) - 1.0;
+  return Lookup_GSL_Spline(&JBD_GeffSpline, log(a)) - 1.0;
 
 #else
 

@@ -755,6 +755,7 @@ void ReadFilesMakeDisplacementField(void){
 // Since IC are assumed to be for LCDM this is the LCDM displacment-
 // field. For scale-dependent growth we therefore rescale it
 // We also deconvolve the window-function
+// cdisp is in units of 1/Box which is later cancelled
 //==================================================================
 void AssignDisplacementField(complex_kind *(cdisp[3])){
   
@@ -856,7 +857,9 @@ void write_gadget_header(FILE *fp, double A){
 
   header.num_files = NTaskWithN;
 
-  header.BoxSize      = Box;
+  double lengthfac    = UnitLength_in_cm / 3.085678e24;
+  header.BoxSize      = Box * lengthfac;
+  
   header.Omega0       = Omega;
   header.OmegaLambda  = 1.0 - Omega;
   header.HubbleParam  = HubbleParam;

@@ -66,6 +66,12 @@ void   CopyDensityArray();
 void   AllocateMGArrays();
 void   FreeMGArrays();
 
+#ifdef BRANSDICKE
+void   JBD_Solve_Background(double w, double omegamh2, double omegavh2, double omegarh2, 
+                            double *loga, double *Geff, double *H, double *dHda,
+                            double *h, int npts);
+#endif
+
 //===================================================
 // Updated cosmo routines new_cosmo.h
 //===================================================
@@ -318,4 +324,3 @@ void MatchMaker(struct PicolaToMatchMakerData);
 #endif
 
 #endif
-
