@@ -105,7 +105,7 @@ void compute_power_spectrum(complex_kind *dens_k, double a){
   }
 
   // FFT normalization factor for |density(k)|^2
-  double fftw_norm_fac = pow( 1.0/(double) (Nmesh * Nmesh * Nmesh), 2);
+  double fftw_norm_fac = 1.0 / pow( (double) Nmesh, 6);
 
   // Loop over all modes and bin up P(k)
   for (int i = 0; i < Local_nx; i++) {
@@ -238,9 +238,11 @@ void compute_power_spectrum(complex_kind *dens_k, double a){
     fprintf(fp,"#  k_bin (h/Mpc)        P(k) (Mpc/h)^3     k_mean_bin (h/Mpc)     Delta = k^3P(k)/2pi^2\n");
     for(int i = 1; i < nbins; i++){
       if(n_bin_all[i] > 0){
-        double k_of_bin = k_from_index(i, kmin, kmax, nbins, bintype);
-        double Delta = pofk_bin[i] * k_of_bin * k_of_bin * k_of_bin / 2.0 / M_PI / M_PI;
-        fprintf(fp, "%10.5f   %10.5f   %10.5f   %10.5f\n", k_of_bin,  pofk_bin[i], k_bin[i], Delta);
+        double k_of_bin   = k_from_index(i, kmin, kmax, nbins, bintype);
+        double k_mean_bin = k_bin[i];
+        double pofk       = pofk_bin[i];
+        double Delta      = pofk_bin[i] * k_of_bin * k_of_bin * k_of_bin / 2.0 / M_PI / M_PI;
+        fprintf(fp, "%10.5f   %10.5f   %10.5f   %10.5f\n", k_of_bin, pofk, k_mean_bin, Delta);
       }
     }
     fclose(fp);
@@ -273,10 +275,9 @@ void PtoMesh_RSD(float_kind *dens, int axis, double A) {
   double scaleBox = (double)Nmesh/Box;
   double WPAR = pow((double)Nmesh / (double)Nsample,3);
   
-  // Normalization of velocity term
-  double fac     = Hubble / pow(A,1.0);
-  double velfac  = UnitVelocity_in_cm_per_s / 1.0e5;
-  double vnorm   = fac * velfac/(100.0 * A * hubble(A)) * scaleBox;
+  // Normalization of velocity 
+  double velfac  = (Hubble / A);
+  double vnorm   = velfac/(100.0 * A * hubble(A)) * scaleBox;
 
   if( ! (axis == YAXIS || axis == ZAXIS) ){
     printf("Error: axis [%i] not allowed, putting axis to z = [%i]\n", axis, ZAXIS);
@@ -315,7 +316,7 @@ void PtoMesh_RSD(float_kind *dens, int axis, double A) {
 
     V *= vnorm;
     Z += V;
-    
+
     // Periodic BC
     if(Z >= (double) Nmesh) Z -= (double) Nmesh;
     if(Z < 0)               Z += (double) Nmesh;
@@ -329,7 +330,7 @@ void PtoMesh_RSD(float_kind *dens, int axis, double A) {
     DX = X-(double)IX;
     DY = Y-(double)IY;
     DZ = Z-(double)IZ;
-   
+
     // CIC weights
     TX = 1.0 - DX;
     TY = 1.0 - DY;
@@ -367,7 +368,7 @@ void PtoMesh_RSD(float_kind *dens, int axis, double A) {
   // Copy across the extra slice from the task on the left and add it to the leftmost slice
   // of the task on the right. Skip over tasks without any slices.
   //====================================================================================
-  
+
   float_kind * temp_density = (float_kind *)calloc(2*alloc_slice,sizeof(float_kind));
   ierr = MPI_Sendrecv(&(dens[2*last_slice]),2*alloc_slice*sizeof(float_kind),MPI_BYTE,RightTask,0,
       &(temp_density[0]),2*alloc_slice*sizeof(float_kind),MPI_BYTE,LeftTask,0,MPI_COMM_WORLD,&status);
@@ -452,7 +453,7 @@ void compute_RSD_powerspectrum(double A, int dDdy_set_in_particles){
     fprintf(fp,"#  k (h/Mpc)      P0 (Mpc/h)^3      P2 (Mpc/h)^3      P4 (Mpc/h)^3     sigma0     sigma2     sigma4\n");
     for(int i = 0; i < pofk_data_z.nbins; i++){
       if(pofk_data_y.n[i] > 0 && pofk_data_y.k[i] > 0.0){
-        double k    =  pofk_data_y.k[i];
+        double k    = pofk_data_y.k[i];
         double P0   = (pofk_data_y.P0[i] + pofk_data_z.P0[i])/2.0;
         double P2   = (pofk_data_y.P2[i] + pofk_data_z.P2[i])/2.0;
         double P4   = (pofk_data_y.P4[i] + pofk_data_z.P4[i])/2.0;
@@ -556,8 +557,8 @@ void bin_up_RSD_power_spectrum(complex_kind *dens_k, struct RSD_Pofk_Data *pofk_
   }
   
   // FFT normalization factor for |density(k)|^2
-  double fftw_norm_fac = pow( 1.0/(double) (Nmesh * Nmesh * Nmesh), 2);
-
+  double fftw_norm_fac = 1.0 / pow( (double) Nmesh, 6);
+        
   // Loop over all modes and add up RSD multipoles P0, P2, P4
   for (int i = 0; i < Local_nx; i++) {
     int iglobal = i + Local_x_start;
