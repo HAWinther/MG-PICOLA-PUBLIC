@@ -181,13 +181,17 @@ This is implemented in the code, and one should just have to specify $m(a)$ and 
 
 \subsection*{Jordan-Brans-Dicke model}
 
-The JBD model has a modified background (the code uses a rough approximation here so this should be changed to numerically integrating the equations) and modified growth of perturbations. There is no screening. This requires the code to be compiled with the define BRANSDICKE.
+The constrained Jordan-Brans-Dicke model. When solving the background and scalar field equation we enforce $G_{\rm eff}/G = \frac{1}{\phi} \frac{4+3\omega_{\rm BD}}{4+3\omega_{\rm BD}}$ to be unity at $a=1$. This is done by taking in physical density parameters and solving the background equations selecting the initial scalar field value so that $\phi(a=1)$ has the desired value. The hubble parameter is a derived quantity. This requires the code to be compiled with the define BRANSDICKE.
 
 \begin{itemize}
 
 \item \textbf{wBD} The JBD parameter.
+\item \textbf{Omegah2} The physical matter density parameter
+\item \textbf{Omegarh2} The physical radiation density parameter
+\item \textbf{Omegavh2} The physical dark energy density parameter
 
 \end{itemize}
 
+Note that the Omega and HubbleParam in the parameter-file is ignored and recalculated from the parameters above.
 
 \end{document}
