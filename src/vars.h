@@ -145,6 +145,11 @@ extern int input_sigma8_is_for_lcdm;
 extern int input_pofk_is_for_lcdm;
 extern int allocate_mg_arrays;
 
+#if defined(EQUATIONOFSTATE_PARAMETRIZATION)
+extern double w_0; // Background parametrization
+extern double w_a; // w(a) = w0 + wa(1-a)
+#endif
+
 #if defined(FOFRGRAVITY) || defined(MBETAMODEL)
 extern double fofr0;                    // Hu-Sawicky f(R) parameters: f(R0)            
 extern double nfofr;                    // Hu-Sawicky f(R) parameters: n                

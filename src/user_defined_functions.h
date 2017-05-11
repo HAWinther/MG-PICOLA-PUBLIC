@@ -147,6 +147,31 @@ void init_modified_version(){
 
 #endif
 
+#if defined(EQUATIONOFSTATE_PARAMETRIZATION)
+  
+  //=================================================================
+  // If this is active then we use the (w0,wa) background
+  // Not compatible with JBD and other models where we don't have a
+  // LCDM background
+  //=================================================================
+  if(ThisTask == 0) {
+    printf("\n");
+    printf("===========================\n");
+    printf("Using (w0,wa) for background  \n");
+    printf("===========================\n");
+    printf("w_0   = %f\n", w_0);
+    printf("w_a   = %f\n", w_a);
+    printf("\n");
+    printf("H(a=0.5) = %7.3f  HLCDM(a=0.5) = %7.3f\n", hubble(0.5), sqrt(Omega/pow(0.5,3) + 1 - Omega));
+    printf("H(a=0.1) = %7.3f  HLCDM(a=0.1) = %7.3f\n", hubble(0.1), sqrt(Omega/pow(0.1,3) + 1 - Omega));
+    printf("dHda(a=0.5) = %7.3f  dHLCDMda(a=0.5) = %7.3f\n", 
+        dhubbleda(0.5), 1.0/(2.0 * sqrt(Omega/pow(0.5,3) + 1 - Omega)) * ( -3.0 * Omega / pow(0.5,4) ));
+    printf("dHda(a=0.1) = %7.3f  dHLCDMda(a=0.1) = %7.3f\n", 
+        dhubbleda(0.1), 1.0/(2.0 * sqrt(Omega/pow(0.1,3) + 1 - Omega)) * ( -3.0 * Omega / pow(0.1,4) ));
+    fflush(stdout);
+  }
+#endif
+
   //=================================================================
   // Compute first and second order growth-factors and spline them up
   //=================================================================
@@ -255,6 +280,16 @@ void read_mg_parameters(void **addr, char (*tag)[50], int *id, int (*nt)){
 
 #endif
 
+#if defined(EQUATIONOFSTATE_PARAMETRIZATION)
+  strcpy(tag[(*nt)], "w_0");
+  addr[(*nt)] = &w_0;
+  id[(*nt)++] = FLOAT;
+  
+  strcpy(tag[(*nt)], "w_a");
+  addr[(*nt)] = &w_a;
+  id[(*nt)++] = FLOAT;
+#endif
+
 #if defined(FOFRGRAVITY) 
 
   strcpy(tag[(*nt)], "fofr0");
@@ -321,9 +356,9 @@ double hubble(double a){
 
   return JBD_Hubble_of_a(a);
 
-#elif defined(EQUATIONOFSTATE)  
+#elif defined(EQUATIONOFSTATE_PARAMETRIZATION)  
 
-  // w(a) = w0 + wa(1-a)
+  // w(a) = w0 + wa(1-a) parametrization
   return sqrt( Omega/(a*a*a) + (1.0 - Omega) * exp( 3.0 * w_a * (a-1) - 3*(1 + w_0 + w_a) * log(a))  );
 
 #else
@@ -339,9 +374,10 @@ double dhubbleda(double a){
 
   return JBD_dHubbleda_of_a(a);
 
-#elif defined(EQUATIONOFSTATE)  
+#elif defined(EQUATIONOFSTATE_PARAMETRIZATION)  
 
-  return 1.0/(2.0 * hubble(a)) * ( -3.0 * Omega / (a*a*a*a) + (1.0 - Omega) * ( 3.0 * w_a - 3.0*(1.0 + w_0 + w_a) / a ) * exp( 3.0 * w_a * (a-1) - 3*(1 + w_0 + w_a) * log(a)) );
+  // w(a) = w0 + wa(1-a) parametrization
+  return 1.0/(2.0 * hubble(a)) * ( -3.0 * Omega / (a*a*a*a) - 3.0 * (1.0 - Omega) * (1.0 + w_0 + w_a*(1-a) ) / a );
 
 #else
 

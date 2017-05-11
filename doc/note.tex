@@ -151,6 +151,17 @@ Not added to the repository yet. Include massive neutrinos (only for the scalede
 
 \end{itemize}
 
+\subsection*{$w_0$,$w_a$ parametrization for background}
+
+The often used parametrization for the dark energy equation of state $w(a) = w_0 + w_a(1-a)$ is included in the code and is activated if we compile with the define EQUATIONOFSTATE\_PARAMETRIZATION. For the parameter-file one must add:
+
+\begin{itemize}
+
+\item \textbf{w\_0 = float} The value of $w$ at $z=0$.
+\item \textbf{w\_a = float} The derivative $-dw/da$ at $z=0$.
+
+\end{itemize}
+
 \subsection*{DGP model}
 
 The normal-branch DGP model with a $\Lambda$CDM background. The requires the code to be compiled with the define DGPGRAVITY and a choice of smoothing-filter GAUSSIANFILTER (standard), TOPHATFILTER or SHARPKFILTER.
