@@ -74,10 +74,10 @@ double JBD_Hubble_of_a(double a){
   return Lookup_GSL_Spline(&JBD_HSpline, log(a));
 }
 double JBD_dHubbleda_of_a(double a){
-  return Lookup_GSL_Spline(&JBD_HSpline, log(a));
+  return Lookup_GSL_Spline(&JBD_dHdaSpline, log(a));
 }
 double JBD_GeffG_of_a(double a){
-  return Lookup_GSL_Spline(&JBD_HSpline, log(a));
+  return Lookup_GSL_Spline(&JBD_GeffSpline, log(a));
 }
 
 //=============================================================================
