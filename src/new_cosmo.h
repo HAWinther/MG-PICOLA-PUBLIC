@@ -300,7 +300,7 @@ double growth_ddDddy(double a){
 }
 double growth_ddDLCDMddy(double a){
   return Lookup_GSL_Spline(&SplineContainer.ddDLCDMddy_spline, log(a)) 
-       / Lookup_GSL_Spline(&SplineContainer.D_spline,          log(GROWTH_NORMALIZATION_SCALE_FACTOR));
+       / Lookup_GSL_Spline(&SplineContainer.DLCDM_spline,      log(GROWTH_NORMALIZATION_SCALE_FACTOR));
 }
 double growth_ddDddy_LCDMFit(double a){
   return 1.5 * Omega * growthD(a) * a;
