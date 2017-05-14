@@ -168,7 +168,7 @@ void MatchMaker(struct PicolaToMatchMakerData data){
   }
 
   // Make output name
-  int z     = Param.redshift;
+  double z  = Param.redshift;
   int zint  = (int)z;
   int zfrac = (int)((z - zint)*1000);
   sprintf(Param.output_prefix, "%s/matchmaker_%s_z%d.%03d", Param.OutputDir, Param.FileBase, zint, zfrac);
