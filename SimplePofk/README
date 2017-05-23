@@ -10,4 +10,7 @@ MPI version so far accepts GADGET1 and ASCII
 calcPofkSimple is a script to more easily run the [SimplePofk] version.
 Just compile and set path to executable
 
+Very hacky GADGET IO routines. No endian check etc. 
+Should be fixed to proper routines at some point!
+
 Written by Hans A. Winther 2017

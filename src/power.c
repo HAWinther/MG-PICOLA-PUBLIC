@@ -31,11 +31,14 @@
 
 #include "vars.h"
 #include "proto.h"
+#ifdef MASSIVE_NEUTRINOS
+#include "read_CAMB_data.h"
+#endif
 
 static int NPowerTable;
 static int NTransferTable;
-static double R8;
 static double Norm;
+static double R8;
 static double klower;
 static double r_tophat;
 static struct pow_table {
@@ -226,8 +229,18 @@ void initialize_powerspectrum(void) {
   // R8 = 8 Mpc/h
   R8 = 8 * (3.085678e24 / UnitLength_in_cm);
 
+#ifdef MASSIVE_NEUTRINOS
+
+  // Read CAMB transfer functions from file
+  read_and_spline_transfer_functions(nu_FilenameTransferInfofile);
+  
+#else
+
   // Read power spectrum from input file if requested
   if(WhichSpectrum == 1 && !ReadParticlesFromFile) read_power_table();
+
+#endif
+
 
   Norm = 1.0;
   res = TopHatSigma2(R8);
@@ -359,6 +372,11 @@ int compare_logk(const void *a, const void *b) {
 //==============================================================
 double PowerSpec(double k) {
   double power;
+
+#ifdef MASSIVE_NEUTRINOS
+  power = Norm * get_cdm_baryon_power_spectrum(k);
+  return power;
+#endif
 
   switch (WhichSpectrum) {
     case 0:

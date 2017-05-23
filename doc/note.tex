@@ -10,7 +10,7 @@
 
 \section*{Introduction}
 
-This code is based on the \texttt{L-PICOLA} code written by Cullan Howlett \& Marc Manera. For a documentation of \texttt{L-PICOLA} see the \texttt{L-PICOLA} GITHub page.
+This code is based on the \texttt{L-PICOLA} code written by Cullan Howlett \& Marc Manera. For a documentation of \texttt{L-PICOLA} see the \texttt{L-PICOLA} GITHub page. The code is still under development so it's a bit messy. I plan to clean it up and put up a clean and stable version in due time.
 
 \subsection*{Compilation}
 Requires the FFTW3 library (needs to be compiled with --enable-float to use the SINGLE\_PRECISION option).
@@ -91,7 +91,7 @@ ulations with the same IC as previous full N-body simulations.
 
 \subsection*{Halo Finding}
 
-The code has the FoF halo-finder MatchMaker\footnote{See https://github.com/damonge/MatchMaker} written by David Alonso included. This has not been properly tested yet so use with care. It also require some memory (the way I merged it in is quite inefficient as it copies particles we have into a the MM struct, with some tweek we should be able to use the PICOLA particles directly). To use this option compile the code with the define MATCHMAKER\_HALOFINDER and add the following options to the parameterfile:
+The code has the FoF halo-finder MatchMaker\footnote{See https://github.com/damonge/MatchMaker} written by David Alonso included. This has not been properly tested yet so use with care. It also require extra memory (duplicating pos,vel and ID). This is only an issue if we run without MEMORY\_MODE. To use this option compile the code with the define MATCHMAKER\_HALOFINDER and add the following options to the parameterfile:
 
 \begin{itemize}
 
@@ -129,7 +129,7 @@ The code can do a simple power-spectrum evaluation. This requires the code to be
 
 \end{itemize}
 
-The code can also compute the first multipole moments $P_0,P_2,P_4$ of the redshift space power-spectrum in the global parallel plane approximation (we average over 2 axes) $P_\ell(k) = (2\ell+1)\left<L_\ell(\mu)|\delta(k)|^2\right>$ where $L_\ell$ is the Legendre polynomial and $\mu = k_z/k = \cos\theta$. This requires 2 extra FFTs. For the scale-dependent version of the code, if the COLA method is in use, we require [P[i].dDdy] to contain $dD/dy$ apposed to $\Delta D$ as needed for the time-stepping. This is to be able to add the COLA velocity field to the particles. This is availiable when we output so it's a bit cheaper to compute it there.
+The code can also compute the first multipole moments $P_0,P_2,P_4$ of the redshift space power-spectrum in the global parallel plane approximation (we average over 2 axes) $P_\ell(k) = (2\ell+1)\left<L_\ell(\mu)|\delta(k)|^2\right>$ where $L_\ell$ is the Legendre polynomial and $\mu = k_z/k = \cos\theta$. This requires 2 extra FFTs plus one temporary grid. For the scale-dependent version of the code, if the COLA method is in use, we require [P[i].dDdy] to contain $dD/dy$ apposed to $\Delta D$ as needed for the time-stepping. This is to be able to add the COLA velocity field to the particles. This is availiable when we output so it's a bit cheaper to compute it there.
 
 \begin{itemize}
 \item \textbf{pofk\_compute\_rsd\_pofk = 0, 1, 2} Main flag to turn on off RSD $P_\ell(k)$ evaluation. Compute RSD power-spectrum at every step (1), every time we output (2) or not at all (0).
@@ -139,15 +139,15 @@ In addition some power-spectrum estimation codes for post-processing of the data
 
 \subsection*{Massive neutrinos}
 
-Not added to the repository yet. Include massive neutrinos (only for the scaledependent version of the code so far). Requires CAMB (or similar, but read routines for other formats not inclued yet) transfer functions for massive neutrinos.
+Include massive neutrinos (only for the scaledependent version of the code) by compiling with MASSIVE\_NEUTRINOS and SCALEDEPENDENT. The current version requires CAMB (or similar, but read routines for other formats not inclued yet) transfer functions for massive neutrinos. Will update this with a version using growth-functions at a later stage.
 
 \begin{itemize}
 
 \item \textbf{nu\_include\_massive\_neutrinos = 0, 1} Main flag to include massive neutrinos.
 
-\item \textbf{nu\_sum\_mass = float} The sum of neutrino masses in eV. This is translated into $\Omega_\nu$ and the CDM+baryon density is put to $\Omega_{cb} = \Omega - \Omega_\nu$.
+\item \textbf{nu\_sum\_mass = float} The sum of neutrino masses in eV. This is translated into $\Omega_\nu = \frac{\sum m_\nu}{93.14 h^2 \text{eV}}$ and the CDM+baryon density is put to $\Omega_{cb} = \Omega - \Omega_\nu$.
 
-\item \textbf{nu\_transfer\_info\_file = string} Path to the info-file which again contains a list of filenames with redshifts to CAMB transfer-functions.
+\item \textbf{nu\_transfer\_info\_file = string} Path to the info-file which again contains a list of filenames with redshifts to CAMB transfer-functions. These is a simple script in [camb\_data] that can be used to run CAMB to generate the transfer-functions and generate this file.
 
 \end{itemize}
 
@@ -205,4 +205,10 @@ The constrained Jordan-Brans-Dicke model. When solving the background and scalar
 
 Note that the Omega and HubbleParam in the parameter-file is ignored and recalculated from the parameters above.
 
+\section*{Other important things}
+
+\begin{itemize}
+\item The non-gaussian initial condition generations has not been tested and might require additional modifications in general (especially wrt.the transfer-function that is currently used here ; this will for sure have to be changed for massive neutrinos).
+\item The lightcone option should work well for scaleindependent growth. The modifications needed for scale-dependent growth has not been implemented (and this would likely have to be done approximately).
+\end{itemize}
 \end{document}

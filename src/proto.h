@@ -312,8 +312,23 @@ double second_order_kernel(double k, double k1, double k2, double costheta, doub
 void   integrate_up_kernel(int ik_grid_x, int ik_grid_y, int ik_grid_z, complex_kind *deltak_grid, float_kind *result);
 #endif
 
+#ifdef MASSIVE_NEUTRINOS
+void read_and_spline_total_power_spectrum(char *pofkfilename);
+void read_and_spline_transfer_functions(char *transferfileinfofilename);
+void read_single_transfer_function_file(char *filename, double *logk, double *transfer_function_nu, 
+    double *transfer_function_cdm, double *transfer_function_baryon, double *transfer_function_total, int *npts);
+double get_nu_transfer_function(double k, double a);
+double get_cdm_transfer_function(double k, double a);
+double get_baryon_transfer_function(double k, double a);
+double get_cdm_baryon_transfer_function(double k, double a);
+double get_total_transfer_function(double k, double a);
+double get_total_power_spectrum(double k);
+double get_cdm_baryon_power_spectrum(double k);
+double get_neutrino_power_spectrum(double k);
+#endif
+
 #ifdef COMPUTE_POFK
-void compute_power_spectrum(complex_kind *dens_k, double a);
+void compute_power_spectrum(complex_kind *dens_k, double a, char *label);
 void adjust_pofk_parameters(int *nbins, int *bintype, int *subtract_shotnoise, double *kmin, double *kmax);
 void compute_RSD_powerspectrum(double A, int dDdy_set_in_particles);
 void PtoMesh_RSD(float_kind *dens, int axis, double A);

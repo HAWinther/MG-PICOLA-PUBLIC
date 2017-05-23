@@ -14,9 +14,9 @@ This code is based on the [L-PICOLA](https://github.com/CullanHowlett/l-picola) 
 
  - Compile the code as make -f Makefile.model and run as mpirun -np 1 MG\_PICOLA\_MODEL paramfile.txt. See [paramfiles](paramfiles) for some example parameter-files and the [documentation](doc/note.pdf) for more information.
 
- - To implement a new model see [src\_v3/user\_defined\_functions.h](src_v3/user_defined_functions.h). The code have f(R), DGP and general (m(a), beta(a)) models included.
+ - To implement a new model see [src\_v3/user\_defined\_functions.h](src_v3/user_defined_functions.h). The code have LCDM, LCDM with (wa,w0) parametrization, Jordan-Brans-Dicke, f(R), nDGP and general (m(a), beta(a)) models included so far + massive neutrinos.
 
- - If the parameter input\_pofk\_is\_for\_lcdm = 1 then the code assumes the linear P(k) we read in (or from fittin formula) is for LCDM and uses the ratio of growth-factor in MG and LCDM to compute the MG power-spectrum used to set the IC. If also input\_sigma8\_is\_for\_lcdm = 1 then the normalization of sigma8 is done for LCDM; thi is useful to make MG and LCDM runs with the same IC.
+ - If the parameter input\_pofk\_is\_for\_lcdm = 1 then the code assumes the linear P(k) we read in (or from fitting formula) is for LCDM and uses the ratio of growth-factor in MG and LCDM to compute the MG power-spectrum used to set the IC. If also input\_sigma8\_is\_for\_lcdm = 1 then the normalization of sigma8 is done for LCDM; thi is useful to make MG and LCDM runs with the same IC.
 
  - A very simple code to extract power-spectra from output-files (RAMSES / GADGET / ASCII) can be found in SimplePofk (separate version for OpenMP and MPI). Includes a code to estimate redshift space multipoles using the global parallel plane approximation.
 

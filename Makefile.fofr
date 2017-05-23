@@ -200,6 +200,7 @@ OBJS += src/lightcone.o
 endif
 
 INCL   = src/vars.h src/proto.h src/mg.h src/readICfromfile.h src/new_cosmo.h src/user_defined_functions.h src/wrappers.h Makefile.fofr
+INCL  += src/read_CAMB_data.h
 ifdef COMPUTE_POFK
 INCL  += src/compute_pofk.h
 endif

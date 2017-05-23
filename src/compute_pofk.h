@@ -56,7 +56,7 @@ double k_from_index(int index, double kmin, double kmax, int nbins, int bintype)
 // Assumes dens_k has the fourier transform of the density field
 // The scale-factor is just use to make the output-name
 //===========================================================================
-void compute_power_spectrum(complex_kind *dens_k, double a){
+void compute_power_spectrum(complex_kind *dens_k, double a, char *label){
   timer_start(_PofkComputation);
   unsigned int coord;
   double pofk, kmag, grid_corr_x, grid_corr_y, grid_corr_z, grid_corr = 1.0;
@@ -231,7 +231,7 @@ void compute_power_spectrum(complex_kind *dens_k, double a){
     char filename[1000];
     int zint = (int) (znow);
     int zfrac = (int)((znow - zint)*1000);
-    sprintf(filename, "%s/pofk_%s_z%d.%03d.txt", OutputDir, FileBase, zint, zfrac);
+    sprintf(filename, "%s/pofk_%s_z%d.%03d_%s.txt", OutputDir, FileBase, zint, zfrac, label);
     printf("Writing power-spectrum to file: [%s]\n", filename);
 
     FILE *fp = fopen(filename,"w");

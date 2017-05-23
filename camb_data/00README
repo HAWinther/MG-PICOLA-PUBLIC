@@ -1,0 +1,3 @@
+A simple script to generate the CAMB transfer-function data 
+needed by PICOLA. Set the required paths and run to get the transfer-function files
+togeather with the transfer-info-file to be read in PICOLA

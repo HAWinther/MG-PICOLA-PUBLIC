@@ -47,6 +47,29 @@ void init_modified_version(){
   //==========================================================
   allocate_mg_arrays = 1;
 
+#ifdef MASSIVE_NEUTRINOS
+
+  // Set neutrino density parameter
+  OmegaNu  = nu_SumMassNuEV / (93.14 * HubbleParam * HubbleParam);
+  OmegaCDM = Omega - OmegaBaryon - OmegaNu;
+
+  // For very small values it does not contribute so turn it off
+  if(OmegaNu < 1e-6) {
+    OmegaNu  = 0.0;
+    OmegaCDM = Omega - OmegaBaryon;
+    nu_include_massive_neutrinos = 0;
+  }
+
+  if(nu_include_massive_neutrinos){
+    if(ThisTask == 0){
+      printf("==============================================================\n");
+      printf("Running with massive neutrinos SumMass = %f eV  OmegaNu = %f\n", nu_SumMassNuEV, OmegaNu);
+      printf("==============================================================\n");
+    }
+  }
+
+#endif
+
 #if defined(FOFRGRAVITY)
 
   if(ThisTask == 0){
@@ -104,7 +127,7 @@ void init_modified_version(){
   // Model not implemented...
 
 #elif defined(BRANSDICKE)
-  
+
   // We don't need any MG arrays here
   allocate_mg_arrays = 0;
 
@@ -119,13 +142,14 @@ void init_modified_version(){
     fflush(stdout);
   }
 
+  // Solve background and get the Hubble parameter today
   double h;
   JBD_Solve_Background(wBD, Omegah2, Omegavh2, Omegarh2, &h);
   
   // Set the values we find
   HubbleParam = h;
   Omega       = Omegah2 / HubbleParam / HubbleParam;
-  
+
   if(ThisTask == 0){
     printf("Calling JBD Background Solver: \n");
     printf(" OmegaMh2 = %f\n", Omegah2);
@@ -215,6 +239,20 @@ void read_mg_parameters(void **addr, char (*tag)[50], int *id, int (*nt)){
   strcpy(tag[(*nt)], "include_screening");
   addr[(*nt)] = &include_screening;
   id[(*nt)++] = INT;
+
+#ifdef MASSIVE_NEUTRINOS
+  strcpy(tag[(*nt)], "nu_include_massive_neutrinos");
+  addr[(*nt)] = &nu_include_massive_neutrinos;
+  id[(*nt)++] = INT;
+
+  strcpy(tag[(*nt)], "nu_SumMassNuEV");
+  addr[(*nt)] = &nu_SumMassNuEV;
+  id[(*nt)++] = FLOAT;
+
+  strcpy(tag[(*nt)], "nu_FilenameTransferInfofile");
+  addr[(*nt)] = &nu_FilenameTransferInfofile;
+  id[(*nt)++] = STRING;
+#endif
 
 #ifdef MATCHMAKER_HALOFINDER
 
@@ -520,33 +558,66 @@ double coupling_function(double a){
 // k is assumed to be in units of h/Mpc                    //
 //=========================================================//
 double GeffoverG(double a, double k){
-  if(! modified_gravity_active ) return 1.0;
-  if(  use_lcdm_growth_factors ) return 1.0;
+  double mu = 1.0; 
+  
+  if(! modified_gravity_active ) return mu;
+  if(  use_lcdm_growth_factors ) return mu;
 
 #if defined(FOFRGRAVITY) || defined(MBETAMODEL)
 
   double mass2a2 = a * a * mass2_of_a(a);
   double k2 = pow2(k * INVERSE_H0_MPCH);
-  if(k2 == 0) return 1.0;
-  return 1.0 + 2.0 * beta_of_a(a) * beta_of_a(a) * k2 / ( k2 + mass2a2 ); 
+  if(k2 == 0) return mu;
+  mu *= 1.0 + 2.0 * beta_of_a(a) * beta_of_a(a) * k2 / ( k2 + mass2a2 ); 
+  return mu;
 
 #elif defined(DGPGRAVITY)
 
-  return 1.0 + 1.0/(3.0 * beta_DGP(a));
+  mu *= 1.0 + 1.0/(3.0 * beta_DGP(a));
+  return mu;
 
 #elif defined(KMOFLAGE)
 
-  return 1.0 + coupling_function(a);
+  mu *= 1.0 + coupling_function(a);
+  return mu;
 
 #elif defined(BRANSDICKE)
   
-  return 1.0 + coupling_function(a);
+  mu *= 1.0 + coupling_function(a);
+  return mu;
 
 #else
 
-  return 1.0;
+  return mu;
 
 #endif
+}
+
+//================================================================
+// The massive neutrino modifications enters as en effective 
+// mu = (f_cdm * delta_cdm + f_nu * delta_nu) / delta_cdm so we treat it here
+// using the transfer-function to compute the term delta_nu/delta_cdm
+// The two functions below are (mu = 1 for LCDM):
+// D1'' - beta (mu * munu_1LPT) D1 =  beta (mu * munu_1LPT) D1
+// D2'' - beta (mu * munu_2LPT) D2 = -beta (mu * munu_2LPT)/2 (D2 - D1 * D1)
+//================================================================
+double GeffoverG_neutrino_1LPT(double a, double k){
+  double munu = 1.0;
+#ifdef MASSIVE_NEUTRINOS
+  if(OmegaNu > 1e-6)
+    munu = (Omega - OmegaNu)/Omega + OmegaNu/Omega * get_nu_transfer_function(k,a) / get_cdm_baryon_transfer_function(k,a);
+#endif
+  return munu;
+}
+
+double GeffoverG_neutrino_2LPT(double a, double k){
+  double munu = 1.0;
+#ifdef MASSIVE_NEUTRINOS
+  if(OmegaNu > 1e-6)
+  //  munu = (Omega - OmegaNu)/Omega + OmegaNu/Omega * get_nu_transfer_function(k,a) / get_cdm_baryon_transfer_function(k,a);
+  munu = (Omega - OmegaNu)/Omega;
+#endif
+  return munu;
 }
 
 //=========================================================//
@@ -688,6 +759,7 @@ double Factor_2LPT(double a){
 #if defined(FOFRGRAVITY) || defined(MBETAMODEL)
 
   // This is scale-dependent for these models so we compute this elsewhere
+  // Only relevant if use_lcdm_growth_factors = 1 for which we return 1.0 above
   return 1.0; 
 
 #elif defined(DGPGRAVITY)

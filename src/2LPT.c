@@ -297,6 +297,22 @@ void displacement_fields(void) {
     }
   }
 
+#ifdef MASSIVE_NEUTRINOS
+  if(nu_include_massive_neutrinos){
+    // Allocate memory for neutrino grid
+    delta_nu_store = malloc(sizeof(complex_kind)*Total_size);
+    for(i = 0; i < Local_nx; i++) {
+      for(j = 0; j < Nmesh; j++)     {
+        for(k = 0; k <= Nmesh / 2; k++) {
+          coord = (i * Nmesh + j) * (Nmesh / 2 + 1) + k;
+          delta_nu_store[coord][0] = 0.0;
+          delta_nu_store[coord][1] = 0.0;
+        }
+      }
+    }
+  }
+#endif
+
   if(ReadParticlesFromFile){
 
     //=========================================
@@ -388,13 +404,29 @@ void displacement_fields(void) {
 
             delta = pow(Box,-1.5) * sqrt(p_of_k);  // keep at redshift 0.0
 
+#ifdef MASSIVE_NEUTRINOS
+            double delta_nu_re = 0.0, delta_nu_im = 0.0;
+            if(nu_include_massive_neutrinos){
+              // Scale delta by ratio of transfer-functions to get delta_nu
+              double delta_nu = delta * get_nu_transfer_function(kmag, 1.0) / get_cdm_baryon_transfer_function(kmag, 1.0);
+              delta_nu_re = delta_nu * cos(phase);
+              delta_nu_im = delta_nu * sin(phase);
+            }
+#endif
+
             if(k > 0) {
               if(i >= Local_x_start && i < (Local_x_start + Local_nx)) {
+                coord = ((i - Local_x_start) * Nmesh + j) * (Nmesh / 2 + 1) + k;
                 for(axes = 0; axes < 3; axes++) {
-                  coord = ((i - Local_x_start) * Nmesh + j) * (Nmesh / 2 + 1) + k;
                   cdisp[axes][coord][0] = -kvec[axes] / kmag2 * delta * sin(phase);
                   cdisp[axes][coord][1] =  kvec[axes] / kmag2 * delta * cos(phase);
                 }
+#ifdef MASSIVE_NEUTRINOS
+                if(nu_include_massive_neutrinos){
+                  delta_nu_store[coord][0] = delta_nu_re;
+                  delta_nu_store[coord][1] = delta_nu_im;
+                }
+#endif
               }
             } else {       // k=0 plane needs special treatment
               if(i == 0) {
@@ -403,14 +435,26 @@ void displacement_fields(void) {
                 } else {
                   if(i >= Local_x_start && i < (Local_x_start + Local_nx)) {
                     jj = Nmesh - j;  // note: j!=0 surely holds at this point
+                    coord = ((i - Local_x_start) * Nmesh + j) * (Nmesh / 2 + 1) + k;
                     for(axes = 0; axes < 3; axes++) {
-                      coord = ((i - Local_x_start) * Nmesh + j) * (Nmesh / 2 + 1) + k;
                       cdisp[axes][coord][0]  = -kvec[axes] / kmag2 * delta * sin(phase);
                       cdisp[axes][coord][1]  =  kvec[axes] / kmag2 * delta * cos(phase);
-                      coord = ((i - Local_x_start) * Nmesh + jj) * (Nmesh / 2 + 1) + k;
+                    }
+                    coord = ((i - Local_x_start) * Nmesh + jj) * (Nmesh / 2 + 1) + k;
+                    for(axes = 0; axes < 3; axes++) {
                       cdisp[axes][coord][0] = -kvec[axes] / kmag2 * delta * sin(phase);
                       cdisp[axes][coord][1] = -kvec[axes] / kmag2 * delta * cos(phase);
                     }
+#ifdef MASSIVE_NEUTRINOS
+                    if(nu_include_massive_neutrinos){
+                      coord = ((i - Local_x_start) * Nmesh + j) * (Nmesh / 2 + 1) + k;
+                      delta_nu_store[coord][0] = delta_nu_re;
+                      delta_nu_store[coord][1] = delta_nu_im;
+                      coord = ((i - Local_x_start) * Nmesh + jj) * (Nmesh / 2 + 1) + k;
+                      delta_nu_store[coord][0] = delta_nu_re;
+                      delta_nu_store[coord][1] = delta_nu_im;
+                    }
+#endif
                   }
                 }
               } else {    // here comes i!=0 : conjugate can be on other processor!
@@ -422,18 +466,30 @@ void displacement_fields(void) {
                   if(ii == Nmesh) ii = 0;
                   if(jj == Nmesh) jj = 0;
                   if(i >= Local_x_start && i < (Local_x_start + Local_nx)) {
+                    coord = ((i - Local_x_start) * Nmesh + j) * (Nmesh / 2 + 1) + k;
                     for(axes = 0; axes < 3; axes++) {
-                      coord = ((i - Local_x_start) * Nmesh + j) * (Nmesh / 2 + 1) + k;
                       cdisp[axes][coord][0] = -kvec[axes] / kmag2 * delta * sin(phase);
                       cdisp[axes][coord][1] =  kvec[axes] / kmag2 * delta * cos(phase);
                     }
+#ifdef MASSIVE_NEUTRINOS
+                    if(nu_include_massive_neutrinos){
+                      delta_nu_store[coord][0] = delta_nu_re;
+                      delta_nu_store[coord][1] = delta_nu_im;
+                    }
+#endif
                   }		  
                   if(ii >= Local_x_start && ii < (Local_x_start + Local_nx)) {
+                    coord = ((ii - Local_x_start) * Nmesh + jj) * (Nmesh / 2 + 1) + k;
                     for(axes = 0; axes < 3; axes++) {
-                      coord = ((ii - Local_x_start) * Nmesh + jj) * (Nmesh / 2 + 1) + k;
                       cdisp[axes][coord][0] = -kvec[axes] / kmag2 * delta * sin(phase);
                       cdisp[axes][coord][1] = -kvec[axes] / kmag2 * delta * cos(phase);
                     }
+#ifdef MASSIVE_NEUTRINOS
+                    if(nu_include_massive_neutrinos){
+                      delta_nu_store[coord][0] = delta_nu_re;
+                      delta_nu_store[coord][1] = delta_nu_im;
+                    }
+#endif
                   }
                 }
               }

@@ -188,14 +188,20 @@ int ode_growth_D(double x, const double D[], double dDdy[], void *params){
   // If we have only time-dependent factors
   double modfac  = Factor_2LPT(a);
 #endif
+  
+  //=======================================
+  // Adding in effects of massive neutrinos
+  //=======================================
+  double munu_1LPT = GeffoverG_neutrino_1LPT(a, k);
+  double munu_2LPT = GeffoverG_neutrino_2LPT(a, k);
 
   // First order growth factor
   dDdy[0] = D[1];
-  dDdy[1] = - alphafac * D[1] + betafac * D[0];
+  dDdy[1] = - alphafac * D[1] + betafac * munu_1LPT * D[0];
 
   // Second order growth factor
   dDdy[2] = D[3];
-  dDdy[3] = - alphafac * D[3] + betafac * (D[2] - modfac * D[0] * D[0] );
+  dDdy[3] = - alphafac * D[3] + betafac * munu_2LPT * (D[2] - modfac * D[0] * D[0] );
 
   return GSL_SUCCESS;
 }
@@ -208,16 +214,23 @@ int ode_growth_DLCDM(double x, const double D[], double dDdy[], void *params){
   double a  = exp(x);
   double H  = hubble(a);
   double dH = dhubbleda(a);
+  double k  = *(double *) params;
   double betafac = 1.5 * Omega / ( a * a * a * H * H );
   double alphafac = 2.0 + a * dH / H;
 
+  //=======================================
+  // Adding in effects of massive neutrinos
+  //=======================================
+  double munu_1LPT = GeffoverG_neutrino_1LPT(a, k);
+  double munu_2LPT = GeffoverG_neutrino_2LPT(a, k);
+
   // First order growth factor
   dDdy[0] = D[1];
-  dDdy[1] = - alphafac * D[1] + betafac * D[0];
+  dDdy[1] = - alphafac * D[1] + betafac * munu_1LPT * D[0];
 
   // Second order growth factor
   dDdy[2] = D[3];
-  dDdy[3] = - alphafac * D[3] + betafac * (D[2] - D[0] * D[0] );
+  dDdy[3] = - alphafac * D[3] + betafac * munu_2LPT *  (D[2] - D[0] * D[0] );
 
   return GSL_SUCCESS;
 }
@@ -244,18 +257,24 @@ int ode_second_order_growth_kernel_D2(double x, const double D2[], double dD2dy[
   double betafac    = 1.5 * Omega / ( a * a * a * H * H );
   double alphafac   = 2.0 + a * dH / H;
   double factor2LPT = 1.0 - cost * cost + 2.0 * second_order_kernel(k, k1, k2, cost, a) / (betafac * mu_k);
+  
+  //=======================================
+  // Adding in effects of massive neutrinos
+  //=======================================
+  double munu_1LPT = GeffoverG_neutrino_1LPT(a, k);
+  double munu_2LPT = GeffoverG_neutrino_2LPT(a, k);
 
   // Second order equation
   dD2dy[0] = D2[1];
-  dD2dy[1] = - alphafac * D2[1] + betafac * mu_k  * (D2[0] - factor2LPT * D2[2] * D2[4] );
+  dD2dy[1] = - alphafac * D2[1] + betafac * mu_k  * munu_2LPT * (D2[0] - factor2LPT * D2[2] * D2[4] );
 
   // First order equation for k1
   dD2dy[2] = D2[3];
-  dD2dy[3] = - alphafac * D2[3] + betafac * mu_k1 * D2[2];
+  dD2dy[3] = - alphafac * D2[3] + betafac * mu_k1 * munu_1LPT * D2[2];
 
   // First order equation for k2
   dD2dy[4] = D2[5];
-  dD2dy[5] = - alphafac * D2[5] + betafac * mu_k2 * D2[4];
+  dD2dy[5] = - alphafac * D2[5] + betafac * mu_k2 * munu_1LPT * D2[4];
 
   return GSL_SUCCESS;
 }
@@ -779,10 +798,12 @@ void calculate_scale_dependent_growth_factor(){
     for(int i = 0; i < npts; i++){
       double anow    = exp(x_arr[i]);
       double mu      = GeffoverG(anow, know);
+      double munu_1LPT = GeffoverG_neutrino_1LPT(anow, know);
+      double munu_2LPT = GeffoverG_neutrino_2LPT(anow, know);
       dDdy_arr[i]    = dDdy_arr[i] * Qfactor(anow) / anow;
-      ddDddy_arr[i]  = 1.5 * mu * Omega * anow * D_arr[i];
+      ddDddy_arr[i]  = 1.5 * mu * munu_1LPT * Omega * anow * D_arr[i];
       dD2dy_arr[i]   = dD2dy_arr[i] * Qfactor(anow) / anow;
-      ddD2ddy_arr[i] = 1.5 * mu * Omega * anow * (D2_arr[i] - pow2(D_arr[i]) );
+      ddD2ddy_arr[i] = 1.5 * mu * munu_2LPT * Omega * anow * (D2_arr[i] - pow2(D_arr[i]) );
     }
   }
 

@@ -360,12 +360,57 @@ void PtoMesh(void) {
 #ifdef COMPUTE_POFK
   // Compute matter P(k) every time-step
   if(pofk_compute_every_step)
-    compute_power_spectrum(P3D, aexp_global);
+    compute_power_spectrum(P3D, aexp_global, "CDM");
 
   // Compute matter RSD P0(k),P2(k),P4(k) every time-step
   if(pofk_compute_rsd_pofk == 1)
-      compute_RSD_powerspectrum(aexp_global, 0);
+    compute_RSD_powerspectrum(aexp_global, 0);
 #endif
+
+#ifdef MASSIVE_NEUTRINOS
+  // Add massive neutrinos to the total density field
+  if(nu_include_massive_neutrinos){
+
+    // When OmegaNu != 0 we need to rescale the density by OmegaCDM+Baryons/OmegaMtot
+    double cdmfac = (Omega - OmegaNu) / Omega;
+
+    // f_nu times FFT normalization factor
+    double nufac_tmp   = OmegaNu / Omega * (double)(Nmesh * Nmesh * Nmesh);
+
+    for (unsigned int i = 0; i < Local_nx; i++) {
+      int iglobal = i + Local_x_start;
+      for (unsigned int j = 0; j < (unsigned int)(Nmesh/2+1); j++) {
+        int kmin = ((iglobal == 0) && (j == 0)) ? 1 : 0;
+        for (unsigned int k = kmin; k < (unsigned int)(Nmesh/2+1); k++) {
+          unsigned int coord = (i*Nmesh+j)*(Nmesh/2+1)+k;
+
+          double dd[3], kmag;
+          dd[0] = iglobal > Nmesh/2 ? iglobal-Nmesh : iglobal;
+          dd[1] = j;
+          dd[2] = k;
+          kmag = 2.0 * PI / Box * sqrt(dd[0]*dd[0] + dd[1]*dd[1] + dd[2]*dd[2]);
+
+          double nufac = nufac_tmp * get_nu_transfer_function(kmag, aexp_global) / get_nu_transfer_function(kmag, 1.0);
+          P3D[coord][0] = cdmfac * P3D[coord][0] + nufac * delta_nu_store[coord][0];
+          P3D[coord][1] = cdmfac * P3D[coord][1] + nufac * delta_nu_store[coord][1];
+
+          if ((j != (unsigned int)(Nmesh/2)) && (j != 0)) {
+            coord = (i*Nmesh+(Nmesh-j))*(Nmesh/2+1)+k;
+            P3D[coord][0] = cdmfac * P3D[coord][0] + nufac * delta_nu_store[coord][0];
+            P3D[coord][1] = cdmfac * P3D[coord][1] + nufac * delta_nu_store[coord][1];
+          }
+        }
+      }
+    }
+  }
+
+  // Compute total matter P(k) every time-step
+  if(pofk_compute_every_step)
+    compute_power_spectrum(P3D, aexp_global, "total");
+
+#endif
+
+
 
   timer_stop(_PtoMesh);
   return;

@@ -651,6 +651,11 @@ finalize:
     free_stored_initial_displacment_field();
 #endif
 
+#ifdef MASSIVE_NEUTRINOS
+    if( nu_include_massive_neutrinos )
+      free(delta_nu_store);
+#endif
+
     my_fftw_mpi_cleanup();
 
     timer_print();
@@ -862,7 +867,10 @@ finalize:
     for(groupTask = 0; groupTask < nprocgroup; groupTask++) {
       if (ThisTask == (masterTask + groupTask)) {
         if(NumPart > 0) {
-          sprintf(buf, "%s/%s_z%dp%03d.%d", OutputDir, FileBase, (int)Z, (int)rint((Z-(int)Z)*1000), ThisTask);
+          int Zint  = (int)floor(Z);
+          int Zfrac = (int)((Z - Zint)*1000);
+          sprintf(buf, "%s/%s_z%dp%03d.%d", OutputDir, FileBase, Zint, Zfrac, ThisTask);
+
           if(!(fp = fopen(buf, "w"))) {
             printf("\nERROR: Can't write in file '%s'.\n\n", buf);
             FatalError((char *)"main.c", 746);

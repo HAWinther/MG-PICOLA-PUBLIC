@@ -95,6 +95,15 @@ int input_sigma8_is_for_lcdm;     // If this is active the sigma8 in the paramet
 int allocate_mg_arrays;           // This is usually 1 if we run with MG, however for some cases we don't need the
                                   // extra arrays, e.g. for simple Geff(a) models, so it's useful to have a flag for this
 
+#ifdef MASSIVE_NEUTRINOS
+complex_kind *delta_nu_store;
+double nu_SumMassNuEV;
+double OmegaNu;
+double OmegaCDM;
+int    nu_include_massive_neutrinos;
+char   nu_FilenameTransferInfofile[500];
+#endif
+
 #if defined(EQUATIONOFSTATE_PARAMETRIZATION)
 double w_0; // Background parametrization
 double w_a; // w(a) = w0 + wa(1-a)

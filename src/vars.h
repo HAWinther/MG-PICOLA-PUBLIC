@@ -145,6 +145,15 @@ extern int input_sigma8_is_for_lcdm;
 extern int input_pofk_is_for_lcdm;
 extern int allocate_mg_arrays;
 
+#ifdef MASSIVE_NEUTRINOS
+extern complex_kind *delta_nu_store;
+extern int    nu_include_massive_neutrinos;
+extern double nu_SumMassNuEV;
+extern double OmegaNu;
+extern double OmegaCDM;
+extern char   nu_FilenameTransferInfofile[500];
+#endif
+
 #if defined(EQUATIONOFSTATE_PARAMETRIZATION)
 extern double w_0; // Background parametrization
 extern double w_a; // w(a) = w0 + wa(1-a)
