@@ -49,6 +49,12 @@ void init_modified_version(){
 
 #ifdef MASSIVE_NEUTRINOS
 
+#ifndef SCALEDEPENDENT
+  printf("Massive neutrinos must be compiled with SCALEDEPENDENT\n");
+  MPI_Abort(MPI_COMM_WORLD,1);
+  exit(1);
+#endif
+
   // Set neutrino density parameter
   OmegaNu  = nu_SumMassNuEV / (93.14 * HubbleParam * HubbleParam);
   OmegaCDM = Omega - OmegaBaryon - OmegaNu;
@@ -72,7 +78,7 @@ void init_modified_version(){
 
 #if defined(FOFRGRAVITY)
 
-  if(ThisTask == 0){
+  if(ThisTask == 0 && modified_gravity_active){
     printf("============================================\n");
     printf("Running with Modified Gravity, f(R) gravity \n");
     printf("============================================\n");
@@ -89,7 +95,7 @@ void init_modified_version(){
 
 #elif defined(DGPGRAVITY)
 
-  if(ThisTask == 0){
+  if(ThisTask == 0 && modified_gravity_active){
     printf("============================================\n");
     printf("Running with Modified Gravity, nDGP gravity \n");
     printf("============================================\n");
@@ -106,7 +112,7 @@ void init_modified_version(){
 
 #elif defined(MBETAMODEL)
 
-  if(ThisTask == 0){
+  if(ThisTask == 0 && modified_gravity_active){
     printf("============================================\n");
     printf("Running with Modified Gravity, (m(a),b(a))  \n");
     printf("============================================\n");
@@ -120,7 +126,7 @@ void init_modified_version(){
   }
 
   // For (m,beta) models we need to compute Phi_crit(a) and store in spline
-  compute_phi_of_a();
+  if(modified_gravity_active) compute_phi_of_a();
 
 #elif defined(KMOFLAGE)
 
@@ -614,8 +620,8 @@ double GeffoverG_neutrino_2LPT(double a, double k){
   double munu = 1.0;
 #ifdef MASSIVE_NEUTRINOS
   if(OmegaNu > 1e-6)
+    munu = (Omega - OmegaNu)/Omega;
   //  munu = (Omega - OmegaNu)/Omega + OmegaNu/Omega * get_nu_transfer_function(k,a) / get_cdm_baryon_transfer_function(k,a);
-  munu = (Omega - OmegaNu)/Omega;
 #endif
   return munu;
 }
@@ -803,26 +809,33 @@ double fofr_pi_factor(double k, double a){
 //=========================================================//
 double second_order_kernel(double k, double k1, double k2, double costheta, double a){
   if(! modified_gravity_active || use_lcdm_growth_factors) return 0.0;
+  
+  double gamma2 = 0.0;
+
 #if defined(FOFRGRAVITY)
 
   double a3     = a*a*a;
   double fac    = Omega/a3 + 4.0*(1 - Omega);
-  double gamma2 = - 9.0/48.0 * pow2( k * INVERSE_H0_MPCH / (a * hubble(a)) ) * pow2(Omega/a3) * pow5(fac)/(pow2(fofr0) * pow4(4 - 3*Omega));
+  gamma2 = - 9.0/48.0 * pow2( k * INVERSE_H0_MPCH / (a * hubble(a)) ) * pow2(Omega/a3) * pow5(fac)/(pow2(fofr0) * pow4(4 - 3*Omega));
   gamma2 /= fofr_pi_factor(k,a) * fofr_pi_factor(k1,a) * fofr_pi_factor(k2,a);
-  return gamma2;
 
 #elif defined(DGPGRAVITY)
 
   // For completeness, for DGP one should use the now SCALEDEPENDENT version.
   // In terms of Factor_2LPT we have second_order_kernel = 0.5 * (Factor_2LPT(a) - 1) * (1.5 * Omega * GeffoverG(a) * a) * ( 1 - cos^2theta )
-  double gamma2 = -1.0/6.0/pow3(beta_DGP(a)) * pow2(rcH0_DGP / hubble(a)) * pow2(Omega/(a*a*a)) * (1.0 - costheta*costheta);
-  return gamma2;
+  gamma2 = -1.0/6.0/pow3(beta_DGP(a)) * pow2(rcH0_DGP / hubble(a)) * pow2(Omega/(a*a*a)) * (1.0 - costheta*costheta);
 
 #else
 
-  return 0.0;
+  // ...
 
 #endif
+  
+  // Common for all models
+  gamma2 += 1.5 * Omega / (a * a * a * hubble(a) * hubble(a) ) * 
+    ( (GeffoverG(a,k) - GeffoverG(a,k1))*(k1/k2) + (GeffoverG(a,k) - GeffoverG(a,k2)*(k2/k1)) ) * costheta/2.0;
+
+  return gamma2;
 }
 
 #endif

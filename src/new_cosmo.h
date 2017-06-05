@@ -256,7 +256,7 @@ int ode_second_order_growth_kernel_D2(double x, const double D2[], double dD2dy[
   double mu_k2 = GeffoverG(a, k2);
   double betafac    = 1.5 * Omega / ( a * a * a * H * H );
   double alphafac   = 2.0 + a * dH / H;
-  double factor2LPT = 1.0 - cost * cost + 2.0 * second_order_kernel(k, k1, k2, cost, a) / (betafac * mu_k);
+  double factor2LPT = 1.0 - (mu_k1 + mu_k2 - mu_k)/mu_k * cost * cost + 2.0 * second_order_kernel(k, k1, k2, cost, a) / (betafac * mu_k);
   
   //=======================================
   // Adding in effects of massive neutrinos
@@ -904,7 +904,7 @@ double compute_single_value_second_order_growth_kernel(double k, double k1, doub
   const double deltax = (xend - xini)/(double)(npts-1);
 
   double cosphi = 1.0 - (k2*k2 - (k1-k)*(k1-k))/(2.0*k*k1);
-  double costheta = (k1 - k*cosphi)/k2;
+  double costheta = -(k1 - k*cosphi)/k2;
 
   struct ode_second_order_growth_parameters ode_D2_kernel_param;
   ode_D2_kernel_param.k_value   = k;
@@ -917,7 +917,7 @@ double compute_single_value_second_order_growth_kernel(double k, double k1, doub
 
   // Initial conditions
   double ode_D2_x  = xini;
-  double D2_now[6] = { -3.0/7.0 *(1 - costheta*costheta), -3.0/7.0 * 2.0 * (1 - costheta*costheta), 1.0, 1.0, 1.0, 1.0 };
+  double D2_now[6] = { -3.0/7.0 *(1.0 - costheta*costheta), -3.0/7.0 * 2.0 * (1.0 - costheta*costheta), 1.0, 1.0, 1.0, 1.0 };
 
   // Now we can integrate over k
   for(int i = 1; i < npts; i++){
