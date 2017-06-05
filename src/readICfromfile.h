@@ -103,7 +103,7 @@ struct Ramses_Header{
 // The GADGET header
 //==================================================================
 struct Gadget_Header{
-  int npart[6];
+  unsigned int npart[6];
   double mass[6];
   double time;
   double redshift;
@@ -816,8 +816,9 @@ void write_gadget_header(FILE *fp, double A){
     header.mass[k]       = 0;
   }
   header.npart[1]      = NumPart;
-  header.npartTotal[1] = TotNumPart;
-  header.npartTotal[2] = (TotNumPart >> 32);
+  header.npartTotal[1] = (unsigned int) TotNumPart;
+  header.npartTotalHighWord[1] = (unsigned int) (TotNumPart >> 32);
+
   header.mass[1]       = (3.0 * Omega * Hubble * Hubble * Box * Box * Box) / (8.0 * PI * G * TotNumPart);
   header.time          = A;
   header.redshift      = Z;
@@ -829,7 +830,7 @@ void write_gadget_header(FILE *fp, double A){
   header.flag_metals     = 0;
   header.flag_stellarage = 0;
   header.flag_metals     = 0;
-  header.hashtabsize     = 0;
+  header.flag_entropy_instead_u = 0;
 
   header.num_files = NTaskWithN;
 
