@@ -181,8 +181,8 @@ void MatchMaker(struct PicolaToMatchMakerData data){
   
   // Check buffer size
   if(Param.dx_extra >= 0.5 * Param.boxsize/(double) Param.n_nodes){
-    mm_msg_abort(1001,"Buffer size might be too big!\n"
-	      "Reduce it or the number of cores\n");
+    mm_msg_printf("Buffer size might be too big! MatchMaker will not be run!\nReduce it or the number of cores!\n");
+    return;
   }
 
   //===============================================================
@@ -213,7 +213,7 @@ void MatchMaker(struct PicolaToMatchMakerData data){
 #endif
 
   mm_msg_printf("Allocating particles and translating them to MatchMaker\n");
-  Particles *particles = malloc(sizeof(Particles));
+  Particles *particles = my_malloc(sizeof(Particles));
   picola_to_matchmaker_particles(particles);
 
   mm_msg_printf("Getting halos\n");
@@ -225,9 +225,9 @@ void MatchMaker(struct PicolaToMatchMakerData data){
   mm_msg_printf("=========================\n\n");
 
   // Clean up all memory
-  free(particles->p);
-  free(particles->p_back);
-  free(particles);
+  my_free(particles->p);
+  my_free(particles->p_back);
+  my_free(particles);
 }
 
 //============================================================
@@ -285,9 +285,9 @@ void picola_to_matchmaker_particles(Particles *particles){
   particles->np_allocated = particles->np_local;
   particles->np_centre    = particles->np_indomain-np_toleft;
   particles->np_total     = Param.n_part;
-  particles->np_average   = (float)((double)(Param.n_part)/Param.n_nodes);
-  particles->p_back       = malloc(particles->np_toleft*sizeof(Particle));
-  particles->p            = malloc(sizeof(Particle)*particles->np_local);
+  particles->np_average   = (float) Param.n_part / (float) Param.n_nodes;
+  particles->p_back       = my_malloc(particles->np_toleft*sizeof(Particle));
+  particles->p            = my_malloc(sizeof(Particle)*particles->np_local);
 
   //==============================
   // Allocate partices
@@ -314,7 +314,7 @@ void picola_to_matchmaker_particles(Particles *particles){
     int ax;
     float x[3], v[3];
 #ifdef PARTICLE_ID
-    ulint id = Param.P[j].ID;
+    ulint id = (ulint) Param.P[j].ID;
 #else
     ulint id = 0;
 #endif
@@ -322,21 +322,21 @@ void picola_to_matchmaker_particles(Particles *particles){
     if(UseCOLA){
 #ifdef SCALEDEPENDENT
       // This assumes that dDdy acctually contains dD/dy instead DeltaD which we need for time-stepping
-      // This is fine as we call it from the output-routine
+      // This is fine when we call it from the output-routine
       for(ax = 0; ax < 3; ax++){
-        x[ax] = norm_pos*Param.P[j].Pos[ax];
-        v[ax] = norm_vel*(Param.P[j].Vel[ax] + (Param.P[j].dDdy[ax] + Param.P[j].dD2dy[ax]));
+        x[ax] = (float)(norm_pos*Param.P[j].Pos[ax]);
+        v[ax] = (float)(norm_vel*(Param.P[j].Vel[ax] + (Param.P[j].dDdy[ax] + Param.P[j].dD2dy[ax])));
       }
 #else
       for(ax = 0; ax < 3; ax++){
-        x[ax] = norm_pos*Param.P[j].Pos[ax];
-        v[ax] = norm_vel*(Param.P[j].Vel[ax] + (Param.P[j].D[ax] * dDdy + Param.P[j].D2[ax] * dD2dy));
+        x[ax] = (float)(norm_pos*Param.P[j].Pos[ax]);
+        v[ax] = (float)(norm_vel*(Param.P[j].Vel[ax] + (Param.P[j].D[ax] * dDdy + Param.P[j].D2[ax] * dD2dy)));
       }
 #endif
     } else {
       for(ax = 0; ax < 3; ax++){
-        x[ax] = norm_pos*Param.P[j].Pos[ax];
-        v[ax] = norm_vel*Param.P[j].Vel[ax];
+        x[ax] = (float)(norm_pos*Param.P[j].Pos[ax]);
+        v[ax] = (float)(norm_vel*Param.P[j].Vel[ax]);
       }
     }
 

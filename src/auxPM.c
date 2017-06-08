@@ -47,7 +47,7 @@ void GetDisplacements(void) {
   MoveParticles();
 
 #ifdef MEMORY_MODE
-  density = malloc(2*Total_size*sizeof(float_kind));
+  density = my_malloc(2*Total_size*sizeof(float_kind));
   P3D     = (complex_kind *) density;
   plan    = my_fftw_mpi_plan_dft_r2c_3d(Nmesh, Nmesh, Nmesh, density, P3D, MPI_COMM_WORLD, FFTW_ESTIMATE);
   if(modified_gravity_active) AllocateMGArrays();
@@ -62,9 +62,9 @@ void GetDisplacements(void) {
   if(modified_gravity_active) ComputeFifthForce();
 
 #ifdef MEMORY_MODE
-  N11  = malloc( 2 * Total_size * sizeof(float_kind));
-  N12  = malloc( 2 * Total_size * sizeof(float_kind));
-  N13  = malloc( 2 * Total_size * sizeof(float_kind));
+  N11  = my_malloc( 2 * Total_size * sizeof(float_kind));
+  N12  = my_malloc( 2 * Total_size * sizeof(float_kind));
+  N13  = my_malloc( 2 * Total_size * sizeof(float_kind));
   FN11 = (complex_kind*) N11;
   FN12 = (complex_kind*) N12;
   FN13 = (complex_kind*) N13;
@@ -81,12 +81,12 @@ void GetDisplacements(void) {
   Forces();
 
 #ifdef MEMORY_MODE
-  free(density);
+  my_free(density);
   my_fftw_destroy_plan(plan);
   if(modified_gravity_active) FreeMGArrays();
-  for (int j = 0; j < 3; j++) Disp[j] = malloc(NumPart * sizeof(float));
+  for (int j = 0; j < 3; j++) Disp[j] = my_malloc(NumPart * sizeof(float));
 #else
-  for (int j = 0; j < 3; j++) Disp[j] = malloc(NumPart * sizeof(float_kind));
+  for (int j = 0; j < 3; j++) Disp[j] = my_malloc(NumPart * sizeof(float_kind));
 #endif
 
   //=================================================================
@@ -96,9 +96,9 @@ void GetDisplacements(void) {
   MtoParticles();
 
 #ifdef MEMORY_MODE
-  free(N11);
-  free(N12);
-  free(N13);  
+  my_free(N11);
+  my_free(N12);
+  my_free(N13);  
   my_fftw_destroy_plan(p11);
   my_fftw_destroy_plan(p12);
   my_fftw_destroy_plan(p13);
@@ -139,8 +139,8 @@ void MoveParticles(void) {
     //==============================================================================================
     // Allocate memory to hold the particles to be transfered. We assume a maximum of Local_np*Nsample*Nsample*(buffer-1.0).
     //==============================================================================================
-    struct part_data * P_send_left  = (struct part_data *)malloc(send_count_max*sizeof(struct part_data));
-    struct part_data * P_send_right = (struct part_data *)malloc(send_count_max*sizeof(struct part_data));
+    struct part_data * P_send_left  = (struct part_data *)my_malloc(send_count_max*sizeof(struct part_data));
+    struct part_data * P_send_right = (struct part_data *)my_malloc(send_count_max*sizeof(struct part_data));
 
     //==============================================================================================
     // The main purpose here is to calculate how many sendrecvs we need to perform (i.e., the maximum number 
@@ -179,9 +179,10 @@ void MoveParticles(void) {
                 i--; NumPart--;
                 send_count_left++;
                 if (send_count_left >= send_count_max) {
-                  printf("\nERROR: Number of particles to be sent left on task %d is greater than send_count_max\n", ThisTask);
+                  printf("\nERROR: Number of particles to be sent left [%i] on task %d is greater than send_count_max [%i]\n", 
+                      send_count_left, ThisTask, send_count_max);
                   printf("       You must increase the size of the buffer region.\n\n");
-                 FatalError((char *)"auxPM.c", 219);
+                 FatalError((char *)"auxPM.c Number of particles to be sent left > send_count_max");
                 }
               }
             } else {
@@ -194,9 +195,10 @@ void MoveParticles(void) {
                 i--; NumPart--;
                 send_count_right++;
                 if (send_count_right >= send_count_max) {
-                  printf("\nERROR: Number of particles to be sent right on task %d is greater than send_count_max\n", ThisTask);
+                  printf("\nERROR: Number of particles to be sent right [%i] on task %d is greater than send_count_max [%i]\n", 
+                      send_count_right, ThisTask, send_count_max);
                   printf("       You must increase the size of the buffer region.\n\n");
-                  FatalError((char *)"auxPM.c", 234);
+                  FatalError((char *)"auxPM.c Number of particles to be sent right > send_count_max");
                 }
               }
             }
@@ -240,27 +242,35 @@ void MoveParticles(void) {
       }
     }
 
-    ierr = MPI_Sendrecv(&send_count_left, 1,MPI_INT,neighbour_left, 0,&recv_count_right,1,MPI_INT,neighbour_right,0,MPI_COMM_WORLD,&status);
-    ierr = MPI_Sendrecv(&send_count_right,1,MPI_INT,neighbour_right,0,&recv_count_left, 1,MPI_INT,neighbour_left, 0,MPI_COMM_WORLD,&status);
+    ierr = MPI_Sendrecv(&send_count_left, 1,MPI_INT,neighbour_left, 0,
+                        &recv_count_right,1,MPI_INT,neighbour_right,0,
+                        MPI_COMM_WORLD,&status);
+
+    ierr = MPI_Sendrecv(&send_count_right,1,MPI_INT,neighbour_right,0,
+                        &recv_count_left, 1,MPI_INT,neighbour_left, 0,
+                        MPI_COMM_WORLD,&status);
 
     if (NumPart+recv_count_left+recv_count_right > Local_np*Nsample*Nsample*Buffer) {
       printf("\nERROR: Number of particles to be recieved on task %d is greater than available space\n", ThisTask);
       printf("       You must increase the size of the buffer region.\n\n");
-      FatalError((char *)"auxPM.c", 282);
+      FatalError((char *)"auxPM.c Number of particles to be recieved > available space. Increase buffer");
     }
 
     //==============================================================================================
     // Copy across the new particles and store them at the end (of the memory). Then modify NumPart to include them.
     //==============================================================================================
-    ierr = MPI_Sendrecv(&(P_send_left[0]),send_count_left*sizeof(struct part_data),MPI_BYTE,neighbour_left,0,
-        &(P[NumPart]),recv_count_right*sizeof(struct part_data),MPI_BYTE,neighbour_right,0,MPI_COMM_WORLD,&status);
-    ierr = MPI_Sendrecv(&(P_send_right[0]),send_count_right*sizeof(struct part_data),MPI_BYTE,neighbour_right,0,
-        &(P[NumPart+recv_count_right]),recv_count_left*sizeof(struct part_data),MPI_BYTE,neighbour_left,0,MPI_COMM_WORLD,&status);
+    ierr = MPI_Sendrecv(&(P_send_left[0]),  send_count_left,  PartDataMPIType, neighbour_left,  0,
+                        &(P[NumPart]),      recv_count_right, PartDataMPIType, neighbour_right, 0,
+                        MPI_COMM_WORLD, &status);
+    NumPart += recv_count_right;
 
-    NumPart += (recv_count_left+recv_count_right);
+    ierr = MPI_Sendrecv(&(P_send_right[0]), send_count_right, PartDataMPIType, neighbour_right, 0,
+                        &(P[NumPart]),      recv_count_left,  PartDataMPIType, neighbour_left,  0,
+                        MPI_COMM_WORLD, &status);
+    NumPart += recv_count_left;
 
-    free(P_send_left);
-    free(P_send_right);
+    my_free(P_send_left);
+    my_free(P_send_right);
   }
   
   timer_stop(_MoveParticles);
@@ -340,13 +350,13 @@ void PtoMesh(void) {
   // of the task on the right. Skip over tasks without any slices.
   //====================================================================================
   
-  float_kind * temp_density = (float_kind *)calloc(2*alloc_slice,sizeof(float_kind));
+  float_kind * temp_density = (float_kind *)my_calloc(2*alloc_slice,sizeof(float_kind));
   ierr = MPI_Sendrecv(&(density[2*last_slice]),2*alloc_slice*sizeof(float_kind),MPI_BYTE,RightTask,0,
       &(temp_density[0]),2*alloc_slice*sizeof(float_kind),MPI_BYTE,LeftTask,0,MPI_COMM_WORLD,&status);
   if (NumPart != 0) {
     for (i = 0; i < 2 * alloc_slice; i++) density[i] += (temp_density[i] + 1.0);
   }
-  free(temp_density);
+  my_free(temp_density);
 
   //====================================================================================
   // If modified gravity is active We take a copy of the density array 
@@ -390,27 +400,29 @@ void PtoMesh(void) {
           dd[2] = k;
           kmag = 2.0 * PI / Box * sqrt(dd[0]*dd[0] + dd[1]*dd[1] + dd[2]*dd[2]);
 
-          double nufac = nufac_tmp * get_nu_transfer_function(kmag, aexp_global) / get_nu_transfer_function(kmag, 1.0);
-          P3D[coord][0] = cdmfac * P3D[coord][0] + nufac * delta_nu_store[coord][0];
-          P3D[coord][1] = cdmfac * P3D[coord][1] + nufac * delta_nu_store[coord][1];
+          // Transform from delta_cdm(k,z=0) to delta_nu(k,z)
+          double nufac = nufac_tmp * get_nu_transfer_function(kmag, aexp_global) / get_cdm_baryon_transfer_function(kmag, 1.0);
+  
+          P3D[coord][0] = cdmfac * P3D[coord][0] + nufac * cdelta_cdm[coord][0];
+          P3D[coord][1] = cdmfac * P3D[coord][1] + nufac * cdelta_cdm[coord][1];
 
           if ((j != (unsigned int)(Nmesh/2)) && (j != 0)) {
             coord = (i*Nmesh+(Nmesh-j))*(Nmesh/2+1)+k;
-            P3D[coord][0] = cdmfac * P3D[coord][0] + nufac * delta_nu_store[coord][0];
-            P3D[coord][1] = cdmfac * P3D[coord][1] + nufac * delta_nu_store[coord][1];
+            P3D[coord][0] = cdmfac * P3D[coord][0] + nufac * cdelta_cdm[coord][0];
+            P3D[coord][1] = cdmfac * P3D[coord][1] + nufac * cdelta_cdm[coord][1];
           }
         }
       }
     }
   }
 
+#ifdef COMPUTE_POFK
   // Compute total matter P(k) every time-step
   if(pofk_compute_every_step)
     compute_power_spectrum(P3D, aexp_global, "total");
-
 #endif
 
-
+#endif
 
   timer_stop(_PtoMesh);
   return;
@@ -428,6 +440,9 @@ void Forces(void) {
 
   //==========================================================
   // Add fifth-force potential to the newtonian potential
+  // For GeffG(a) models (TimeDepGeffModels) we don't allocate
+  // MG arrays to save memory and we have already
+  // multiplied P3D by GeffG(a) so nothing to do here
   //==========================================================
   if(modified_gravity_active && allocate_mg_arrays){
     for(unsigned int i = 0; i < Total_size; i++){
@@ -467,10 +482,10 @@ void Forces(void) {
         // Deconvolve the CIC window function twice (once for density, once for force interpolation)
         // and add gaussian smoothing if requested
         //==========================================================
-        grid_corr = 1.0;
-        for(int axes = 0; axes < 3; axes++)
-          if(dd[axes] != 0) grid_corr *= sin( (PI*dd[axes]) / (double)Nmesh )/( (PI*dd[axes]) / (double)Nmesh);
-        grid_corr = pow(1.0 / grid_corr, 4.0);
+        //grid_corr = 1.0;
+        //for(int axes = 0; axes < 3; axes++)
+        //  if(dd[axes] != 0) grid_corr *= sin( (PI*dd[axes]) / (double)Nmesh )/( (PI*dd[axes]) / (double)Nmesh);
+        //grid_corr = pow(1.0 / grid_corr, 4.0);
         grid_corr = 1.0;
 
         //==========================================================
@@ -647,10 +662,9 @@ double periodic_wrap(double x){
 //===============
 // Error message
 //===============
-void FatalError(char* filename, int linenum) {
-  printf("Fatal Error at line %d in file %s\n", linenum, filename);
+void FatalError(char* errmsg) {
+  printf("Fatal Error: [%s]\n", errmsg);
   fflush(stdout);
-  free(OutputList);
   MPI_Abort(MPI_COMM_WORLD, 1);
   exit(1);
 }
@@ -663,8 +677,135 @@ size_t my_fwrite(void *ptr, size_t size, size_t nmemb, FILE * stream) {
   if((nwritten = fwrite(ptr, size, nmemb, stream)) != nmemb) {
     printf("\nERROR: I/O error (fwrite) on task=%d has occured.\n\n", ThisTask);
     fflush(stdout);
-    FatalError((char *)"auxPM.c", 621);
+    FatalError((char *)"auxPM.c my_fwrite | can't open file");
   }
   return nwritten;
+}
+
+//===============================================
+// Create a MPI Type that described how the
+// part_data struct is laid out in memory
+// so we can communicate it
+//===============================================
+
+void create_MPI_type_for_Particles(MPI_Datatype *mpi_particle_type){
+  const int nmax = 100;
+  MPI_Aint offsets[nmax];
+  MPI_Datatype types[nmax];
+  int blocklengths[nmax];
+
+  MPI_Datatype PARTICLE_FLOAT_KIND;
+#ifdef MEMORY_MODE
+  MPI_Type_match_size( MPI_TYPECLASS_REAL, sizeof(float), &PARTICLE_FLOAT_KIND);
+#else
+  MPI_Type_match_size( MPI_TYPECLASS_REAL, sizeof(float_kind), &PARTICLE_FLOAT_KIND );
+#endif
+
+  int nt = 0, nb = 0, no = 0;
+#ifdef PARTICLE_ID
+  offsets[no++] = offsetof(struct part_data,ID);
+  types[nt++] = MPI_UNSIGNED_LONG_LONG;
+  blocklengths[nb++] = 1;
+#endif
+  offsets[no++] = offsetof(struct part_data,Pos);
+  types[nt++] = PARTICLE_FLOAT_KIND;
+  blocklengths[nb++] = 3;
+
+  offsets[no++] = offsetof(struct part_data,Vel);
+  types[nt++] = PARTICLE_FLOAT_KIND;
+  blocklengths[nb++] = 3;
+  
+  offsets[no++] = offsetof(struct part_data,D);
+  types[nt++] = PARTICLE_FLOAT_KIND;
+  blocklengths[nb++] = 3;
+  
+  offsets[no++] = offsetof(struct part_data,D2);
+  types[nt++] = PARTICLE_FLOAT_KIND;
+  blocklengths[nb++] = 3;
+
+#ifdef SCALEDEPENDENT
+  offsets[no++] = offsetof(struct part_data,dDdy);
+  types[nt++] = PARTICLE_FLOAT_KIND;
+  blocklengths[nb++] = 3;
+  
+  offsets[no++] = offsetof(struct part_data,dD2dy);
+  types[nt++] = PARTICLE_FLOAT_KIND; 
+  blocklengths[nb++] = 3;
+  
+  offsets[no++] = offsetof(struct part_data,coord_q);
+  types[nt++] = MPI_UNSIGNED;
+  blocklengths[nb++] = 1;
+  
+  offsets[no++] = offsetof(struct part_data,init_cpu_id);
+  types[nt++] = MPI_UNSIGNED;
+  blocklengths[nb++] = 1;
+#endif
+
+  if(nb != no || nb != nt || nb > nmax){
+    printf("Error in create MPI struct! Numbers don't add up or increase nmax\n");
+    MPI_Abort(MPI_COMM_WORLD, 1);
+    exit(1);
+  }
+
+  MPI_Type_create_struct(nb, blocklengths, offsets, types, mpi_particle_type);
+  MPI_Type_commit(mpi_particle_type);
+}
+
+void write_grid_to_file(float_kind *grid, double a, char *prefix){
+  double Z;
+  int Zint, Zfrac, dummy;
+  char buf[300];
+
+  // Make filename
+  Z     = 1.0/a - 1.0;
+  Zint  = (int)floor(Z);
+  Zfrac = (int)((Z - Zint)*1000);
+
+  // Open file
+  sprintf(buf, "%s/%s_%s_z%dp%03d.%d", OutputDir, prefix, FileBase, Zint, Zfrac, ThisTask);
+  FILE *fp = fopen(buf, "w");
+
+  // Write Nmesh
+  int n = (int) Nmesh;
+  dummy = sizeof(int);
+  my_fwrite(&dummy, sizeof(dummy), 1, fp);
+  my_fwrite(&n, sizeof(int), 1, fp);
+  my_fwrite(&dummy, sizeof(dummy), 1, fp);
+
+  // Write Local_nx
+  int nx = (int) Local_nx;
+  dummy = sizeof(int);
+  my_fwrite(&dummy, sizeof(dummy), 1, fp);
+  my_fwrite(&nx, sizeof(int), 1, fp);
+  my_fwrite(&dummy, sizeof(dummy), 1, fp);
+
+  // Write Local_xstart
+  int xstart = (int) Local_x_start;
+  dummy = sizeof(int);
+  my_fwrite(&dummy, sizeof(dummy), 1, fp);
+  my_fwrite(&xstart, sizeof(int), 1, fp);
+  my_fwrite(&dummy, sizeof(dummy), 1, fp);
+
+  // Write the type-size
+  int fsize = sizeof(float_kind);
+  dummy = sizeof(int);
+  my_fwrite(&dummy, sizeof(dummy), 1, fp);
+  my_fwrite(&fsize, sizeof(int), 1, fp);
+  my_fwrite(&dummy, sizeof(dummy), 1, fp);
+
+  // Write number of grid-elements
+  int npts = 2 * Total_size;
+  dummy = sizeof(int);
+  my_fwrite(&dummy, sizeof(dummy), 1, fp);
+  my_fwrite(&npts, sizeof(int), 1, fp);
+  my_fwrite(&dummy, sizeof(dummy), 1, fp);
+
+  // Write grid
+  dummy = npts * sizeof(float_kind);
+  my_fwrite(&dummy, sizeof(dummy), 1, fp);
+  my_fwrite(grid, sizeof(float_kind), npts, fp);
+  my_fwrite(&dummy, sizeof(dummy), 1, fp);
+
+  fclose(fp);
 }
 

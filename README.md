@@ -26,8 +26,10 @@ This code is based on the [L-PICOLA](https://github.com/CullanHowlett/l-picola) 
  
  - The code has been linked to [MatchMaker](https://github.com/damonge/MatchMaker) which allows us to do halo-finding on the fly. See the [documentation](doc/note.pdf) for how to use it. Not properly tested yet!
 
- - The scale-dependent version needs the define SCALEDEPENDENT. This version requires several Fourier transforms per time-step which makes the code ~5 times slower.
+ - The scale-dependent version needs the define SCALEDEPENDENT. This version requires several Fourier transforms per time-step which makes the code ~3-4 times slower.
 
  - The lightcone version of the code have not been tested, but should work fine for the scale-independent version of the code (i.e. using LCDM growth-factors).
+
+ - Added memory monitoring (using wrappers around malloc and free).
 
 MG-PICOLA is distributed under the GNU Public License v3 (see COPYING for details).

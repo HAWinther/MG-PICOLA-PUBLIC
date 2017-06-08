@@ -30,6 +30,14 @@
 
 #include "wrappers.h"
 
+// Some useful functions
+#define MIN(x,y) ((x) < (y) ? (x) : (y))
+#define MAX(x,y) ((x) > (y) ? (x) : (y))
+#define pow2(x)  ((x)*(x))
+#define pow3(x)  ((x)*(x)*(x))
+#define pow4(x)  ((x)*(x)*(x)*(x))
+#define pow5(x)  ((x)*(x)*(x)*(x)*(x))
+
 //===================================================
 // main.c
 //===================================================
@@ -148,8 +156,10 @@ void   init_modified_version();
 #define FIELD_deltaD  3
 
 // Scaledependent growth-factors
-void  integrate_first_order_scale_dependent_growth_ode(double *x_arr, double *d_arr, double *q_arr, double know, int npts);
-void  integrate_second_order_scale_dependent_growth_ode(double *x_arr, double *d_arr, double *q_arr, struct ode_second_order_growth_parameters *ode_D2_params, int npts);
+void  integrate_first_order_scale_dependent_growth_ode(double *x_arr, double *d_arr, double *q_arr, 
+    double know, int npts);
+void  integrate_second_order_scale_dependent_growth_ode(double *x_arr, double *d_arr, double *q_arr, 
+    struct ode_second_order_growth_parameters *ode_D2_params, int npts);
 void   calculate_scale_dependent_growth_factor();
 
 double growth_D_scaledependent(double k, double a);
@@ -161,8 +171,6 @@ double growth_dD2dy_scaledependent(double k, double a);
 double growth_ddD2ddy_scaledependent(double k, double a);
 
 // 2LPT
-void store_initial_displacement_field(complex_kind *(cdisp[3]), complex_kind *(cdisp2[3]));
-void free_stored_initial_displacment_field();
 void from_cdisp_store_to_ZA(double A, double AF, double AFF, int firststep, int LPTorder);
 void assign_displacment_field_to_particles(double A, double AF, double AFF, int firststep, int LPTorder);
 #endif
@@ -203,7 +211,7 @@ void PtoMesh(void);
 void MtoParticles(void);
 void MoveParticles(void);
 void GetDisplacements(void);
-void FatalError(char * filename, int linenum);
+void FatalError(char * errmsg);
 #if (MEMORY_MODE || SINGLE_PRECISION)
 float periodic_wrap(float x);
 #else
@@ -309,7 +317,6 @@ int    ode_second_order_growth_kernel_D2(double x, const double D2[], double dD2
 void   solve_for_second_order_kernel();
 double fofr_pi_factor(double k, double a);
 double second_order_kernel(double k, double k1, double k2, double costheta, double a);
-void   integrate_up_kernel(int ik_grid_x, int ik_grid_y, int ik_grid_z, complex_kind *deltak_grid, float_kind *result);
 #endif
 
 #ifdef MASSIVE_NEUTRINOS
@@ -338,5 +345,8 @@ void bin_up_RSD_power_spectrum(complex_kind *dens_k, struct RSD_Pofk_Data *pofk_
 #ifdef MATCHMAKER_HALOFINDER
 void MatchMaker(struct PicolaToMatchMakerData);
 #endif
+
+void create_MPI_type_for_Particles(MPI_Datatype *mpi_particle_type);
+void free_CAMB_splines();
 
 #endif

@@ -29,7 +29,7 @@
 #include "proto.h"
 #include "timer.h"
 #include "msg.h"
-
+  
 int main(int argc, char **argv) {
 
   //======================================
@@ -43,7 +43,7 @@ int main(int argc, char **argv) {
   // Start timing
   msg_init();
   timer_set_category(_Init);
-  
+
   //======================================
   // Read command line arguments
   //======================================
@@ -153,6 +153,7 @@ int main(int argc, char **argv) {
   initialize_powerspectrum();
   initialize_ffts();
   initialize_parts();
+  create_MPI_type_for_Particles(&PartDataMPIType);
 
   //=======================================================
   // Do the initialization of the modified gravity version
@@ -204,7 +205,7 @@ int main(int argc, char **argv) {
 
     displacement_fields();
   }
-  
+
   if(ThisTask == 0){
     printf("\n=================================\n");
     printf(  "Assign particle pos and vel...   \n");
@@ -219,7 +220,7 @@ int main(int argc, char **argv) {
   //===========================================================================================
 
   // Allocate memory for the particles
-  P = malloc((int)(ceil(NumPart*Buffer))*sizeof(struct part_data));
+  P = my_malloc((size_t) (ceil(NumPart*Buffer)) * sizeof(struct part_data));
 
 #ifdef SCALEDEPENDENT
   // Store the particle IDs 
@@ -234,6 +235,7 @@ int main(int argc, char **argv) {
   }
 
   // Assign 1LPT and 2LPT displacementfields to the particles
+  // Place [D] in Particles.D and [dDdy] in Particles.dDdy
   assign_displacment_field_to_particles(A, AF, AFF, FIELD_D,      LPT_ORDER_ONE);
   assign_displacment_field_to_particles(A, AF, AFF, FIELD_D,      LPT_ORDER_TWO);
   if(ThisTask == 0) printf("\n");
@@ -241,10 +243,7 @@ int main(int argc, char **argv) {
   assign_displacment_field_to_particles(A, AF, AFF, FIELD_dDdy,   LPT_ORDER_ONE);
   assign_displacment_field_to_particles(A, AF, AFF, FIELD_dDdy,   LPT_ORDER_TWO);
   if(ThisTask == 0) printf("\n");
-  
-  assign_displacment_field_to_particles(A, AF, AFF, FIELD_ddDddy, LPT_ORDER_ONE);
-  assign_displacment_field_to_particles(A, AF, AFF, FIELD_ddDddy, LPT_ORDER_TWO);
-  if(ThisTask == 0) printf("\n");
+
 #endif
 
   // Assign positions, velocities and displacement
@@ -304,8 +303,8 @@ int main(int argc, char **argv) {
   // Free up some memory
 #ifndef SCALEDEPENDENT
   for (i = 0; i < 3; i++) {
-    free(ZA[i]);
-    free(LPT[i]);
+    my_free(ZA[i]);
+    my_free(LPT[i]);
   }
 #endif
 
@@ -345,12 +344,12 @@ int main(int argc, char **argv) {
 
   // The density grid and force grids and associated fftw plans
 #ifndef MEMORY_MODE
-  density = malloc(2 * Total_size * sizeof(float_kind));
+  density = my_malloc(2 * Total_size * sizeof(float_kind));
   P3D     = (complex_kind *) density;
 
-  N11     = malloc(2 * Total_size * sizeof(float_kind));
-  N12     = malloc(2 * Total_size * sizeof(float_kind));
-  N13     = malloc(2 * Total_size * sizeof(float_kind));
+  N11     = my_malloc(2 * Total_size * sizeof(float_kind));
+  N12     = my_malloc(2 * Total_size * sizeof(float_kind));
+  N13     = my_malloc(2 * Total_size * sizeof(float_kind));
   FN11    = (complex_kind *) N11;
   FN12    = (complex_kind *) N12;
   FN13    = (complex_kind *) N13;
@@ -377,11 +376,10 @@ int main(int argc, char **argv) {
   //=================================================
   timeSteptot = 0;
 #ifdef LIGHTCONE
-  for (i = NoutputStart; i < Noutputs;i++) {
+  for (i = NoutputStart; i < Noutputs;i++){
 #else
-    for (i = NoutputStart;i <= Noutputs;i++) {
+    for (i = NoutputStart;i <= Noutputs;i++){
 #endif
-
       int nsteps = 0;
       double ao = 0;
       if (i == Noutputs) {
@@ -452,6 +450,8 @@ int main(int argc, char **argv) {
             fflush(stdout);
           }
         }
+          
+        print_memory_summary();
 
         //================================================================
         // Copy value of A to global variable. Needed by the mg.h routines
@@ -462,14 +462,6 @@ int main(int argc, char **argv) {
         // Calculate the particle accelerations for this timestep
         //=======================================================
         GetDisplacements();
-
-        //=============================
-        // Kick the particle velocities
-        //=============================
-        if (ThisTask == 0) {
-          printf("Kicking the particles...\n");
-          fflush(stdout);
-        }
 
         /**********************************************************************************************/
         // If we wanted to interpolate the lightcone velocities we could put section currently in the // 
@@ -484,20 +476,24 @@ int main(int argc, char **argv) {
           printf("Compute displacment fields...   \n");
           printf("=================================\n");
         }
-        
-        assign_displacment_field_to_particles(A, AF, AFF, FIELD_D,      LPT_ORDER_ONE);
-        assign_displacment_field_to_particles(A, AF, AFF, FIELD_D,      LPT_ORDER_TWO);
-        if(ThisTask == 0) printf("\n");
-        
+
+        // Place [ddDddy] in Particles.D and [deltaD] in Particles.dDdy
         assign_displacment_field_to_particles(A, AF, AFF, FIELD_deltaD, LPT_ORDER_ONE);
         assign_displacment_field_to_particles(A, AF, AFF, FIELD_deltaD, LPT_ORDER_TWO);
         if(ThisTask == 0) printf("\n");
-        
+
         assign_displacment_field_to_particles(A, AF, AFF, FIELD_ddDddy, LPT_ORDER_ONE);
         assign_displacment_field_to_particles(A, AF, AFF, FIELD_ddDddy, LPT_ORDER_TWO);
         if(ThisTask == 0) printf("\n");
-        
+
 #endif
+        //=============================
+        // Kick the particle velocities
+        //=============================
+        if (ThisTask == 0) {
+          printf("Kicking the particles...\n");
+          fflush(stdout);
+        }
 
         Kick(AI, AF, A, Di);
 
@@ -535,6 +531,10 @@ int main(int argc, char **argv) {
               printf("Iteration %d finished\n------------------\n\n", timeSteptot);
               fflush(stdout);
             }
+          
+            // Remember to free up displacement-field before we exit
+            for (j = 0; j < 3; j++) my_free(Disp[j]);
+            
             goto finalize;
           }
 
@@ -556,8 +556,8 @@ int main(int argc, char **argv) {
 #endif
 
         // Free up displacement-field
-        for (j = 0; j < 3; j++) free(Disp[j]);
-
+        for (j = 0; j < 3; j++) my_free(Disp[j]);
+    
         // ============================
         // Drift the particle positions
         // ============================
@@ -616,28 +616,28 @@ finalize:
     // Free up memory
     free_powertable();
     free_transfertable();
-
-    free(P);
-    free(OutputList);
-    free(Slab_to_task);
-    free(Part_to_task);
-    free(Local_nx_table);
-    free(Local_np_table);
+    
+    my_free(P);
+    my_free(OutputList);
+    my_free(Slab_to_task);
+    my_free(Part_to_task);
+    my_free(Local_nx_table);
+    my_free(Local_np_table);
 
 #ifdef GENERIC_FNL
-    free(KernelTable);
+    my_free(KernelTable);
 #endif
 
 #ifdef LIGHTCONE
-    free(Noutput);
-    free(repflag);
+    my_free(Noutput);
+    my_free(repflag);
 #endif
 
 #ifndef MEMORY_MODE
-    free(density);
-    free(N11);
-    free(N12);
-    free(N13);  
+    my_free(density);
+    my_free(N11);
+    my_free(N12);
+    my_free(N13);  
     my_fftw_destroy_plan(plan);
     my_fftw_destroy_plan(p11);
     my_fftw_destroy_plan(p12);
@@ -646,19 +646,21 @@ finalize:
 #endif
 
     free_up_splines();
-
-#ifdef SCALEDEPENDENT
-    free_stored_initial_displacment_field();
+    
+#ifdef MASSIVE_NEUTRINOS
+    free_CAMB_splines();
 #endif
 
-#ifdef MASSIVE_NEUTRINOS
-    if( nu_include_massive_neutrinos )
-      free(delta_nu_store);
+#ifdef SCALEDEPENDENT
+    my_free(cdelta_cdm);
+    my_free(cdelta_cdm2);
 #endif
 
     my_fftw_mpi_cleanup();
 
     timer_print();
+
+    print_memory_summary();
 
     MPI_Finalize();    
 
@@ -690,7 +692,9 @@ finalize:
     for(unsigned int n = 0; n < NumPart; n++) {
       for(int axes = 0; axes < 3; axes ++) {
         Disp[axes][n]  -= sumDxyz[axes];
-        force[axes]     = -1.5 * Omega * Disp[axes][n] - UseCOLA * ( P[n].ddDddy[axes] + P[n].ddD2ddy[axes] ) / A;
+
+        // NB: D/D2 here contains ddDddy/ddD2ddy. This is done to save memory
+        force[axes]     = -1.5 * Omega * Disp[axes][n] - UseCOLA * ( P[n].D[axes] + P[n].D2[axes] ) / A;
         P[n].Vel[axes] += force[axes] * dda;
         sumxyz[axes]   += P[n].Vel[axes];
       }
@@ -743,7 +747,9 @@ finalize:
     for(unsigned int n = 0; n < NumPart; n++) {
       for(int axes = 0; axes < 3; axes++){
         P[n].Pos[axes] += (P[n].Vel[axes] - sumxyz[axes]) * dyyy;
-        P[n].Pos[axes]  = periodic_wrap(P[n].Pos[axes] + UseCOLA*( P[n].dDdy[axes] + P[n].dD2dy[axes] )); // dDdy is D(AFF) - D(A)
+
+        // NB: dDdy here contain (deltaD = D(AFF) - D(A)). This is done to save memory
+        P[n].Pos[axes]  = periodic_wrap(P[n].Pos[axes] + UseCOLA*( P[n].dDdy[axes] + P[n].dD2dy[axes] ));
       }
     }
 
@@ -781,21 +787,25 @@ finalize:
 
 #ifdef SCALEDEPENDENT
 
-    // Make a copy of the displacment-field [dDdy] which contains [deltaD]
-    // and recompute it to give dDdy which we need to set velocites below
-    float *tmp_buffer_D1 = malloc(sizeof(float) * NumPart * 3);
-    float *tmp_buffer_D2 = malloc(sizeof(float) * NumPart * 3);
+    /* We can avoid some computation below at the expense of copying
+     * but this requires memory
+     * We make a copy of the displacment-field [dDdy] which contains [deltaD]
+     * and add in dDdy in this field needed for velocities below
+    float *tmp_buffer_deltaD  = my_malloc(sizeof(float) * NumPart * 3);
+    float *tmp_buffer_deltaD2 = my_malloc(sizeof(float) * NumPart * 3);
     for(unsigned int i = 0; i < NumPart; i++){
       for(int axes = 0; axes < 3; axes++){
-        tmp_buffer_D1[3*i + axes] = P[i].dDdy[axes];
-        tmp_buffer_D2[3*i + axes] = P[i].dD2dy[axes];
+        tmp_buffer_deltaD[3*i + axes]  = P[i].dDdy[axes];
+        tmp_buffer_deltaD2[3*i + axes] = P[i].dD2dy[axes];
       }
     }
+     */
 
     // Compute dDdy
     assign_displacment_field_to_particles(A, AF, AFF, FIELD_dDdy, LPT_ORDER_ONE);
     assign_displacment_field_to_particles(A, AF, AFF, FIELD_dDdy, LPT_ORDER_TWO);
     if(ThisTask == 0) printf("\n");
+
 #endif
 
 #ifdef MATCHMAKER_HALOFINDER
@@ -819,7 +829,7 @@ finalize:
       data.P              = P;
       data.growth_dDdy    = &growth_dDdy;
       data.growth_dD2dy   = &growth_dD2dy;
-     
+
       // Particle mass in 10^{10} Msun/h (10^{10} = MATCHMAKER_MASS_FACTOR)
       data.mass_part      = (3.0 * Omega * Hubble * Hubble * Box * Box * Box) / (8.0 * PI * G * TotNumPart);
 
@@ -830,7 +840,7 @@ finalize:
 
       // We work with comoving velocity [ dx/dt ] in km/s in MatchMaker
       data.norm_vel       = (Hubble / A / A);
-      
+
       sprintf(data.OutputDir, OutputDir);
       sprintf(data.FileBase,  FileBase);
 
@@ -849,7 +859,7 @@ finalize:
       compute_RSD_powerspectrum(A, 1);
     }
 #endif
-    
+
     timer_start(_WriteOutput);
 
 #ifdef GADGET_STYLE
@@ -873,7 +883,7 @@ finalize:
 
           if(!(fp = fopen(buf, "w"))) {
             printf("\nERROR: Can't write in file '%s'.\n\n", buf);
-            FatalError((char *)"main.c", 746);
+            FatalError((char *)"main.c Output, can't write to file!");
           }
           fflush(stdout);
 
@@ -888,12 +898,14 @@ finalize:
           //===================
           write_gadget_header(fp, A);
 
-          // Allocate buffer. We may have some spare memory from deallocating 
-          // the force grids so use that for outputting. If not we are a little more conservative
 #ifdef MEMORY_MODE
-          block = malloc(bytes = 6*Total_size*sizeof(float_kind));
+          // Allocate buffer for output. We make it so that we have to gather and write 6 times
+          bytes = sizeof(float) * NumPart;
+          block = my_malloc(bytes);
 #else
-          block = malloc(bytes = 10*1024*1024);
+          // When not in memory mode we are a bit more conservative here
+          bytes = 10*1024*1024;
+          block = my_malloc(bytes);
 #endif
           blockmaxlen = bytes / (3 * sizeof(float));
 
@@ -920,9 +932,13 @@ finalize:
           for(n = 0, pc = 0; n < NumPart; n++) {
             // Remember to add the ZA and 2LPT velocities back on and convert to PTHalos velocity units
 #ifdef SCALEDEPENDENT
-            for(k = 0; k < 3; k++) block[3 * pc + k] = (float)(velfac*fac*(P[n].Vel[k] - sumxyz[k] + (P[n].dDdy[k] + P[n].dD2dy[k] ) * UseCOLA));
+            for(k = 0; k < 3; k++) 
+              block[3 * pc + k] = (float)(velfac*fac*(P[n].Vel[k] - sumxyz[k] 
+                    + (P[n].dDdy[k] + P[n].dD2dy[k] ) * UseCOLA));
 #else
-            for(k = 0; k < 3; k++) block[3 * pc + k] = (float)(velfac*fac*(P[n].Vel[k] - sumxyz[k] + (P[n].D[k] * dDdy + P[n].D2[k] * dD2dy ) * UseCOLA));
+            for(k = 0; k < 3; k++) 
+              block[3 * pc + k] = (float)(velfac*fac*(P[n].Vel[k] - sumxyz[k] 
+                    + (P[n].D[k] * dDdy + P[n].D2[k] * dD2dy ) * UseCOLA));
 #endif
             pc++;
             if(pc == blockmaxlen) {
@@ -953,7 +969,7 @@ finalize:
           if(pc > 0) my_fwrite(blockid, sizeof(unsigned long long), pc, fp);
           my_fwrite(&dummy, sizeof(dummy), 1, fp);
 #endif
-          free(block);   
+          my_free(block);   
 #else
           //==========================================================
           // Output as ASCII
@@ -993,16 +1009,25 @@ finalize:
 
 #ifdef SCALEDEPENDENT
 
-    // Copy back copy of [deltaD] to [dDdy] and free up memory
+    /* We can avoid some computation below at the expense of copying
+     * but this requires memory
+     * We make a copy of the displacment-field [dDdy] which contains [deltaD]
+     * and add in dDdy in this field needed for velocities below
     for(unsigned int i = 0; i < NumPart; i++){
       for(int axes = 0; axes < 3; axes++){
-        P[i].dDdy[axes]  = tmp_buffer_D1[3*i + axes];
-        P[i].dD2dy[axes] = tmp_buffer_D2[3*i + axes];
+        P[i].dDdy[axes]  = tmp_buffer_deltaD[3*i + axes];
+        P[i].dD2dy[axes] = tmp_buffer_deltaD2[3*i + axes];
       }
     }
-    free(tmp_buffer_D1);
-    free(tmp_buffer_D2);
+    my_free(tmp_buffer_deltaD);
+    my_free(tmp_buffer_deltaD2);
+    */
 
+    // Compute deltaD
+    assign_displacment_field_to_particles(A, AF, AFF, FIELD_deltaD, LPT_ORDER_ONE);
+    assign_displacment_field_to_particles(A, AF, AFF, FIELD_deltaD, LPT_ORDER_TWO);
+    if(ThisTask == 0) printf("\n");
+    
 #endif
 
     timer_stop(_WriteOutput);
@@ -1019,8 +1044,8 @@ finalize:
     char buf[300];
     double Z = (1.0/A) - 1.0;
 
-    int *Local_p_start_table    = malloc(sizeof(int) * NTask);
-    unsigned int *Noutput_table = malloc(sizeof(unsigned int) * NTask);
+    int *Local_p_start_table    = my_malloc(sizeof(int) * NTask);
+    unsigned int *Noutput_table = my_malloc(sizeof(unsigned int) * NTask);
     int local_p_start_int = (int)Local_p_start;
     MPI_Allgather(&local_p_start_int, 1, MPI_INT, Local_p_start_table, 1, MPI_INT, MPI_COMM_WORLD); 
     MPI_Allgather(&NumPart, 1, MPI_UNSIGNED, Noutput_table, 1, MPI_UNSIGNED, MPI_COMM_WORLD); 
@@ -1029,7 +1054,7 @@ finalize:
       sprintf(buf, "%s/info_%s_z%dp%03d.txt", OutputDir, FileBase, (int)Z, (int)rint((Z-(int)Z)*1000));
       if(!(fp = fopen(buf, "w"))) {
         printf("\nERROR: Can't write in file '%s'.\n\n", buf);
-        FatalError((char *)"main.c", 886);
+        FatalError((char *)"main.c Output_Info, can't write to file");
       }
       fflush(stdout);
       fprintf(fp, "#    FILENUM      XMIN         YMIN        ZMIN         XMAX         YMAX         ZMAX         NPART    \n");
@@ -1042,8 +1067,8 @@ finalize:
       fclose(fp);
     }
 
-    free(Noutput_table);
-    free(Local_p_start_table);
+    my_free(Noutput_table);
+    my_free(Local_p_start_table);
 
     return;
   }

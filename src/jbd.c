@@ -239,9 +239,9 @@ void JBD_Solve_Background(double w, double omegamh2, double omegavh2, double ome
   gg.zini      = JBD_REDSHIFT_START;
   gg.epsilon   = JBD_EPSILON_CONVERGENCE;
  
-  gg.x_arr     = malloc(sizeof(double)*gg.npts);
-  gg.y_arr     = malloc(sizeof(double)*gg.npts);
-  gg.dy_arr    = malloc(sizeof(double)*gg.npts);
+  gg.x_arr     = my_malloc(sizeof(double)*gg.npts);
+  gg.y_arr     = my_malloc(sizeof(double)*gg.npts);
+  gg.dy_arr    = my_malloc(sizeof(double)*gg.npts);
   
   // Find the correct IC (after this is done we have the correct solution in gg-arrays)
   JBD_find_correct_IC_using_bisection();
@@ -250,10 +250,10 @@ void JBD_Solve_Background(double w, double omegamh2, double omegavh2, double ome
   *h = JBD_HubbleFunction(0.0, gg.y_arr[gg.npts-1], gg.dy_arr[gg.npts-1]);
   
   // Make arrays for splining
-  double *loga = malloc(sizeof(double)*gg.npts);
-  double *H    = malloc(sizeof(double)*gg.npts);
-  double *dHda = malloc(sizeof(double)*gg.npts);
-  double *Geff = malloc(sizeof(double)*gg.npts);
+  double *loga = my_malloc(sizeof(double)*gg.npts);
+  double *H    = my_malloc(sizeof(double)*gg.npts);
+  double *dHda = my_malloc(sizeof(double)*gg.npts);
+  double *Geff = my_malloc(sizeof(double)*gg.npts);
   for(int i = 0; i < gg.npts; i++){
     loga[i] = gg.x_arr[i];
     Geff[i] = JBD_GeffOverG(gg.y_arr[i]);
@@ -267,12 +267,12 @@ void JBD_Solve_Background(double w, double omegamh2, double omegavh2, double ome
   Create_GSL_Spline(&JBD_dHdaSpline, loga, dHda, gg.npts);
 
   // Free up memory
-  free(loga);
-  free(Geff);
-  free(H);
-  free(dHda);
-  free(gg.x_arr);
-  free(gg.y_arr);
-  free(gg.dy_arr);
+  my_free(loga,      sizeof(double)*gg.npts);
+  my_free(Geff,      sizeof(double)*gg.npts);
+  my_free(H,         sizeof(double)*gg.npts);
+  my_free(dHda,      sizeof(double)*gg.npts);
+  my_free(gg.x_arr,  sizeof(double)*gg.npts);
+  my_free(gg.y_arr,  sizeof(double)*gg.npts);
+  my_free(gg.dy_arr, sizeof(double)*gg.npts);
 }
 

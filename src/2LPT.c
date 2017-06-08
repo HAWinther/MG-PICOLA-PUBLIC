@@ -50,7 +50,7 @@ void initialize_ffts(void) {
 
   alloc_local = my_fftw_mpi_local_size_3d(Nmesh, Nmesh, Nmesh/2+1, MPI_COMM_WORLD, &Local_nx, &Local_x_start);
 
-  Local_nx_table = malloc(sizeof(int) * NTask);
+  Local_nx_table = my_malloc(sizeof(int) * NTask);
 
   MPI_Allgather(&Local_nx, 1, MPI_INT, Local_nx_table, 1, MPI_INT, MPI_COMM_WORLD);
 
@@ -84,8 +84,8 @@ void initialize_ffts(void) {
   //==============================================
   // Let each processor know which parts of the fourier grids they all have
   //==============================================
-  Slab_to_task       = malloc(sizeof(int) * Nmesh);
-  Slab_to_task_local = malloc(sizeof(int) * Nmesh);
+  Slab_to_task       = my_malloc(sizeof(int) * Nmesh);
+  Slab_to_task_local = my_malloc(sizeof(int) * Nmesh);
 
   for(int i = 0; i < Nmesh; i++)    Slab_to_task_local[i] = 0;
   for(int i = 0; i < Local_nx; i++) Slab_to_task_local[Local_x_start + i] = ThisTask;
@@ -108,7 +108,7 @@ void initialize_ffts(void) {
     exit(1);
   }
 
-  free(Slab_to_task_local);
+  my_free(Slab_to_task_local);
 
   return;
 }
@@ -140,7 +140,7 @@ void initialize_parts(void) {
     exit(1);
   }
 
-  Local_np_table = malloc(sizeof(int) * NTask);
+  Local_np_table = my_malloc(sizeof(int) * NTask);
 
   MPI_Allgather(&Local_np, 1, MPI_INT, Local_np_table, 1, MPI_INT, MPI_COMM_WORLD);
 
@@ -162,15 +162,15 @@ void initialize_parts(void) {
   //==========================================================================
   // Let each processor know which parts of the particle grids they all have
   //==========================================================================
-  Part_to_task       = malloc(sizeof(int) * Nsample);
-  Part_to_task_local = malloc(sizeof(int) * Nsample);
+  Part_to_task       = my_malloc(sizeof(int) * Nsample);
+  Part_to_task_local = my_malloc(sizeof(int) * Nsample);
 
   for(int i = 0; i < Nsample; i++)  Part_to_task_local[i] = 0;
   for(int i = 0; i < Local_np; i++) Part_to_task_local[Local_p_start + i] = ThisTask;
 
   MPI_Allreduce(Part_to_task_local, Part_to_task, Nsample, MPI_INT, MPI_SUM, MPI_COMM_WORLD);
 
-  free(Part_to_task_local);
+  my_free(Part_to_task_local);
 
   return;
 }
@@ -258,7 +258,7 @@ void displacement_fields(void) {
 
   random_generator = gsl_rng_alloc(gsl_rng_ranlxd1);
   gsl_rng_set(random_generator, Seed);
-  if(!(seedtable = malloc(Nmesh * Nmesh * sizeof(unsigned int)))) FatalError((char *)"2LPT.c", 223);
+  if(!(seedtable = my_malloc(Nmesh * Nmesh * sizeof(unsigned int)))) FatalError((char *)"Seedtable 2LPT.c");
   for(i = 0; i < Nmesh / 2; i++) {
     for(j = 0; j < i; j++)     seedtable[i * Nmesh + j] = (unsigned int)(0x7fffffff * gsl_rng_uniform(random_generator));
     for(j = 0; j < i + 1; j++) seedtable[j * Nmesh + i] = (unsigned int)(0x7fffffff * gsl_rng_uniform(random_generator));
@@ -282,7 +282,8 @@ void displacement_fields(void) {
 
   // Allocate memory and initialize arrays
   for(axes = 0, bytes = 0; axes < 3; axes++) {
-    cdisp[axes] = malloc(bytes += sizeof(complex_kind) * Total_size);
+    cdisp[axes] = my_malloc(sizeof(complex_kind) * Total_size);
+    bytes += sizeof(complex_kind) * Total_size;
     disp[axes] = (float_kind *) cdisp[axes];
   }
   for(i = 0; i < Local_nx; i++) {
@@ -297,19 +298,15 @@ void displacement_fields(void) {
     }
   }
 
-#ifdef MASSIVE_NEUTRINOS
-  if(nu_include_massive_neutrinos){
-    // Allocate memory for neutrino grid
-    delta_nu_store = malloc(sizeof(complex_kind)*Total_size);
-    for(i = 0; i < Local_nx; i++) {
-      for(j = 0; j < Nmesh; j++)     {
-        for(k = 0; k <= Nmesh / 2; k++) {
-          coord = (i * Nmesh + j) * (Nmesh / 2 + 1) + k;
-          delta_nu_store[coord][0] = 0.0;
-          delta_nu_store[coord][1] = 0.0;
-        }
-      }
-    }
+#ifdef SCALEDEPENDENT
+  // Allocate grids for storing the scalar displacement fields in k-space
+  cdelta_cdm  = my_malloc(sizeof(complex_kind)*Total_size);
+  cdelta_cdm2 = my_malloc(sizeof(complex_kind)*Total_size);
+  for(i = 0; i < Total_size; i++) {
+    cdelta_cdm[i][0]  = 0.0;
+    cdelta_cdm[i][1]  = 0.0;
+    cdelta_cdm2[i][0] = 0.0;
+    cdelta_cdm2[i][1] = 0.0;
   }
 #endif
 
@@ -323,7 +320,7 @@ void displacement_fields(void) {
     AssignDisplacementField(cdisp);
 
   } else {
-    
+
     //=====================================================================
     // If the power-spectrum we read is assumed to be for LCDM
     // then we need to rescale it. If LCDM then the ratio below is just 1
@@ -403,29 +400,19 @@ void displacement_fields(void) {
             }
 
             delta = pow(Box,-1.5) * sqrt(p_of_k);  // keep at redshift 0.0
-
-#ifdef MASSIVE_NEUTRINOS
-            double delta_nu_re = 0.0, delta_nu_im = 0.0;
-            if(nu_include_massive_neutrinos){
-              // Scale delta by ratio of transfer-functions to get delta_nu
-              double delta_nu = delta * get_nu_transfer_function(kmag, 1.0) / get_cdm_baryon_transfer_function(kmag, 1.0);
-              delta_nu_re = delta_nu * cos(phase);
-              delta_nu_im = delta_nu * sin(phase);
-            }
-#endif
+            double delta_cdm_re = delta * cos(phase);
+            double delta_cdm_im = delta * sin(phase);
 
             if(k > 0) {
               if(i >= Local_x_start && i < (Local_x_start + Local_nx)) {
                 coord = ((i - Local_x_start) * Nmesh + j) * (Nmesh / 2 + 1) + k;
                 for(axes = 0; axes < 3; axes++) {
-                  cdisp[axes][coord][0] = -kvec[axes] / kmag2 * delta * sin(phase);
-                  cdisp[axes][coord][1] =  kvec[axes] / kmag2 * delta * cos(phase);
+                  cdisp[axes][coord][0] = -kvec[axes] / kmag2 * delta_cdm_im;
+                  cdisp[axes][coord][1] =  kvec[axes] / kmag2 * delta_cdm_re;
                 }
-#ifdef MASSIVE_NEUTRINOS
-                if(nu_include_massive_neutrinos){
-                  delta_nu_store[coord][0] = delta_nu_re;
-                  delta_nu_store[coord][1] = delta_nu_im;
-                }
+#ifdef SCALEDEPENDENT
+                cdelta_cdm[coord][0] = delta_cdm_re;
+                cdelta_cdm[coord][1] = delta_cdm_im;
 #endif
               }
             } else {       // k=0 plane needs special treatment
@@ -437,23 +424,22 @@ void displacement_fields(void) {
                     jj = Nmesh - j;  // note: j!=0 surely holds at this point
                     coord = ((i - Local_x_start) * Nmesh + j) * (Nmesh / 2 + 1) + k;
                     for(axes = 0; axes < 3; axes++) {
-                      cdisp[axes][coord][0]  = -kvec[axes] / kmag2 * delta * sin(phase);
-                      cdisp[axes][coord][1]  =  kvec[axes] / kmag2 * delta * cos(phase);
+                      cdisp[axes][coord][0]  = -kvec[axes] / kmag2 * delta_cdm_im;
+                      cdisp[axes][coord][1]  =  kvec[axes] / kmag2 * delta_cdm_re;
                     }
+#ifdef SCALEDEPENDENT
+                    cdelta_cdm[coord][0] = delta_cdm_re;
+                    cdelta_cdm[coord][1] = delta_cdm_im;
+#endif
+                    // The complex conjugate here: Psi(i,j,k) = Psi*(-i,-j,-k)
                     coord = ((i - Local_x_start) * Nmesh + jj) * (Nmesh / 2 + 1) + k;
                     for(axes = 0; axes < 3; axes++) {
-                      cdisp[axes][coord][0] = -kvec[axes] / kmag2 * delta * sin(phase);
-                      cdisp[axes][coord][1] = -kvec[axes] / kmag2 * delta * cos(phase);
+                      cdisp[axes][coord][0] = -kvec[axes] / kmag2 * delta_cdm_im;
+                      cdisp[axes][coord][1] = -kvec[axes] / kmag2 * delta_cdm_re;
                     }
-#ifdef MASSIVE_NEUTRINOS
-                    if(nu_include_massive_neutrinos){
-                      coord = ((i - Local_x_start) * Nmesh + j) * (Nmesh / 2 + 1) + k;
-                      delta_nu_store[coord][0] = delta_nu_re;
-                      delta_nu_store[coord][1] = delta_nu_im;
-                      coord = ((i - Local_x_start) * Nmesh + jj) * (Nmesh / 2 + 1) + k;
-                      delta_nu_store[coord][0] = delta_nu_re;
-                      delta_nu_store[coord][1] = delta_nu_im;
-                    }
+#ifdef SCALEDEPENDENT
+                    cdelta_cdm[coord][0] =  delta_cdm_re;
+                    cdelta_cdm[coord][1] = -delta_cdm_im;
 #endif
                   }
                 }
@@ -468,27 +454,24 @@ void displacement_fields(void) {
                   if(i >= Local_x_start && i < (Local_x_start + Local_nx)) {
                     coord = ((i - Local_x_start) * Nmesh + j) * (Nmesh / 2 + 1) + k;
                     for(axes = 0; axes < 3; axes++) {
-                      cdisp[axes][coord][0] = -kvec[axes] / kmag2 * delta * sin(phase);
-                      cdisp[axes][coord][1] =  kvec[axes] / kmag2 * delta * cos(phase);
+                      cdisp[axes][coord][0] = -kvec[axes] / kmag2 * delta_cdm_im;
+                      cdisp[axes][coord][1] =  kvec[axes] / kmag2 * delta_cdm_re;
                     }
-#ifdef MASSIVE_NEUTRINOS
-                    if(nu_include_massive_neutrinos){
-                      delta_nu_store[coord][0] = delta_nu_re;
-                      delta_nu_store[coord][1] = delta_nu_im;
-                    }
+#ifdef SCALEDEPENDENT
+                    cdelta_cdm[coord][0] = delta_cdm_re;
+                    cdelta_cdm[coord][1] = delta_cdm_im;
 #endif
                   }		  
                   if(ii >= Local_x_start && ii < (Local_x_start + Local_nx)) {
+                    // The complex conjugate here: Psi(i,j,k) = Psi*(-i,-j,-k)
                     coord = ((ii - Local_x_start) * Nmesh + jj) * (Nmesh / 2 + 1) + k;
                     for(axes = 0; axes < 3; axes++) {
-                      cdisp[axes][coord][0] = -kvec[axes] / kmag2 * delta * sin(phase);
-                      cdisp[axes][coord][1] = -kvec[axes] / kmag2 * delta * cos(phase);
+                      cdisp[axes][coord][0] = -kvec[axes] / kmag2 * delta_cdm_im;
+                      cdisp[axes][coord][1] = -kvec[axes] / kmag2 * delta_cdm_re;
                     }
-#ifdef MASSIVE_NEUTRINOS
-                    if(nu_include_massive_neutrinos){
-                      delta_nu_store[coord][0] = delta_nu_re;
-                      delta_nu_store[coord][1] = delta_nu_im;
-                    }
+#ifdef SCALEDEPENDENT
+                    cdelta_cdm[coord][0] =  delta_cdm_re;
+                    cdelta_cdm[coord][1] = -delta_cdm_im;
 #endif
                   }
                 }
@@ -515,7 +498,8 @@ void displacement_fields(void) {
   // Allocate memory and initialize arrays
   //=========================================
   bytes = 0;
-  cpot = malloc(bytes += sizeof(complex_kind) * Total_size);
+  cpot = my_malloc(sizeof(complex_kind) * Total_size);
+  bytes += sizeof(complex_kind) * Total_size;
   pot = (float_kind *) cpot;
   for(i = 0; i < Local_nx; i++) {
     for(j = 0; j < Nmesh; j++)     {
@@ -643,9 +627,9 @@ void displacement_fields(void) {
 #ifdef GENERIC_FNL
 
   // Allocate memory
-  cppA = (complex_kind *) calloc(Total_size, sizeof(complex_kind));
-  cppB = (complex_kind *) calloc(Total_size, sizeof(complex_kind));
-  cppC = (complex_kind *) calloc(Total_size, sizeof(complex_kind));
+  cppA = (complex_kind *) my_calloc(Total_size, sizeof(complex_kind));
+  cppB = (complex_kind *) my_calloc(Total_size, sizeof(complex_kind));
+  cppC = (complex_kind *) my_calloc(Total_size, sizeof(complex_kind));
   ppA  = (float_kind *) cppA;
   ppB  = (float_kind *) cppB;
   ppC  = (float_kind *) cppC;
@@ -665,7 +649,7 @@ void displacement_fields(void) {
       if(ThisTask == 0) printf("Adjusting ker0 = - (kerA + kerB), ker0=%f, kerA=%f, kerB=%f\n", ker0,kerA,kerB);
     } else {
       if(ThisTask == 0) printf("\nERROR: ker0 + kerA + kerB does not equal 0\n"); 
-      FatalError((char *)"2LPT.c", 534);
+      FatalError((char *)"Kerneltable 2LPT.c");
     }
 
     if(ThisTask == 0) printf("Values: %lf %lf %lf %lf\n",kerCoef,ker0,kerA,kerB);
@@ -848,9 +832,9 @@ void displacement_fields(void) {
   MPI_Barrier(MPI_COMM_WORLD);
 
   // Free up memory
-  free(cppA);
-  free(cppB);
-  free(cppC);
+  my_free(cppA);
+  my_free(cppB);
+  my_free(cppC);
 
   //===================================================================================
   // Specific type of non-gaussianity (local, equilateral or orthogonal) for n_s=1 only
@@ -910,11 +894,11 @@ void displacement_fields(void) {
 #else
 
   // Allocate memory for partpotential
-  cpartpot   = malloc(bytes = sizeof(complex_kind) * Total_size);
-  cp1p2p3sym = malloc(bytes = sizeof(complex_kind) * Total_size);
-  cp1p2p3sca = malloc(bytes = sizeof(complex_kind) * Total_size);
-  cp1p2p3nab = malloc(bytes = sizeof(complex_kind) * Total_size);
-  cp1p2p3tre = malloc(bytes = sizeof(complex_kind) * Total_size);
+  cpartpot   = my_malloc(bytes = sizeof(complex_kind) * Total_size);
+  cp1p2p3sym = my_malloc(bytes = sizeof(complex_kind) * Total_size);
+  cp1p2p3sca = my_malloc(bytes = sizeof(complex_kind) * Total_size);
+  cp1p2p3nab = my_malloc(bytes = sizeof(complex_kind) * Total_size);
+  cp1p2p3tre = my_malloc(bytes = sizeof(complex_kind) * Total_size);
   partpot    = (float_kind *) cpartpot;
   p1p2p3sym  = (float_kind *) cp1p2p3sym;
   p1p2p3sca  = (float_kind *) cp1p2p3sca;
@@ -1121,11 +1105,11 @@ void displacement_fields(void) {
     }
   }
 
-  free(cpartpot);
-  free(cp1p2p3sym);
-  free(cp1p2p3sca);
-  free(cp1p2p3nab);
-  free(cp1p2p3tre);
+  my_free(cpartpot);
+  my_free(cp1p2p3sym);
+  my_free(cp1p2p3sca);
+  my_free(cp1p2p3nab);
+  my_free(cp1p2p3tre);
 
 #endif
 
@@ -1142,7 +1126,8 @@ void displacement_fields(void) {
 
   // Allocate memory
   for(axes = 0, bytes = 0; axes < 3; axes++) {
-    cdisp[axes] = malloc(bytes += sizeof(complex_kind) * Total_size);
+    cdisp[axes] = my_malloc(sizeof(complex_kind) * Total_size);
+    bytes += sizeof(complex_kind) * Total_size;
     disp[axes] = (float_kind *) cdisp[axes];
   }
 
@@ -1201,7 +1186,7 @@ void displacement_fields(void) {
     }
   } 
 
-  free(cpot);
+  my_free(cpot);
   timer_stop(_NonGaussianIC);
 #endif
 
@@ -1217,7 +1202,8 @@ void displacement_fields(void) {
 
   // Allocate memory
   for(i = 0; i < 6; i++) {
-    cdigrad[i] = malloc(bytes = sizeof(complex_kind) * Total_size);
+    cdigrad[i] = my_malloc(sizeof(complex_kind) * Total_size);
+    bytes += sizeof(complex_kind) * Total_size;
     digrad[i]  = (float_kind *) cdigrad[i];
   }
 
@@ -1305,8 +1291,8 @@ void displacement_fields(void) {
     cdisp2[axes] = cdigrad[axes]; 
     disp2[axes] = (float_kind *) cdisp2[axes];
   }
-  free(cdigrad[4]); 
-  free(cdigrad[5]); 
+  my_free(cdigrad[4]); 
+  my_free(cdigrad[5]); 
 
   //========================================================================================
   // Solve Poisson eq. and calculate 2nd order displacements
@@ -1336,33 +1322,39 @@ void displacement_fields(void) {
 
         kmag2 = kvec[0] * kvec[0] + kvec[1] * kvec[1] + kvec[2] * kvec[2];
 
+#ifdef SCALEDEPENDENT
+        // The minus sign is to have it on the same form as the 1LPT computed above
+        if(kmag2 > 0.0) {
+          cdelta_cdm2[coord][0] = -cdigrad[3][coord][0];
+          cdelta_cdm2[coord][1] = -cdigrad[3][coord][1];
+        } else {
+          cdelta_cdm2[coord][0] =  cdelta_cdm2[coord][1] = 0.0;
+        }
+#else
         //==================================================
         // cdisp2 = source * k / (sqrt(-1) k^2) */
         //==================================================
         for(axes = 0; axes < 3; axes++) {
           if(kmag2 > 0.0) {
-            cdisp2[axes][coord][0] = cdigrad[3][coord][1] * kvec[axes] / kmag2;
+            cdisp2[axes][coord][0] =  cdigrad[3][coord][1] * kvec[axes] / kmag2;
             cdisp2[axes][coord][1] = -cdigrad[3][coord][0] * kvec[axes] / kmag2;
           } else {
             cdisp2[axes][coord][0] = cdisp2[axes][coord][1] = 0.0;
           }
         }
+#endif
       }
     }
   }
-
+  
 #ifdef SCALEDEPENDENT
 
-  // Lets store the initial displacment-field
-  if(ThisTask == 0) printf("Store the initial displacementfield...\n");
-  store_initial_displacement_field(cdisp, cdisp2);
-  
   // We do not need to perform the last steps so just free memory and return
-  free(cdigrad[3]);
-  for(axes = 0; axes < 3; axes++) free(cdisp[axes]);
-  for(axes = 0; axes < 3; axes++) free(cdisp2[axes]);
+  my_free(cdigrad[3]);
+  for(axes = 0; axes < 3; axes++) my_free(cdisp[axes]);
+  for(axes = 0; axes < 3; axes++) my_free(cdisp2[axes]);
   gsl_rng_free(random_generator);
-  free(seedtable);
+  my_free(seedtable);
   nmesh3 = ((unsigned long long ) Nmesh ) * ((unsigned long long) Nmesh) *  ((unsigned long long) Nmesh);
   timer_stop(_DisplacementFields);
   return;
@@ -1370,7 +1362,7 @@ void displacement_fields(void) {
 #endif
 
   // Free cdigrad
-  free(cdigrad[3]);
+  my_free(cdigrad[3]);
 
   //======================================================================
   // Now, both cdisp, and cdisp2 have the ZA and 2nd order displacements
@@ -1397,17 +1389,17 @@ void displacement_fields(void) {
 
   // Read-out displacements
   gsl_rng_free(random_generator);
-  free(seedtable);
+  my_free(seedtable);
 
   nmesh3 = ((unsigned long long ) Nmesh ) * ((unsigned long long) Nmesh) *  ((unsigned long long) Nmesh);
 
   for(axes = 0; axes < 3; axes++) {
 #ifdef MEMORY_MODE
-    ZA[axes]  = malloc(NumPart*sizeof(float));
-    LPT[axes] = malloc(NumPart*sizeof(float));
+    ZA[axes]  = my_malloc(NumPart*sizeof(float));
+    LPT[axes] = my_malloc(NumPart*sizeof(float));
 #else
-    ZA[axes]  = malloc(NumPart*sizeof(float_kind));
-    LPT[axes] = malloc(NumPart*sizeof(float_kind));
+    ZA[axes]  = my_malloc(NumPart*sizeof(float_kind));
+    LPT[axes] = my_malloc(NumPart*sizeof(float_kind));
 #endif
     sumdis[axes] = 0;
     sumdis2[axes] = 0;    
@@ -1493,8 +1485,8 @@ void displacement_fields(void) {
     sumdis[axes]  /= (double)TotNumPart;
     sumdis2[axes] /= (double)TotNumPart;
   }
-  for(axes = 0; axes < 3; axes++) free(cdisp[axes]);
-  for(axes = 0; axes < 3; axes++) free(cdisp2[axes]);
+  for(axes = 0; axes < 3; axes++) my_free(cdisp[axes]);
+  for(axes = 0; axes < 3; axes++) my_free(cdisp2[axes]);
 
   for(q = 0; q < NumPart; q++) {
     for(axes = 0; axes < 3; axes++) {
@@ -1526,46 +1518,6 @@ void displacement_fields(void) {
 // displacement fields and communication between different tasks   .        //
 //                                                                          //
 //==========================================================================//
-
-void store_initial_displacement_field(complex_kind *(cdisp[3]), complex_kind *(cdisp2[3])){
-
-  //=============================================================
-  // We store [cdisp] needed if we have scale-dependent growth
-  // This is the Zeldovich displacement field at z = 0 in 
-  // k-space. Stored in [cdisp_store]
-  //=============================================================
-
-  // Allocate memory
-  for(int axes = 0; axes < 3; axes++){
-    cdisp_store[axes] = malloc(sizeof(complex_kind) * Total_size);
-    disp_store[axes] = (float_kind *) cdisp_store[axes];
-  }
-
-  // Store the first order displacment-field
-  for(int axes = 0; axes < 3; axes++)
-    memcpy(cdisp_store[axes], cdisp[axes], sizeof(complex_kind) * Total_size);
-
-  // Allocate memory
-  for(int axes = 0; axes < 3; axes++){
-    cdisp2_store[axes] = malloc(sizeof(complex_kind) * Total_size);
-    disp2_store[axes] = (float_kind *) cdisp_store[axes];
-  }
-
-  // Store the second order displacment-field
-  // NB: this field is normalized such that we need to multiply 
-  // by -3/7 and divide by nmesh^3 when inverse FFTing this field
-  for(int axes = 0; axes < 3; axes++){
-    memcpy(cdisp2_store[axes], cdisp2[axes], sizeof(complex_kind) * Total_size);
-  }
-}
-
-void free_stored_initial_displacment_field(){
-  for(int axes = 0; axes < 3; axes++)
-    free(cdisp_store[axes]);
-
-  for(int axes = 0; axes < 3; axes++)
-    free(cdisp2_store[axes]);
-}
 
 //====================================================================================
 // This routine takes the stored displacement-field in k-space and makes it at the given redshift
@@ -1600,6 +1552,14 @@ void from_cdisp_store_to_ZA(double A, double AF, double AFF, int fieldtype, int 
   }
 
   // Pointer to the stored [LPTorder]LPT displacment field in k-space
+#ifdef SCALEDEPENDENT
+  complex_kind *stored_delta;
+  if(LPTorder == 1){
+    stored_delta = cdelta_cdm;
+  } else if(LPTorder == 2){
+    stored_delta = cdelta_cdm2;
+  }
+#else
   complex_kind *(stored_disp_field[3]);
   if(LPTorder == 1){
     for(int axes = 0; axes < 3; axes++)
@@ -1608,12 +1568,13 @@ void from_cdisp_store_to_ZA(double A, double AF, double AFF, int fieldtype, int 
     for(int axes = 0; axes < 3; axes++)
       stored_disp_field[axes] = cdisp2_store[axes];
   }
+#endif
 
   // Allocate temporary memory
   complex_kind *(cdisp_D[3]);
   double sumdis_D[3];
   for(int axes = 0; axes < 3; axes++){
-    disp_D[axes]   = malloc(sizeof(float_kind) * 2 * Total_size);
+    disp_D[axes]   = my_malloc(sizeof(float_kind) * 2 * Total_size);
     cdisp_D[axes]  = (complex_kind *) disp_D[axes];
     sumdis_D[axes] = 0.0;
   }
@@ -1656,8 +1617,13 @@ void from_cdisp_store_to_ZA(double A, double AF, double AFF, int fieldtype, int 
 
         for(int axes = 0; axes < 3; axes++) {
           if(kmag2 > 0.0) {
+#ifdef SCALEDEPENDENT
+            cdisp_D[axes][coord][0] = -stored_delta[coord][1] * kvec[axes]/kmag2 * growth_factor;
+            cdisp_D[axes][coord][1] =  stored_delta[coord][0] * kvec[axes]/kmag2 * growth_factor;
+#else
             cdisp_D[axes][coord][0] = stored_disp_field[axes][coord][0] * growth_factor;
             cdisp_D[axes][coord][1] = stored_disp_field[axes][coord][1] * growth_factor;
+#endif
           } else {
             cdisp_D[axes][coord][0] = 0.0;
             cdisp_D[axes][coord][1] = 0.0;
@@ -1670,7 +1636,8 @@ void from_cdisp_store_to_ZA(double A, double AF, double AFF, int fieldtype, int 
   // Fourier transform to k-space
   for(int axes = 0; axes < 3; axes++) {
     // FFT and copy over slice
-    plan_kind Inverse_plan_D      = my_fftw_mpi_plan_dft_c2r_3d(Nmesh, Nmesh, Nmesh, cdisp_D[axes],      disp_D[axes],      MPI_COMM_WORLD, FFTW_ESTIMATE);
+    plan_kind Inverse_plan_D = my_fftw_mpi_plan_dft_c2r_3d(Nmesh, Nmesh, Nmesh, 
+        cdisp_D[axes], disp_D[axes], MPI_COMM_WORLD, FFTW_ESTIMATE);
     my_fftw_execute(Inverse_plan_D);
     my_fftw_destroy_plan(Inverse_plan_D);
     MPI_Sendrecv(&(disp_D[axes][0]),   sizeof(float_kind) * 2 * alloc_slice, MPI_BYTE, LeftTask,  10,
@@ -1768,7 +1735,7 @@ void from_cdisp_store_to_ZA(double A, double AF, double AFF, int fieldtype, int 
 
   // Free up memory
   for(int axes = 0; axes < 3; axes++){
-    free(disp_D[axes]);
+    my_free(disp_D[axes]);
   }
 }
 
@@ -1805,7 +1772,7 @@ void assign_displacment_field_to_particles(double A, double AF, double AFF, int 
 
   // First we allocate and compute ZA_D
   for(int axes = 0; axes < 3; axes++) {
-    ZA_D[axes]       = malloc(Nsample*Nsample*Local_np*sizeof(float_kind));
+    ZA_D[axes]       = my_malloc(Nsample*Nsample*Local_np*sizeof(float_kind));
     allocated_bytes += Nsample*Nsample*Local_np*sizeof(float_kind); 
   }
 
@@ -1813,11 +1780,11 @@ void assign_displacment_field_to_particles(double A, double AF, double AFF, int 
   from_cdisp_store_to_ZA(A, AF, AFF, fieldtype, LPTorder);
 
   // Allocate communication count buffer
-  int *n_ThisTask_needs_from_cpu = malloc(sizeof(int) * NTask);
+  int *n_ThisTask_needs_from_cpu = my_malloc(sizeof(int) * NTask);
   for(int i = 0; i < NTask; i++) { 
     n_ThisTask_needs_from_cpu[i] = 0;
   }
-  
+
   // Count how much data we need to get from other CPUs
   for(int i = 0; i < NumPart; i++){
     unsigned int cpu_id = P[i].init_cpu_id;
@@ -1825,11 +1792,11 @@ void assign_displacment_field_to_particles(double A, double AF, double AFF, int 
       n_ThisTask_needs_from_cpu[cpu_id]++;
     }
   }
-  
+
   // Allocate request_buffer[i] is list of what ThisTask requests from cpu[i]
-  struct disp_comm_data **request_buffer = malloc(sizeof(struct disp_comm_data *) * NTask);
+  struct disp_comm_data **request_buffer = my_malloc(sizeof(struct disp_comm_data *) * NTask);
   for(int i = 0; i < NTask; i++) { 
-    request_buffer[i] = malloc(sizeof(struct disp_comm_data) * n_ThisTask_needs_from_cpu[i]);
+    request_buffer[i] = my_malloc(sizeof(struct disp_comm_data) * n_ThisTask_needs_from_cpu[i]);
     for(int j = 0; j < n_ThisTask_needs_from_cpu[i]; j++){
       request_buffer[i][j].pid     = 0;
       request_buffer[i][j].coord_q = 0;
@@ -1846,7 +1813,7 @@ void assign_displacment_field_to_particles(double A, double AF, double AFF, int 
   for(int i = 0; i < NumPart; i++){
     int cpu_id           = P[i].init_cpu_id;
     unsigned int coord_q = P[i].coord_q;
-    
+
     if( cpu_id == ThisTask ){
 
       // Assign displacment-fields to particle
@@ -1854,15 +1821,15 @@ void assign_displacment_field_to_particles(double A, double AF, double AFF, int 
         for(int axes = 0; axes < 3; axes ++){
           if(fieldtype == FIELD_D)      P[i].D[axes]       = ZA_D[axes][coord_q];
           if(fieldtype == FIELD_dDdy)   P[i].dDdy[axes]    = ZA_D[axes][coord_q];
-          if(fieldtype == FIELD_ddDddy) P[i].ddDddy[axes]  = ZA_D[axes][coord_q];
-          if(fieldtype == FIELD_deltaD) P[i].dDdy[axes]    = ZA_D[axes][coord_q];
+          if(fieldtype == FIELD_ddDddy) P[i].D[axes]       = ZA_D[axes][coord_q]; // We store ddDddy in D to save memory
+          if(fieldtype == FIELD_deltaD) P[i].dDdy[axes]    = ZA_D[axes][coord_q]; // We store deltaD in dDdy to save memory
         }
       } else if(LPTorder == 2){
         for(int axes = 0; axes < 3; axes ++){
           if(fieldtype == FIELD_D)      P[i].D2[axes]      = ZA_D[axes][coord_q];
           if(fieldtype == FIELD_dDdy)   P[i].dD2dy[axes]   = ZA_D[axes][coord_q];
-          if(fieldtype == FIELD_ddDddy) P[i].ddD2ddy[axes] = ZA_D[axes][coord_q];
-          if(fieldtype == FIELD_deltaD) P[i].dD2dy[axes]   = ZA_D[axes][coord_q];
+          if(fieldtype == FIELD_ddDddy) P[i].D2[axes]      = ZA_D[axes][coord_q]; // We store ddD2ddy in D2 to save memory
+          if(fieldtype == FIELD_deltaD) P[i].dD2dy[axes]   = ZA_D[axes][coord_q]; // We store deltaD2 in dD2dy to save memory
         }
       }
 
@@ -1882,9 +1849,9 @@ void assign_displacment_field_to_particles(double A, double AF, double AFF, int 
 
   // Allocate communication array
   // CPU #i will have to send n_to_send_all[i * NTask + j] pieces of particle data to CPU #j
-  int *n_to_send_all = malloc(sizeof(int) * NTask * NTask);
+  int *n_to_send_all = my_malloc(sizeof(int) * NTask * NTask);
   MPI_Allgather(&n_ThisTask_needs_from_cpu[0], NTask, MPI_INT, &n_to_send_all[0], NTask, MPI_INT, MPI_COMM_WORLD);
- 
+
   // Print out after communication to check that all is fine 
   if(ThisTask == 0 && comm_verbose){
     for(int j = 0; j < NTask; j++){
@@ -1895,11 +1862,11 @@ void assign_displacment_field_to_particles(double A, double AF, double AFF, int 
   }
 
   // Allocate send and recieve array
-  struct disp_comm_data **request_data_to_send_to      = malloc(sizeof(struct disp_comm_data *) * NTask);
-  struct disp_comm_data **request_data_to_recieve_from = malloc(sizeof(struct disp_comm_data *) * NTask);
+  struct disp_comm_data **request_data_to_send_to      = my_malloc(sizeof(struct disp_comm_data *) * NTask);
+  struct disp_comm_data **request_data_to_recieve_from = my_malloc(sizeof(struct disp_comm_data *) * NTask);
   for(int i = 0; i < NTask; i++){
-    request_data_to_send_to[i]      = malloc(sizeof(struct disp_comm_data) * n_to_send_all[ThisTask * NTask + i]);
-    request_data_to_recieve_from[i] = malloc(sizeof(struct disp_comm_data) * n_to_send_all[ThisTask + NTask * i]);
+    request_data_to_send_to[i]      = my_malloc(sizeof(struct disp_comm_data) * n_to_send_all[ThisTask * NTask + i]);
+    request_data_to_recieve_from[i] = my_malloc(sizeof(struct disp_comm_data) * n_to_send_all[ThisTask + NTask * i]);
 
     if(comm_verbose && (ThisTask == 0 && i != 0) ){
       printf("CPU [%3i] send to      [%3i] n = [%3i]\n", ThisTask, i, n_to_send_all[ThisTask * NTask + i]);
@@ -1911,22 +1878,22 @@ void assign_displacment_field_to_particles(double A, double AF, double AFF, int 
       request_data_to_recieve_from[i][j].pid     = 0;
       request_data_to_recieve_from[i][j].coord_q = 0;
     }
-    
+
     // Assign the data we are about to send
     for(int j = 0; j < n_to_send_all[ThisTask * NTask + i]; j++){
       request_data_to_send_to[i][j].pid     = request_buffer[i][j].pid;
       request_data_to_send_to[i][j].coord_q = request_buffer[i][j].coord_q;
     }
-    
+
     allocated_bytes += sizeof(struct disp_comm_data) * n_to_send_all[ThisTask * NTask + i];
     allocated_bytes += sizeof(struct disp_comm_data) * n_to_send_all[ThisTask + NTask * i];
   }
-  
+
   // Free up some memory
   for(int i = 0; i < NTask; i++)
-    free(request_buffer[i]);
-  free(request_buffer);
- 
+    my_free(request_buffer[i]);
+  my_free(request_buffer);
+
   // Communicate
   for(int i = 1; i < NTask; i++){
     unsigned int send_request_to  = mymod(ThisTask + i, NTask);
@@ -1946,12 +1913,12 @@ void assign_displacment_field_to_particles(double A, double AF, double AFF, int 
   }
 
   // Allocate return data memory
-  struct disp_comm_data_return **return_data_to_send_to      = malloc(sizeof(struct disp_comm_data_return *) * NTask);
-  struct disp_comm_data_return **return_data_to_recieve_from = malloc(sizeof(struct disp_comm_data_return *) * NTask);
+  struct disp_comm_data_return **return_data_to_send_to = my_malloc(sizeof(struct disp_comm_data_return *) * NTask);
+  struct disp_comm_data_return **return_data_to_recieve_from = my_malloc(sizeof(struct disp_comm_data_return *) * NTask);
   for(int i = 0; i < NTask; i++){
-    return_data_to_send_to[i]      = malloc(sizeof(struct disp_comm_data_return) * n_to_send_all[ThisTask + NTask * i]);
-    return_data_to_recieve_from[i] = malloc(sizeof(struct disp_comm_data_return) * n_to_send_all[ThisTask * NTask + i]);
-    
+    return_data_to_send_to[i]      = my_malloc(sizeof(struct disp_comm_data_return) * n_to_send_all[ThisTask + NTask * i]);
+    return_data_to_recieve_from[i] = my_malloc(sizeof(struct disp_comm_data_return) * n_to_send_all[ThisTask * NTask + i]);
+
     allocated_bytes += sizeof(struct disp_comm_data_return) * n_to_send_all[ThisTask * NTask + i];
     allocated_bytes += sizeof(struct disp_comm_data_return) * n_to_send_all[ThisTask + NTask * i];
   }
@@ -1959,7 +1926,7 @@ void assign_displacment_field_to_particles(double A, double AF, double AFF, int 
   // Loop over all particles and assign the return_data
   for(int i = 0; i < NTask; i++){
     for(int j = 0; j < n_to_send_all[ThisTask + NTask * i]; j++){
-      
+
       // Fetch request id's
       unsigned int coord_q = request_data_to_recieve_from[i][j].coord_q;
       unsigned int pid     = request_data_to_recieve_from[i][j].pid;
@@ -1987,7 +1954,7 @@ void assign_displacment_field_to_particles(double A, double AF, double AFF, int 
 
     // Send to right, recieve from left
     MPI_Sendrecv(return_data_to_send_to[send_request_to], n_to_send * sizeof(struct disp_comm_data_return), MPI_BYTE, send_request_to, 0, 
-    return_data_to_recieve_from[get_request_from], n_to_recieve * sizeof(struct disp_comm_data_return), MPI_BYTE, get_request_from, 0, MPI_COMM_WORLD, &status);
+        return_data_to_recieve_from[get_request_from], n_to_recieve * sizeof(struct disp_comm_data_return), MPI_BYTE, get_request_from, 0, MPI_COMM_WORLD, &status);
   }
 
   // Assign the displacement field to the remaining particles
@@ -1998,20 +1965,20 @@ void assign_displacment_field_to_particles(double A, double AF, double AFF, int 
 
       // Check for out of bounds error just in case
       if(pid < 0 || pid > NumPart) printf("Error: %i %i\n", pid, NumPart);
-      
+
       if(LPTorder == 1){
         for(int axes = 0; axes < 3; axes++){
           if(fieldtype == FIELD_D)      P[pid].D[axes]       = D[axes];
           if(fieldtype == FIELD_dDdy)   P[pid].dDdy[axes]    = D[axes];
-          if(fieldtype == FIELD_ddDddy) P[pid].ddDddy[axes]  = D[axes];
-          if(fieldtype == FIELD_deltaD) P[pid].dDdy[axes]    = D[axes];
+          if(fieldtype == FIELD_ddDddy) P[pid].D[axes]       = D[axes]; // Save ddDddy in D to save memory
+          if(fieldtype == FIELD_deltaD) P[pid].dDdy[axes]    = D[axes]; // Save deltaD in dDdy to save memory
         }
       } else if(LPTorder == 2){
         for(int axes = 0; axes < 3; axes++){
           if(fieldtype == FIELD_D)      P[pid].D2[axes]      = D[axes];
           if(fieldtype == FIELD_dDdy)   P[pid].dD2dy[axes]   = D[axes];
-          if(fieldtype == FIELD_ddDddy) P[pid].ddD2ddy[axes] = D[axes];
-          if(fieldtype == FIELD_deltaD) P[pid].dD2dy[axes]   = D[axes];
+          if(fieldtype == FIELD_ddDddy) P[pid].D2[axes]      = D[axes]; // Save ddD2ddy in D2 to save memory
+          if(fieldtype == FIELD_deltaD) P[pid].dD2dy[axes]   = D[axes]; // Save deltaD2 in dD2dy to save memory
         }
       }
     }
@@ -2019,21 +1986,21 @@ void assign_displacment_field_to_particles(double A, double AF, double AFF, int 
 
   // Free up communication buffers
   for(int i = 0; i < NTask; i++){
-    free(return_data_to_recieve_from[i]); 
-    free(return_data_to_send_to[i]); 
-    free(request_data_to_recieve_from[i]); 
-    free(request_data_to_send_to[i]); 
+    my_free(return_data_to_recieve_from[i] ); 
+    my_free(return_data_to_send_to[i]      ); 
+    my_free(request_data_to_recieve_from[i]);
+    my_free(request_data_to_send_to[i]     );
   }
-  free(return_data_to_recieve_from);
-  free(return_data_to_send_to);
-  free(request_data_to_recieve_from);
-  free(request_data_to_send_to);
-  free(n_ThisTask_needs_from_cpu);
-  free(n_to_send_all);
+  my_free(return_data_to_recieve_from );
+  my_free(return_data_to_send_to      );
+  my_free(request_data_to_recieve_from);
+  my_free(request_data_to_send_to     );
+  my_free(n_ThisTask_needs_from_cpu   );
+  my_free(n_to_send_all);
 
   // Free up displacment-fields
   for(int axes = 0; axes < 3; axes++) {
-    free(ZA_D[axes]);
+    my_free(ZA_D[axes]);
   }
 
   if(ThisTask == 0 && comm_verbose){

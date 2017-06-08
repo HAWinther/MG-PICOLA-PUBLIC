@@ -323,10 +323,10 @@ void Drift_Lightcone(double A, double AFF, double AF, double Di, double Di2) {
   // and the corresponding growth factors. Using lookup tables (for the growth factors especially) makes a HUGE difference. 
   // (In my small tests it reduced the time by a factor of TEN!!). Not sure why the growthD and growthD2 routines are so slow.
   //===================================================================================================================
-  AL_tab = (double *)malloc(NTAB*sizeof(double));
-  da1_tab = (double *)malloc(NTAB*sizeof(double));
-  da2_tab = (double *)malloc(NTAB*sizeof(double));
-  dyyy_tab = (double *)malloc(NTAB*sizeof(double));
+  AL_tab   = my_malloc(NTAB*sizeof(double));
+  da1_tab  = my_malloc(NTAB*sizeof(double));
+  da2_tab  = my_malloc(NTAB*sizeof(double));
+  dyyy_tab = my_malloc(NTAB*sizeof(double));
   for (i = 0; i < NTAB; i++) {
     AL = ( i * (AFF - A) ) / (NTAB - 1.0) + A;
     AL_tab[i] = AL;
@@ -350,10 +350,10 @@ void Drift_Lightcone(double A, double AFF, double AF, double Di, double Di2) {
   gsl_spline_init(da2_spline, AL_tab, da2_tab, NTAB);
   gsl_spline_init(dyyy_spline, AL_tab, dyyy_tab, NTAB);
 
-  free(AL_tab);
-  free(da1_tab);
-  free(da2_tab);
-  free(dyyy_tab);
+  my_free(AL_tab);
+  my_free(da1_tab);
+  my_free(da2_tab);
+  my_free(dyyy_tab);
 
   //================================================================================================================
   // For the outputting we can only moderate how many tasks output at once if they all enter the output stage at the same time.
@@ -374,9 +374,9 @@ void Drift_Lightcone(double A, double AFF, double AF, double Di, double Di2) {
   //================================================================================================================
   ierr = MPI_Allreduce(&NumPart, &NumPartMax, 1, MPI_UNSIGNED, MPI_MAX, MPI_COMM_WORLD);
 #ifdef MEMORY_MODE
-  block = (float *)malloc(bytes = 6*Total_size*sizeof(float_kind)+3*NumPart*sizeof(float));
+  block = my_malloc(bytes = 6*Total_size*sizeof(float_kind)+3*NumPart*sizeof(float));
 #else
-  block = (float *)malloc(bytes = 3*NumPart*sizeof(float_kind));
+  block = my_malloc(bytes = 3*NumPart*sizeof(float_kind));
 #endif
 
   //================================================================================================================
@@ -410,15 +410,15 @@ void Drift_Lightcone(double A, double AFF, double AF, double Di, double Di2) {
     outputflag++;
     if (n < NumPart) {
 
-      Delta_Pos[0] = (P[n].Vel[0] - sumx) * dyyy + UseCOLA * (P[n].D[0] * da1 + P[n].D2[0] * da2);
-      Delta_Pos[1] = (P[n].Vel[1] - sumy) * dyyy + UseCOLA * (P[n].D[1] * da1 + P[n].D2[1] * da2);   
-      Delta_Pos[2] = (P[n].Vel[2] - sumz) * dyyy + UseCOLA * (P[n].D[2] * da1 + P[n].D2[2] * da2);     
+      Delta_Pos[0] = (P[n].Vel[0] - sumxyz[0]) * dyyy + UseCOLA * (P[n].D[0] * da1 + P[n].D2[0] * da2);
+      Delta_Pos[1] = (P[n].Vel[1] - sumxyz[1]) * dyyy + UseCOLA * (P[n].D[1] * da1 + P[n].D2[1] * da2);   
+      Delta_Pos[2] = (P[n].Vel[2] - sumxyz[2]) * dyyy + UseCOLA * (P[n].D[2] * da1 + P[n].D2[2] * da2);     
 
       // Check that 100Mpc^2/h^2 boundaries is enough
       if((Delta_Pos[0] > boundary) || (Delta_Pos[1] > boundary) || (Delta_Pos[2] > boundary)) {
         printf("\nERROR: Particle displacement greater than boundary for lightcone replicate estimate.\n");
         printf("       increase boundary condition in lightcone.c (line 56)\n\n");
-      FatalError((char *)"lightcone.c", 384);
+      FatalError((char *)"lightcone.c Particle displacement greater than boundary, increase boundary condition");
       }
 
       // Loop over all replicates
@@ -460,13 +460,13 @@ void Drift_Lightcone(double A, double AFF, double AF, double Di, double Di2) {
                   // Store the interpolated particle position and velocity.
                   unsigned int ind = 6*(blockmaxlen*repcount+pc[repcount]);
                   
-                  block[ind]     = (float)(lengthfac *(P[n].Pos[0] + (P[n].Vel[0] - sumx) * dyyy_tmp + UseCOLA*(P[n].D[0] * da1_tmp + P[n].D2[0] * da2_tmp) + (i*Box)));
-                  block[ind + 1] = (float)(lengthfac *(P[n].Pos[1] + (P[n].Vel[1] - sumy) * dyyy_tmp + UseCOLA*(P[n].D[1] * da1_tmp + P[n].D2[1] * da2_tmp) + (j*Box)));
-                  block[ind + 2] = (float)(lengthfac *(P[n].Pos[2] + (P[n].Vel[2] - sumz) * dyyy_tmp + UseCOLA*(P[n].D[2] * da1_tmp + P[n].D2[2] * da2_tmp) + (k*Box)));
+                  block[ind]     = (float)(lengthfac *(P[n].Pos[0] + (P[n].Vel[0] - sumxyz[0]) * dyyy_tmp + UseCOLA*(P[n].D[0] * da1_tmp + P[n].D2[0] * da2_tmp) + (i*Box)));
+                  block[ind + 1] = (float)(lengthfac *(P[n].Pos[1] + (P[n].Vel[1] - sumxyz[1]) * dyyy_tmp + UseCOLA*(P[n].D[1] * da1_tmp + P[n].D2[1] * da2_tmp) + (j*Box)));
+                  block[ind + 2] = (float)(lengthfac *(P[n].Pos[2] + (P[n].Vel[2] - sumxyz[2]) * dyyy_tmp + UseCOLA*(P[n].D[2] * da1_tmp + P[n].D2[2] * da2_tmp) + (k*Box)));
                   
-                  block[ind + 3] = (float)(velfac*fac*(P[n].Vel[0] - sumx + (P[n].D[0] * dv1 + P[n].D2[0] * dv2) * UseCOLA));
-                  block[ind + 4] = (float)(velfac*fac*(P[n].Vel[1] - sumy + (P[n].D[1] * dv1 + P[n].D2[1] * dv2) * UseCOLA));
-                  block[ind + 5] = (float)(velfac*fac*(P[n].Vel[2] - sumz + (P[n].D[2] * dv1 + P[n].D2[2] * dv2) * UseCOLA));
+                  block[ind + 3] = (float)(velfac*fac*(P[n].Vel[0] - sumxyz[0] + (P[n].D[0] * dv1 + P[n].D2[0] * dv2) * UseCOLA));
+                  block[ind + 4] = (float)(velfac*fac*(P[n].Vel[1] - sumxyz[1] + (P[n].D[1] * dv1 + P[n].D2[1] * dv2) * UseCOLA));
+                  block[ind + 5] = (float)(velfac*fac*(P[n].Vel[2] - sumxyz[2] + (P[n].D[2] * dv1 + P[n].D2[2] * dv2) * UseCOLA));
                   
                   pc[repcount]++;   
                   Noutput[coord]++;
@@ -546,14 +546,14 @@ void Output_Lightcone(unsigned int * pc, unsigned int blockmaxlen, float * block
                   // Overwrite any pre-existing output files otherwise we'll append onto the end of them.
                   if(!(fp = fopen(buf, "w"))) {
                     printf("\nERROR: Can't write in file '%s'.\n\n", buf);
-                    FatalError((char *)"lightcone.c", 527);
+                    FatalError((char *)"lightcone.c Output_Lightcone, can't write in file");
                   }
                   fflush(stdout);
                   writeflag[coord] = 1;
                 } else {
                   if(!(fp = fopen(buf, "a"))) {
                     printf("\nERROR: Can't write in file '%s'.\n\n", buf);
-                    FatalError((char *)"lightcone.c", 533);
+                    FatalError((char *)"lightcone.c Output_Lightcone, can't write in file");
                   }
                   fflush(stdout);
                 }
@@ -599,14 +599,14 @@ void Output_Info_Lightcone(void) {
   char buf[300];
   int i, j, k, m;
 
-  int * Local_p_start_table = (int *)malloc(sizeof(int) * NTask);
+  int * Local_p_start_table = my_malloc(sizeof(int) * NTask);
   MPI_Allgather(&Local_p_start, 1, MPI_INT, Local_p_start_table, 1, MPI_INT, MPI_COMM_WORLD);
  
   if (ThisTask == 0) {
     sprintf(buf, "%s/%s_lightcone.info", OutputDir, FileBase);
     if(!(fp = fopen(buf, "w"))) {
       printf("\nERROR: Can't write in file '%s'.\n\n", buf);
-      FatalError((char *)"lightcone.c", 584);
+      FatalError((char *)"lightcone.c Output_Info_Lightcone, can't write to file");
     }
     fflush(stdout);
     fprintf(fp, "#    FILENUM      XMIN         YMIN        ZMIN         XMAX         YMAX         ZMAX         NPART    \n");
@@ -618,7 +618,7 @@ void Output_Info_Lightcone(void) {
 
         int coord = ((i+Nrep_neg_max[0])*(Nrep_neg_max[1]+Nrep_pos_max[1]+1)+(j+Nrep_neg_max[1]))*(Nrep_neg_max[2]+Nrep_pos_max[2]+1)+(k+Nrep_neg_max[2]);
 
-        unsigned int * Noutput_table = (unsigned int *)malloc(sizeof(unsigned int) * NTask);
+        unsigned int * Noutput_table = (unsigned int *) my_malloc(sizeof(unsigned int) * NTask);
         MPI_Allgather(&(Noutput[coord]), 1, MPI_UNSIGNED, Noutput_table, 1, MPI_UNSIGNED, MPI_COMM_WORLD);
 
         if (ThisTask == 0) {

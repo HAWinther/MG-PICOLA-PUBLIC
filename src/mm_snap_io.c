@@ -160,7 +160,7 @@ void write_halos_fits(char *fname,lint n_halos,FoFHalo *fhal){
   fits_create_file(&fptr,fname,&status);
   fits_create_tbl(fptr,BINARY_TBL,0,29,ttype,tform,tunit,NULL,&status);
 
-  lic_write=(lint *)malloc(n_halos*sizeof(lint));
+  lic_write = (lint *) my_malloc(n_halos*sizeof(lint));
   if(lic_write==NULL)
     mm_msg_abort(123,"Out of memory\n");
   for(ii=0;ii<n_halos;ii++)  //IDs
@@ -170,9 +170,9 @@ void write_halos_fits(char *fname,lint n_halos,FoFHalo *fhal){
 #else //MATCHMAKER_LONGINT
   fits_write_col(fptr,TINT,1 ,1,1,n_halosl,lic_write,&status);
 #endif //MATCHMAKER_LONGINT
-  free(lic_write);
+  my_free(lic_write);
 
-  ic_write=(int *)malloc(n_halos*sizeof(int));
+  ic_write = (int *) my_malloc(n_halos*sizeof(int));
   if(ic_write==NULL)
     mm_msg_abort(123,"Out of memory\n");
   for(ii=0;ii<n_halos;ii++)  {
@@ -181,9 +181,9 @@ void write_halos_fits(char *fname,lint n_halos,FoFHalo *fhal){
       mm_msg_abort(123,"WTF\n");
   }
   fits_write_col(fptr,TINT,2 ,1,1,n_halosl,ic_write,&status);
-  free(ic_write);
+  my_free(ic_write);
 
-  fc_write=(float *)malloc(n_halos*sizeof(float));
+  fc_write = (float *) my_malloc(n_halos*sizeof(float));
   if(fc_write==NULL)
     mm_msg_abort(123,"Out of memory\n");
   for(ii=0;ii<n_halos;ii++) //Mass
@@ -267,7 +267,7 @@ void write_halos_fits(char *fname,lint n_halos,FoFHalo *fhal){
   for(ii=0;ii<n_halos;ii++) //ECz
     fc_write[ii]=(float)(fhal[ii].ec[2]);
   fits_write_col(fptr,TFLOAT,29,1,1,n_halosl,fc_write,&status);
-  free(fc_write);
+  my_free(fc_write);
   fits_close_file(fptr,&status);
 #else
   mm_msg_abort(123, "Error: MatchMaker not compiled with FITS! Try a different output-format!\n");
@@ -306,7 +306,7 @@ static void write_halos_pernode(lint n_halos,FoFHalo *fhal){
   sprintf(prefix,"%s.%d",Param.output_prefix,Param.i_node);
   write_halos_multi(prefix,n_halos,fhal,n_halos_total);
 
-  free(fhal);
+  my_free(fhal);
 }
 
 static void write_halos_root(lint n_halos,FoFHalo *fhal){
@@ -319,10 +319,10 @@ static void write_halos_root(lint n_halos,FoFHalo *fhal){
   FoFHalo *fh_tot=NULL;
 
   if(Param.i_node==0) {
-    n_halos_array=malloc(Param.n_nodes*sizeof(int));
+    n_halos_array = my_malloc(Param.n_nodes*sizeof(int));
     if(n_halos_array==NULL)
       mm_msg_abort(123,"Out of memory\n");
-    n_disp_array=malloc(Param.n_nodes*sizeof(int));
+    n_disp_array = my_malloc(Param.n_nodes*sizeof(int));
     if(n_disp_array==NULL)
       mm_msg_abort(123,"Out of memory\n");
   }
@@ -345,20 +345,20 @@ static void write_halos_root(lint n_halos,FoFHalo *fhal){
     for(ii=1;ii<Param.n_nodes;ii++)
       n_disp_array[ii]=n_disp_array[ii-1]+n_halos_array[ii-1];
 
-    fh_tot=malloc(n_halos_total*sizeof(FoFHalo));
+    fh_tot = my_malloc(n_halos_total*sizeof(FoFHalo));
     if(fh_tot==NULL)
       mm_msg_abort(123,"Failed to allocate memory for all halos\n");
   }
   MPI_Gatherv(fhal,n_halos_here,HaloMPI,
       fh_tot,n_halos_array,n_disp_array,HaloMPI,
       0,MPI_COMM_WORLD);
-  free(fhal);
+  my_free(fhal);
 
   if(Param.i_node==0) {
     char prefix[256];
 
-    free(n_halos_array);
-    free(n_disp_array);
+    my_free(n_halos_array);
+    my_free(n_disp_array);
 
     //Sort by mass
     qsort(fh_tot,n_halos_total,sizeof(FoFHalo),compare_halo);
@@ -366,7 +366,7 @@ static void write_halos_root(lint n_halos,FoFHalo *fhal){
     sprintf(prefix,"%s",Param.output_prefix);
     write_halos_multi(prefix,n_halos_total,fh_tot,(long)n_halos_total);
 
-    free(fh_tot);
+    my_free(fh_tot);
   }
 
   mm_msg_printf(" Done\n\n");

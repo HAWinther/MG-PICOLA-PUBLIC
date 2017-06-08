@@ -1,5 +1,6 @@
 #ifndef NEWCOSMOINC
 #define NEWCOSMOINC
+#include "user_defined_functions.h"
 
 //==========================================================================//
 //                                                                          //
@@ -14,16 +15,6 @@
 // Below d/dy = Q(a) d/da                                                   //
 //                                                                          //
 //==========================================================================//
-
-// Some useful functions
-#define MIN(x,y) ((x) < (y) ? (y) : (x))
-#define MAX(x,y) ((x) > (y) ? (x) : (y))
-#define pow2(x)  ((x)*(x))
-#define pow3(x)  ((x)*(x)*(x))
-#define pow4(x)  ((x)*(x)*(x)*(x))
-#define pow5(x)  ((x)*(x)*(x)*(x)*(x))
-
-#include "user_defined_functions.h"
 
 // Accuracy parameters for numerical integration
 #define MY_GSL_HSTART  1.0e-7
@@ -111,9 +102,9 @@ void compute_phi_of_a(){
   F.function = &integrand_phiofa;
   gsl_integration_workspace * w = gsl_integration_workspace_alloc(1000);
 
-  double *x_arr   = malloc(npts * sizeof(double));
-  double *phi_arr = malloc(npts * sizeof(double));
-  double *err_arr = malloc(npts * sizeof(double));
+  double *x_arr   = my_malloc(npts * sizeof(double));
+  double *phi_arr = my_malloc(npts * sizeof(double));
+  double *err_arr = my_malloc(npts * sizeof(double));
 
   phi_arr[0] = phi_ini;
   x_arr[0] = xmin;
@@ -149,9 +140,9 @@ void compute_phi_of_a(){
 
   // Free up memory
   gsl_integration_workspace_free (w);
-  free(x_arr);
-  free(phi_arr);
-  free(err_arr);
+  my_free(x_arr);
+  my_free(phi_arr);
+  my_free(err_arr);
 }
 
 //================================================
@@ -386,23 +377,23 @@ void solve_for_growth_factors(){
   const int debug_show_comparison_to_fitting_func = 0;
 
   // Allocate arrays for growth-factors
-  double *x_arr            = malloc(sizeof(double) * npts);
+  double *x_arr            = my_malloc(sizeof(double) * npts);
 
   // Modified gravity arrays
-  double *D_arr            = malloc(sizeof(double) * npts);
-  double *dDdy_arr         = malloc(sizeof(double) * npts);
-  double *ddDddy_arr       = malloc(sizeof(double) * npts);
-  double *D2_arr           = malloc(sizeof(double) * npts);
-  double *dD2dy_arr        = malloc(sizeof(double) * npts);
-  double *ddD2ddy_arr      = malloc(sizeof(double) * npts);
+  double *D_arr            = my_malloc(sizeof(double) * npts);
+  double *dDdy_arr         = my_malloc(sizeof(double) * npts);
+  double *ddDddy_arr       = my_malloc(sizeof(double) * npts);
+  double *D2_arr           = my_malloc(sizeof(double) * npts);
+  double *dD2dy_arr        = my_malloc(sizeof(double) * npts);
+  double *ddD2ddy_arr      = my_malloc(sizeof(double) * npts);
 
   // LCDM arrays
-  double *DLCDM_arr        = malloc(sizeof(double) * npts);
-  double *dDLCDMdy_arr     = malloc(sizeof(double) * npts);
-  double *ddDLCDMddy_arr   = malloc(sizeof(double) * npts);
-  double *D2LCDM_arr       = malloc(sizeof(double) * npts);
-  double *dD2LCDMdy_arr    = malloc(sizeof(double) * npts);
-  double *ddD2LCDMddy_arr  = malloc(sizeof(double) * npts);
+  double *DLCDM_arr        = my_malloc(sizeof(double) * npts);
+  double *dDLCDMdy_arr     = my_malloc(sizeof(double) * npts);
+  double *ddDLCDMddy_arr   = my_malloc(sizeof(double) * npts);
+  double *D2LCDM_arr       = my_malloc(sizeof(double) * npts);
+  double *dD2LCDMdy_arr    = my_malloc(sizeof(double) * npts);
+  double *ddD2LCDMddy_arr  = my_malloc(sizeof(double) * npts);
 
   //=======================================================================
   // First order equation we solve below:
@@ -424,7 +415,7 @@ void solve_for_growth_factors(){
   //=======================================================================
 
   // Set up ODE system
-  double k_value = 0.0;
+  double k_value = 1e-3;
   gsl_odeiv2_system sys_D       = {ode_growth_D,     NULL, 4, &k_value};
   gsl_odeiv2_system sys_DLCDM   = {ode_growth_DLCDM, NULL, 4, &k_value};
   gsl_odeiv2_driver * ode_D     = gsl_odeiv2_driver_alloc_y_new (&sys_D,     gsl_odeiv2_step_rk2, MY_GSL_HSTART, MY_GSL_EPS, MY_GSL_REL);
@@ -573,23 +564,23 @@ void solve_for_growth_factors(){
   }
 
   // Free up modified gravity arrays
-  free(D_arr);
-  free(dDdy_arr);
-  free(ddDddy_arr);
-  free(D2_arr);
-  free(dD2dy_arr);
-  free(ddD2ddy_arr);
+  my_free(D_arr);
+  my_free(dDdy_arr);
+  my_free(ddDddy_arr);
+  my_free(D2_arr);
+  my_free(dD2dy_arr);
+  my_free(ddD2ddy_arr);
 
   // Free up LCDM arrays
-  free(DLCDM_arr);
-  free(dDLCDMdy_arr);
-  free(ddDLCDMddy_arr);
-  free(D2LCDM_arr);
-  free(dD2LCDMdy_arr);
-  free(ddD2LCDMddy_arr);
+  my_free(DLCDM_arr);
+  my_free(dDLCDMdy_arr);
+  my_free(ddDLCDMddy_arr);
+  my_free(D2LCDM_arr);
+  my_free(dD2LCDMdy_arr);
+  my_free(ddD2LCDMddy_arr);
 
   // Free up x-array
-  free(x_arr);
+  my_free(x_arr);
 
 #ifdef SCALEDEPENDENT
 
@@ -602,7 +593,7 @@ void solve_for_growth_factors(){
   //==================================================
   // 
   // check_error_approx();
-  // exit(1);
+  // MPI_Abort(MPI_COMM_WORLD,1); exit(1);
   //
   //==================================================
 
@@ -756,14 +747,14 @@ void calculate_scale_dependent_growth_factor(){
   const int    nk   = 1000;
 
   // Allocate memory
-  double *logk_arr    = malloc(sizeof(double) * nk);
-  double *x_arr       = malloc(sizeof(double) * npts);
-  double *D_k_x       = malloc(sizeof(double) * npts * nk);
-  double *dDdy_k_x    = malloc(sizeof(double) * npts * nk);
-  double *ddDddy_k_x  = malloc(sizeof(double) * npts * nk);
-  double *D2_k_x      = malloc(sizeof(double) * npts * nk);
-  double *dD2dy_k_x   = malloc(sizeof(double) * npts * nk);
-  double *ddD2ddy_k_x = malloc(sizeof(double) * npts * nk);
+  double *logk_arr    = my_malloc(sizeof(double) * nk);
+  double *x_arr       = my_malloc(sizeof(double) * npts);
+  double *D_k_x       = my_malloc(sizeof(double) * npts * nk);
+  double *dDdy_k_x    = my_malloc(sizeof(double) * npts * nk);
+  double *ddDddy_k_x  = my_malloc(sizeof(double) * npts * nk);
+  double *D2_k_x      = my_malloc(sizeof(double) * npts * nk);
+  double *dD2dy_k_x   = my_malloc(sizeof(double) * npts * nk);
+  double *ddD2ddy_k_x = my_malloc(sizeof(double) * npts * nk);
 
   // Define logk-array
   for(int i = 0; i < nk; i++)
@@ -815,12 +806,12 @@ void calculate_scale_dependent_growth_factor(){
   Create_GSL_2D_Spline(&SplineContainer.ddD2ddy_of_scale_spline, x_arr, logk_arr, ddD2ddy_k_x, npts, nk);
 
   // Output some info about the splines
-  if(ThisTask == 0 && modified_gravity_active){
+  if(ThisTask == 0 && modified_gravity_active && !use_lcdm_growth_factors){
     printf("\n===============================================\n");
     printf("Scale-dependent growth-factor relative to LCDM: \n");
     printf("===============================================\n");
     double anow = 1.0;
-    for(int k = 0; k < nk; k+=50){
+    for(int k = 0; k < nk; k+=100){
       double know = exp( log(kmin) + log(kmax/kmin) * k/(double)(nk-1) );
       double dnow  = Lookup_GSL_2D_Spline(&SplineContainer.D_of_scale_spline,  log(anow), log(know)) 
                    / Lookup_GSL_Spline(&SplineContainer.DLCDM_spline,          log(anow));
@@ -830,7 +821,7 @@ void calculate_scale_dependent_growth_factor(){
                            / pow2( Lookup_GSL_2D_Spline(&SplineContainer.D_of_scale_spline,  log(anow), log(know)) );
       printf("k = %8.3f h/Mpc  a = 1 at D / DLCDM           = %8.3f   D2 / D2LCDM           = %8.3f   D2 / ( - 3/7 D1^2 ) = %8.3f\n", know, dnow, d2now, ratio);
     }
-    for(int k = 0; k < nk; k+=50){
+    for(int k = 0; k < nk; k+=100){
       double know = exp( log(kmin) + log(kmax/kmin) * k/(double)(nk-1) );
       double  dnow = Lookup_GSL_2D_Spline(&SplineContainer.dDdy_of_scale_spline,  log(anow), log(know)) 
                    / Lookup_GSL_Spline(&SplineContainer.dDLCDMdy_spline,          log(anow));
@@ -838,7 +829,7 @@ void calculate_scale_dependent_growth_factor(){
                    / Lookup_GSL_Spline(&SplineContainer.dD2LCDMdy_spline,         log(anow));
       printf("k = %8.3f h/Mpc  a = 1 at dDdy / dDLCDMdy     = %8.3f   dD2dy / dD2LCDMdy     = %8.3f\n", know, dnow, d2now);
     }
-    for(int k = 0; k < nk; k+=50){
+    for(int k = 0; k < nk; k+=100){
       double know = exp( log(kmin) + log(kmax/kmin) * k/(double)(nk-1) );
       double  dnow = Lookup_GSL_2D_Spline(&SplineContainer.ddDddy_of_scale_spline,  log(anow), log(know)) 
                    / Lookup_GSL_Spline(&SplineContainer.ddDLCDMddy_spline,          log(anow));
@@ -850,14 +841,14 @@ void calculate_scale_dependent_growth_factor(){
   }
 
   // Free up memory
-  free(x_arr);
-  free(logk_arr);
-  free(D_k_x);  
-  free(dDdy_k_x);
-  free(ddDddy_k_x);
-  free(D2_k_x);
-  free(dD2dy_k_x);
-  free(ddD2ddy_k_x);
+  my_free(x_arr);
+  my_free(logk_arr);
+  my_free(D_k_x);  
+  my_free(dDdy_k_x);
+  my_free(ddDddy_k_x);
+  my_free(D2_k_x);
+  my_free(dD2dy_k_x);
+  my_free(ddD2ddy_k_x);
 }
 
 //==================================================================================

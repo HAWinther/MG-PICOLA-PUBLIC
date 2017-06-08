@@ -76,7 +76,7 @@ void read_transfer_table(void) {
 
   if(!(fd = fopen(buf, "r"))) {
     if (ThisTask == 0) printf("\nERROR: Can't read input transfer function  in file '%s'.\n\n", buf);
-    FatalError((char *)"power.c", 76);
+    FatalError((char *)"power.c read_transfer_table, can't open T(k) file 1");
   }
   fflush(stdout);
 
@@ -96,13 +96,13 @@ void read_transfer_table(void) {
     fflush(stdout);
   }
 
-  TransferTable = (struct trans_table*)malloc(NTransferTable * sizeof(struct trans_table));
+  TransferTable = (struct trans_table*) my_malloc(NTransferTable * sizeof(struct trans_table));
 
   sprintf(buf, FileWithInputTransfer);
 
   if(!(fd = fopen(buf, "r"))) {
     if (ThisTask == 0) printf("\nERROR: Can't read input transfer function in file '%s'.\n\n", buf);
-    FatalError((char *)"power.c", 101);
+    FatalError((char *)"power.c read_transfer_table, can't open T(k) file 2");
   }
   fflush(stdout);
 
@@ -151,7 +151,7 @@ void read_transfer_table(void) {
 // Frees the memory allocated for the tabulated Transfer function (if necessary)
 //==============================================================================
 void free_transfertable(void) {
-  if(WhichTransfer == 1 && TransferTable != NULL) free(TransferTable);
+  if(WhichTransfer == 1 && TransferTable != NULL) my_free(TransferTable);
 }
 
 //======================================================================
@@ -209,7 +209,7 @@ double TransferFunc_Tabulated(double k) {
 
   dlogk = TransferTable[binhigh].logk - TransferTable[binlow].logk;
 
-  if(dlogk == 0) FatalError((char *)"power.c", 205);
+  if(dlogk == 0) FatalError((char *)"power.c: TransferFunc_Tabulated dlogk = 0");
 
   u = (logk - TransferTable[binlow].logk) / dlogk;
 
@@ -269,7 +269,7 @@ void read_power_table(void) {
 
   if(!(fd = fopen(buf, "r"))) {
     if (ThisTask == 0) printf("\nERROR: Can't read input power spectrum in file '%s'.\n\n", buf);
-    FatalError((char *)"power.c", 255);
+    FatalError((char *)"power.c: read_power_table, can't open P(k) file 1");
   }
   fflush(stdout);
 
@@ -289,13 +289,13 @@ void read_power_table(void) {
     fflush(stdout);
   }
 
-  PowerTable = (struct pow_table *)malloc(NPowerTable * sizeof(struct pow_table));
+  PowerTable = (struct pow_table *) my_malloc(NPowerTable * sizeof(struct pow_table));
 
   sprintf(buf, FileWithInputSpectrum);
 
   if(!(fd = fopen(buf, "r"))) {
     if (ThisTask == 0) printf("\nERROR: Can't read input power spectrum in file '%s'.\n\n", buf);
-    FatalError((char *)"power.c", 280);
+    FatalError((char *)"power.c: read_power_table, can't open P(k) file 2");
   }
   fflush(stdout);
 
@@ -325,7 +325,7 @@ void read_power_table(void) {
 
   if((kmin > k_fundamental) || (kmax < k_Nyquist)) {
     if (ThisTask == 0) printf("\nERROR: [kmin, kmax] = [%lf,%lf] h/Mpc are not sufficient to cover [k_fundamental, k_nyquist] = [%lf,%lf] h/Mpc.\n\n",kmin,kmax,k_fundamental,k_Nyquist);
-    //FatalError((char *)"power.c", 309);
+    FatalError((char *)"power.c: k-range in input spectrum not large enough");
   }
 
   // Sort by k
@@ -355,7 +355,7 @@ void read_power_table(void) {
 // Frees the memory allocated for the tabulated Power Spectrum (if necessary)
 //==============================================================================
 void free_powertable(void) {
-  if(WhichSpectrum == 1 && PowerTable != NULL) free(PowerTable);
+  if(WhichSpectrum == 1 && PowerTable != NULL) my_free(PowerTable);
 }
 
 //===================================================================
@@ -421,7 +421,7 @@ double PowerSpec_Tabulated(double k) {
 
   dlogk = PowerTable[binhigh].logk - PowerTable[binlow].logk;
 
-  if(dlogk == 0) FatalError((char *)"power.c", 400);
+  if(dlogk == 0) FatalError((char *)"power.c: PowerSpec_Tabulated dlogk = 0");
 
   u = (logk - PowerTable[binlow].logk) / dlogk;
 

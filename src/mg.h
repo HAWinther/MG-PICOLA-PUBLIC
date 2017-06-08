@@ -392,8 +392,8 @@ void CopyDensityArray(){
 
 void AllocateMGArrays(){
   if(allocate_mg_arrays){
-    mgarray_one       = (float_kind *)   malloc(2 * Total_size * sizeof(float_kind));
-    mgarray_two       = (float_kind *)   malloc(2 * Total_size * sizeof(float_kind));
+    mgarray_one       = (float_kind *)   my_malloc(2 * Total_size * sizeof(float_kind));
+    mgarray_two       = (float_kind *)   my_malloc(2 * Total_size * sizeof(float_kind));
     P3D_mgarray_one   = (complex_kind *) mgarray_one;
     P3D_mgarray_two   = (complex_kind *) mgarray_two;
     plan_mg_phinewton = my_fftw_mpi_plan_dft_c2r_3d(Nmesh, Nmesh, Nmesh, P3D_mgarray_one, mgarray_one,     MPI_COMM_WORLD, FFTW_ESTIMATE);
@@ -408,8 +408,8 @@ void AllocateMGArrays(){
 
 void FreeMGArrays(){
   if(allocate_mg_arrays){
-    free(mgarray_one);
-    free(mgarray_two);
+    my_free(mgarray_one);
+    my_free(mgarray_two);
     my_fftw_destroy_plan(plan_mg_phinewton);
     my_fftw_destroy_plan(plan_mg_phik);
   }
@@ -425,7 +425,7 @@ void FreeMGArrays(){
 void ComputeFifthForce_GradientScreening(){
 
   // Make temp array to store density
-  float_kind *density_temp = malloc(sizeof(float_kind)*Total_size);
+  float_kind *density_temp = my_malloc(2 * sizeof(float_kind) * Total_size);
   for(unsigned int i = 0; i < 2*Total_size; i++) density_temp[i] = mgarray_two[i];
 
   for(unsigned int i = 0; i < 2*Total_size; i++) mgarray_two[i] = 0.0;
@@ -446,7 +446,7 @@ void ComputeFifthForce_GradientScreening(){
   // effective density
   for(unsigned int i = 0; i < 2*Total_size; i++) 
     mgarray_two[i] = coupling_function(aexp_global) * density_temp[i] * screening_factor_gradient(aexp_global, mgarray_one[i]);
-  free(density_temp);
+  my_free(density_temp);
 
   my_fftw_execute(plan_mg_phik);
 }

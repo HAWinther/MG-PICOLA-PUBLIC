@@ -630,12 +630,12 @@ void ReadFilesMakeDisplacementField(void){
   }
 
   // Allocate read buffer
-  char *buffer   = malloc(3*sizeof(double)*maxpart);
+  char *buffer   = my_malloc(3*sizeof(double)*maxpart);
   float *pos_flt = (float *)  buffer;
   double *pos    = (double *) buffer;
   
   // Initialize density array and FFT plan
-  density = malloc(2*Total_size*sizeof(float_kind));
+  density = my_malloc(2*Total_size*sizeof(float_kind));
   P3D  = (complex_kind *) density;
   for(unsigned int i = 0; i < 2*Total_size; i++) density[i] = -1.0;
   plan = my_fftw_mpi_plan_dft_r2c_3d(Nmesh, Nmesh, Nmesh, density, P3D, MPI_COMM_WORLD, FFTW_ESTIMATE);
@@ -686,17 +686,17 @@ void ReadFilesMakeDisplacementField(void){
   }
 
   // Clean up
-  free(buffer);
+  my_free(buffer);
 
   // Copy across the extra slice from the task on the left and add it to the leftmost slice
   // of the task on the right. Skip over tasks without any slices.
-  float_kind * temp_density = (float_kind *)calloc(2*alloc_slice,sizeof(float_kind));
+  float_kind * temp_density = (float_kind *)my_calloc(2*alloc_slice,sizeof(float_kind));
   ierr = MPI_Sendrecv(&(density[2*last_slice]),2*alloc_slice*sizeof(float_kind),MPI_BYTE,RightTask,0,
       &(temp_density[0]),2*alloc_slice*sizeof(float_kind),MPI_BYTE,LeftTask,0,MPI_COMM_WORLD,&status);
   if (NumPart_local != 0) {
     for (int i = 0; i < 2*alloc_slice; i++) density[i] += (temp_density[i]+1.0);
   }
-  free(temp_density);
+  my_free(temp_density);
 
   // Check density field
   // check_realgrid(density, "density-field");

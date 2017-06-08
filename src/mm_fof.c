@@ -184,7 +184,12 @@ static int get_neighbors(lint ip0,Cell *cll,Particle *p,lint fof_id)
 
 static Cell *gather_particles_in_cells(Particles *particles) {
   lint i;
-  Cell *cll=malloc(Ngrid_tot*sizeof(Cell));
+
+  if(Param.i_node == 0){
+    printf(" Allocated memory per task: [%6.3f] MB (particles) [%6.3f] MB (grid)\n", (particles->np_toleft+particles->np_local)*sizeof(Particle)/1e6, Ngrid_tot*sizeof(Cell)/1e6);
+  }
+
+  Cell *cll = my_malloc(Ngrid_tot*sizeof(Cell));
   if(cll==NULL)
     mm_msg_abort(123,"Failed to allocate memory for NGBS cells\n");
 
@@ -285,6 +290,7 @@ static Cell *gather_particles_in_cells(Particles *particles) {
     }
   }
 
+  // NB: We don't use [my_malloc] here as this is too slow
   for(i=0;i<Ngrid_tot;i++) {
     lint np_in=cll[i].np_in;
     lint np_out=cll[i].np_out;
@@ -401,13 +407,13 @@ static FoFGroup *assign_particles_to_fof(Particles *particles,Cell *cll,lint *n_
   lint n_fof=1;
   Particle *p=particles->p;
 
-  ids_new=(lint *)malloc(N_IDS_NEW_MAX*sizeof(lint));
+  ids_new=(lint *)my_malloc(N_IDS_NEW_MAX*sizeof(lint));
   if(ids_new==NULL)
     mm_msg_abort(123,"Out of memory\n");
-  ids_old=(lint *)malloc(N_IDS_NEW_MAX*sizeof(lint));
+  ids_old=(lint *)my_malloc(N_IDS_NEW_MAX*sizeof(lint));
   if(ids_old==NULL)
     mm_msg_abort(123,"Out of memory\n");
-  ids_single=(lint *)malloc(N_IDS_NEW_MAX*sizeof(lint));
+  ids_single=(lint *)my_malloc(N_IDS_NEW_MAX*sizeof(lint));
   if(ids_single==NULL)
     mm_msg_abort(123,"Out of memory\n");
   //Do FoF
@@ -434,21 +440,21 @@ static FoFGroup *assign_particles_to_fof(Particles *particles,Cell *cll,lint *n_
     }
   }
   n_fof--;
-  free(ids_single);
-  free(ids_new);
-  free(ids_old);
+  my_free(ids_single);
+  my_free(ids_new);
+  my_free(ids_old);
 
-  //Free memory from cells
+  // Free memory from cells
   for(i=0;i<Ngrid_tot;i++) {
     if(cll[i].np_in>0)
       free(cll[i].ids_in);
     if(cll[i].np_out>0)
       free(cll[i].ids_out);
   }
-  free(cll);
+  my_free(cll);
 
   //Allocate FoF groups
-  FoFGroup *fof=malloc(n_fof*sizeof(FoFGroup));
+  FoFGroup *fof=my_malloc(n_fof*sizeof(FoFGroup));
   if(fof==NULL)
     mm_msg_abort(123,"Unable to allocate memory for FoF groups\n");
   for(i=0;i<n_fof;i++)
@@ -482,7 +488,7 @@ static FoFGroup *assign_particles_to_fof(Particles *particles,Cell *cll,lint *n_
     int np=fof[i].np;
     if(np>0) {
       n_fof_true++;
-      fof[i].ids=malloc(np*sizeof(lint));
+      fof[i].ids=my_malloc(np*sizeof(lint));
       if(fof[i].ids==NULL)
         mm_msg_abort(123,"Failed to allocate memory for particle ids in FoF groups\n");
       fof[i].np=0;
@@ -548,7 +554,7 @@ static FoFHalo *get_halos(lint *n_halos_out,lint n_fof,FoFGroup *fg,Particles *p
       Param.i_node,(long)n_fof,(long)n_halos,Param.np_min);
 #endif //MATCHMAKER_DEBUG  
 
-  fh=malloc(n_halos*sizeof(FoFHalo));
+  fh=my_malloc(n_halos*sizeof(FoFHalo));
   if(fh==NULL)
     mm_msg_abort(123,"Unable to allocate memory for halos\n");  
 
@@ -709,9 +715,9 @@ static FoFHalo *get_halos(lint *n_halos_out,lint n_fof,FoFGroup *fg,Particles *p
 
   for(i=0;i<n_fof;i++) {
     if(fg[i].np>0)
-      free(fg[i].ids);
+      my_free(fg[i].ids);
   }
-  free(fg);
+  my_free(fg);
 
   gsl_matrix_free(inertia);
   gsl_matrix_free(evec);

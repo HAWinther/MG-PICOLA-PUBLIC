@@ -39,6 +39,7 @@ int LeftTask;         // The first neighbouring task on the left containing part
 int RightTask;        // The first neighbouring task on the right containing particles
 MPI_Status status;    // The MPI error status
 MPI_Request request;  // The continue directive for non-blocking sends
+MPI_Datatype PartDataMPIType;
 
 //===================================================
 // Global variables for the grids
@@ -96,12 +97,11 @@ int allocate_mg_arrays;           // This is usually 1 if we run with MG, howeve
                                   // extra arrays, e.g. for simple Geff(a) models, so it's useful to have a flag for this
 
 #ifdef MASSIVE_NEUTRINOS
-complex_kind *delta_nu_store;
+int    nu_include_massive_neutrinos;
 double nu_SumMassNuEV;
+char   nu_FilenameTransferInfofile[500];
 double OmegaNu;
 double OmegaCDM;
-int    nu_include_massive_neutrinos;
-char   nu_FilenameTransferInfofile[500];
 #endif
 
 #if defined(EQUATIONOFSTATE_PARAMETRIZATION)
@@ -184,15 +184,13 @@ double sumDxyz[3];
 
 #ifdef SCALEDEPENDENT
 
-// Stored 1LPT displacment scalar in k-space at z = 0 
-complex_kind *(cdisp_store[3]);
-float_kind *(disp_store[3]);
+// Contains the initial density and 2LPT equivalent in fourier space
+// Availiable after IC generation till program exit
+complex_kind *cdelta_cdm;
+complex_kind *cdelta_cdm2;
 
-// Stored 2LPT displacment scalar in k-space at z = 0 
-complex_kind *(cdisp2_store[3]);
-float_kind *(disp2_store[3]);
-
-// Temporary fields needed to compute growth-factors
+// Temporary grids needed to compute growth-factors
+// Allocated and deallocated as we go along
 float_kind *ZA_D[3];
 float_kind *disp_D[3];
 

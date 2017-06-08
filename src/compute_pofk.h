@@ -91,12 +91,12 @@ void compute_power_spectrum(complex_kind *dens_k, double a, char *label){
   // Sanity checks. Adjust parameters to sane values
   adjust_pofk_parameters(&nbins, &bintype, &subtract_shotnoise, &kmin, &kmax);
 
-  double *pofk_bin     = malloc(sizeof(double) * nbins);
-  double *pofk_bin_all = malloc(sizeof(double) * nbins);
-  double *n_bin        = malloc(sizeof(double) * nbins);
-  double *n_bin_all    = malloc(sizeof(double) * nbins);
-  double *k_bin        = malloc(sizeof(double) * nbins);
-  double *k_bin_all    = malloc(sizeof(double) * nbins);
+  double *pofk_bin     = my_malloc(sizeof(double) * nbins);
+  double *pofk_bin_all = my_malloc(sizeof(double) * nbins);
+  double *n_bin        = my_malloc(sizeof(double) * nbins);
+  double *n_bin_all    = my_malloc(sizeof(double) * nbins);
+  double *k_bin        = my_malloc(sizeof(double) * nbins);
+  double *k_bin_all    = my_malloc(sizeof(double) * nbins);
 
   for(int i = 0; i < nbins; i++){
     pofk_bin[i] = pofk_bin_all[i] = 0.0;
@@ -249,12 +249,12 @@ void compute_power_spectrum(complex_kind *dens_k, double a, char *label){
   }
 
   // Free memory
-  free(pofk_bin);
-  free(pofk_bin_all);
-  free(n_bin);
-  free(n_bin_all);
-  free(k_bin);
-  free(k_bin_all);
+  my_free(pofk_bin);
+  my_free(pofk_bin_all);
+  my_free(n_bin);
+  my_free(n_bin_all);
+  my_free(k_bin);
+  my_free(k_bin_all);
   timer_stop(_PofkComputation);
 }
 
@@ -369,13 +369,13 @@ void PtoMesh_RSD(float_kind *dens, int axis, double A) {
   // of the task on the right. Skip over tasks without any slices.
   //====================================================================================
 
-  float_kind * temp_density = (float_kind *)calloc(2*alloc_slice,sizeof(float_kind));
+  float_kind * temp_density = (float_kind *) my_calloc(2*alloc_slice,sizeof(float_kind));
   ierr = MPI_Sendrecv(&(dens[2*last_slice]),2*alloc_slice*sizeof(float_kind),MPI_BYTE,RightTask,0,
       &(temp_density[0]),2*alloc_slice*sizeof(float_kind),MPI_BYTE,LeftTask,0,MPI_COMM_WORLD,&status);
   if (NumPart != 0) {
     for (i = 0; i < 2 * alloc_slice; i++) dens[i] += (temp_density[i] + 1.0);
   }
-  free(temp_density);
+  my_free(temp_density);
 
   return;
 }
@@ -399,8 +399,8 @@ void compute_RSD_powerspectrum(double A, int dDdy_set_in_particles){
   if( UseCOLA && ! dDdy_set_in_particles){
     // Make a copy of the displacment-field [dDdy] which contains [deltaD]
     // and recompute it to give dDdy which we need to set velocites below
-    tmp_buffer_D1 = malloc(sizeof(float) * NumPart * 3);
-    tmp_buffer_D2 = malloc(sizeof(float) * NumPart * 3);
+    tmp_buffer_D1 = my_malloc(sizeof(float) * NumPart * 3);
+    tmp_buffer_D2 = my_malloc(sizeof(float) * NumPart * 3);
     for(int i = 0; i < NumPart; i++){
       for(int axes = 0; axes < 3; axes++){
         tmp_buffer_D1[3*i + axes] = P[i].dDdy[axes];
@@ -417,7 +417,7 @@ void compute_RSD_powerspectrum(double A, int dDdy_set_in_particles){
 #endif
 
   // Allocate memory for density grid 
-  float_kind *dens = malloc(2 * Total_size * sizeof(float_kind));
+  float_kind *dens = my_malloc(2 * Total_size * sizeof(float_kind));
   complex_kind *dens_k = (complex_kind *) dens;
   plan_kind densplan = my_fftw_mpi_plan_dft_r2c_3d(Nmesh, Nmesh, Nmesh, dens, dens_k, MPI_COMM_WORLD, FFTW_ESTIMATE);
 
@@ -467,19 +467,19 @@ void compute_RSD_powerspectrum(double A, int dDdy_set_in_particles){
   }
 
   // Clean up
-  free(pofk_data_y.n);
-  free(pofk_data_y.k);
-  free(pofk_data_y.P0);
-  free(pofk_data_y.P2);
-  free(pofk_data_y.P4);
+  my_free(pofk_data_y.n );
+  my_free(pofk_data_y.k );
+  my_free(pofk_data_y.P0);
+  my_free(pofk_data_y.P2);
+  my_free(pofk_data_y.P4);
 
-  free(pofk_data_z.n);
-  free(pofk_data_z.k);
-  free(pofk_data_z.P0);
-  free(pofk_data_z.P2);
-  free(pofk_data_z.P4);
+  my_free(pofk_data_z.n );
+  my_free(pofk_data_z.k );
+  my_free(pofk_data_z.P0);
+  my_free(pofk_data_z.P2);
+  my_free(pofk_data_z.P4);
   
-  free(dens);
+  my_free(dens);
   my_fftw_destroy_plan(densplan);
 
 #ifdef SCALEDEPENDENT
@@ -491,8 +491,8 @@ void compute_RSD_powerspectrum(double A, int dDdy_set_in_particles){
         P[i].dD2dy[axes] = tmp_buffer_D2[3*i + axes];
       }
     }
-    free(tmp_buffer_D1);
-    free(tmp_buffer_D2);
+    my_free(tmp_buffer_D1);
+    my_free(tmp_buffer_D2);
   }
 #endif
 
@@ -537,16 +537,16 @@ void bin_up_RSD_power_spectrum(complex_kind *dens_k, struct RSD_Pofk_Data *pofk_
   // Sanity checks. Adjust parameters to sane values
   adjust_pofk_parameters(&nbins, &bintype, &subtract_shotnoise, &kmin, &kmax);
 
-  double *pofk0_bin     = malloc(sizeof(double) * nbins);
-  double *pofk2_bin     = malloc(sizeof(double) * nbins);
-  double *pofk4_bin     = malloc(sizeof(double) * nbins);
-  double *pofk0_bin_all = malloc(sizeof(double) * nbins);
-  double *pofk2_bin_all = malloc(sizeof(double) * nbins);
-  double *pofk4_bin_all = malloc(sizeof(double) * nbins);
-  double *n_bin         = malloc(sizeof(double) * nbins);
-  double *n_bin_all     = malloc(sizeof(double) * nbins);
-  double *k_bin         = malloc(sizeof(double) * nbins);
-  double *k_bin_all     = malloc(sizeof(double) * nbins);
+  double *pofk0_bin     = my_malloc(sizeof(double) * nbins);
+  double *pofk2_bin     = my_malloc(sizeof(double) * nbins);
+  double *pofk4_bin     = my_malloc(sizeof(double) * nbins);
+  double *pofk0_bin_all = my_malloc(sizeof(double) * nbins);
+  double *pofk2_bin_all = my_malloc(sizeof(double) * nbins);
+  double *pofk4_bin_all = my_malloc(sizeof(double) * nbins);
+  double *n_bin         = my_malloc(sizeof(double) * nbins);
+  double *n_bin_all     = my_malloc(sizeof(double) * nbins);
+  double *k_bin         = my_malloc(sizeof(double) * nbins);
+  double *k_bin_all     = my_malloc(sizeof(double) * nbins);
 
   for(int i = 0; i < nbins; i++){
     pofk0_bin[i] = pofk0_bin_all[i] = 0.0;
@@ -714,11 +714,11 @@ void bin_up_RSD_power_spectrum(complex_kind *dens_k, struct RSD_Pofk_Data *pofk_
 
   // Copy over the results
   pofk_data->nbins = nbins;
-  pofk_data->n  = malloc(sizeof(double)*nbins);
-  pofk_data->k  = malloc(sizeof(double)*nbins);
-  pofk_data->P0 = malloc(sizeof(double)*nbins);
-  pofk_data->P2 = malloc(sizeof(double)*nbins);
-  pofk_data->P4 = malloc(sizeof(double)*nbins);
+  pofk_data->n  = my_malloc(sizeof(double)*nbins);
+  pofk_data->k  = my_malloc(sizeof(double)*nbins);
+  pofk_data->P0 = my_malloc(sizeof(double)*nbins);
+  pofk_data->P2 = my_malloc(sizeof(double)*nbins);
+  pofk_data->P4 = my_malloc(sizeof(double)*nbins);
   for(int i = 0; i < nbins; i++){
     pofk_data->n[i]  = n_bin[i];
     pofk_data->k[i]  = k_bin[i];
@@ -728,16 +728,16 @@ void bin_up_RSD_power_spectrum(complex_kind *dens_k, struct RSD_Pofk_Data *pofk_
   }
 
   // Free memory
-  free(pofk0_bin);
-  free(pofk2_bin);
-  free(pofk4_bin);
-  free(pofk0_bin_all);
-  free(pofk2_bin_all);
-  free(pofk4_bin_all);
-  free(n_bin);
-  free(n_bin_all);
-  free(k_bin);
-  free(k_bin_all);
+  my_free(pofk0_bin);
+  my_free(pofk2_bin);
+  my_free(pofk4_bin);
+  my_free(pofk0_bin_all);
+  my_free(pofk2_bin_all);
+  my_free(pofk4_bin_all);
+  my_free(n_bin);
+  my_free(n_bin_all);
+  my_free(k_bin);
+  my_free(k_bin_all);
 }
 
 //===========================================================

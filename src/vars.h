@@ -31,6 +31,7 @@
 #include <time.h>
 #include <math.h>
 #include <stdio.h>
+#include <stddef.h>
 #include <stdlib.h>
 #include <string.h>
 
@@ -83,6 +84,7 @@ extern int LeftTask;         // The first neighbouring task on the left containi
 extern int RightTask;        // The first neighbouring task on the right containing particles
 extern MPI_Status status;    // The MPI error status
 extern MPI_Request request;  // The continue directive for non-blocking sends
+extern MPI_Datatype PartDataMPIType;
 
 //===================================================
 // Global variables for the grids
@@ -146,12 +148,11 @@ extern int input_pofk_is_for_lcdm;
 extern int allocate_mg_arrays;
 
 #ifdef MASSIVE_NEUTRINOS
-extern complex_kind *delta_nu_store;
 extern int    nu_include_massive_neutrinos;
 extern double nu_SumMassNuEV;
+extern char   nu_FilenameTransferInfofile[500];
 extern double OmegaNu;
 extern double OmegaCDM;
-extern char   nu_FilenameTransferInfofile[500];
 #endif
 
 #if defined(EQUATIONOFSTATE_PARAMETRIZATION)
@@ -261,15 +262,13 @@ extern double sumDxyz[3];
 
 #ifdef SCALEDEPENDENT
 
-// Stored 1LPT displacment scalar in k-space at z = 0 
-extern complex_kind *(cdisp_store[3]);
-extern float_kind *(disp_store[3]);
+// Contains the initial density and 2LPT equivalent in fourier space
+// Availiable after IC generation till program exit
+extern complex_kind *cdelta_cdm;
+extern complex_kind *cdelta_cdm2;
 
-// Stored 2LPT displacment scalar in k-space at z = 0 
-extern complex_kind *(cdisp2_store[3]);
-extern float_kind *(disp2_store[3]);
-
-// Temporary fields needed to compute growth-factors
+// Temporary grids needed to compute growth-factors
+// Allocated and deallocated as we go along
 extern float_kind *ZA_D[3];
 extern float_kind *disp_D[3];
 
@@ -279,7 +278,13 @@ extern float_kind *disp_D[3];
 extern float * Disp[3];    // Vectors to hold the particle displacements each timestep
 extern float * ZA[3];      // Vectors to hold the Zeldovich displacements before particle initialisation
 extern float * LPT[3];     // Vectors to hold the 2LPT displacements before particle initialisation
+#else
+extern float_kind * Disp[3];  // vectors to hold the particle displacements each timestep
+extern float_kind * ZA[3];    // Vectors to hold the Zeldovich displacements before particle initialisation
+extern float_kind * LPT[3];   // Vectors to hold the 2LPT displacements before particle initialisation
+#endif
 
+#ifdef MEMORY_MODE
 extern struct part_data { 
 #ifdef PARTICLE_ID
   unsigned long long ID;   // The Particle ID
@@ -287,58 +292,58 @@ extern struct part_data {
 
   float Pos[3];            // The position of the particle in the X, Y and Z directions
   float Vel[3];            // The velocity of the particle in the X, Y and Z directions
+  float D[3];              // The Zeldovich displacment of the particle in the X, Y and Z directions
+  float D2[3];             // The 2LPT displacment of the particle in the X, Y and Z directions
 
 #ifdef SCALEDEPENDENT
+  
+  //===================================================
+  // D is used to contain D and ddDddy
+  // D2 is used to contain D2 and ddD2ddy
+  // dDdy is used to contain dDdy and deltaD
+  // dD2dy is used to contain dD2dy and deltaD2
+  // coord_q is the original grid-index of the particle
+  // init_cpu_id is the original task id of the particle
+  //===================================================
+
+  float dDdy[3];
+  float dD2dy[3];
 
   unsigned int coord_q;
   unsigned int init_cpu_id;
-  
-  // First order displacment-vectors
-  float D[3];
-  float dDdy[3];
-  float ddDddy[3];
-  
-  // Second order displacment-vectors
-  float D2[3];
-  float dD2dy[3];
-  float ddD2ddy[3];
-
-#else
-
-  float D[3];    // The Zeldovich displacment of the particle in the X, Y and Z directions
-  float D2[3];   // The 2LPT displacment of the particle in the X, Y and Z directions
-
 #endif
 
 } *P;
 
 #else
 
-extern float_kind * Disp[3];  // vectors to hold the particle displacements each timestep
-extern float_kind * ZA[3];    // Vectors to hold the Zeldovich displacements before particle initialisation
-extern float_kind * LPT[3];   // Vectors to hold the 2LPT displacements before particle initialisation
-
 extern struct part_data {
 #ifdef PARTICLE_ID
   unsigned long long ID;      // The particle ID
 #endif
 
-  float_kind D[3];            // The Zeldovich displacment of the particle in the X, Y and Z directions
-  float_kind D2[3];           // The 2LPT displacment of the particle in the X, Y and Z directions
   float_kind Pos[3];          // The position of the particle in the X, Y and Z directions
   float_kind Vel[3];          // The velocity of the particle in the X, Y and Z directions
+  float_kind D[3];            // The Zeldovich displacment of the particle in the X, Y and Z directions
+  float_kind D2[3];           // The 2LPT displacment of the particle in the X, Y and Z directions
 
 #ifdef SCALEDEPENDENT
+  
+  //===================================================
+  // D is used to contain D and ddDddy
+  // D2 is used to contain D2 and ddD2ddy
+  // dDdy is used to contain dDdy and deltaD
+  // dD2dy is used to contain dD2dy and deltaD2
+  // coord_q is the original grid-index of the particle
+  // init_cpu_id is the original task id of the particle
+  //===================================================
+  
+  float_kind dDdy[3];
+  float_kind dD2dy[3];
+
   unsigned int coord_q;
   unsigned int init_cpu_id;
-  
-  // First order displacment-vectors
-  float_kind dDdy[3];
-  float_kind ddDddy[3];
-  
-  // Second order displacment-vectors
-  float_kind dD2dy[3];
-  float_kind ddD2ddy[3];
+
 #endif
 } *P;
 

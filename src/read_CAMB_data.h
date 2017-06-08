@@ -30,14 +30,22 @@ GSL_2D_Spline baryon_transfer_function_spline;
 GSL_2D_Spline total_transfer_function_spline;
 GSL_Spline    total_pofk_spline;
 
+void free_CAMB_splines(){
+  Free_GSL_2D_Spline(&nu_transfer_function_spline);
+  Free_GSL_2D_Spline(&cdm_transfer_function_spline);
+  Free_GSL_2D_Spline(&baryon_transfer_function_spline);
+  Free_GSL_2D_Spline(&total_transfer_function_spline);
+  Free_GSL_Spline(&total_pofk_spline);
+}
+
 void read_and_spline_transfer_functions(char *transferfileinfofilename){
 
   // Temporary memory to contain the data
-  double *transfer_function_nu_tmp     = malloc(sizeof(double)*NMAX_ROWS_TRANSFER);
-  double *transfer_function_baryon_tmp = malloc(sizeof(double)*NMAX_ROWS_TRANSFER);
-  double *transfer_function_cdm_tmp    = malloc(sizeof(double)*NMAX_ROWS_TRANSFER);
-  double *transfer_function_total_tmp  = malloc(sizeof(double)*NMAX_ROWS_TRANSFER);
-  double *logk_tmp                     = malloc(sizeof(double)*NMAX_ROWS_TRANSFER);
+  double *transfer_function_nu_tmp     = my_malloc(sizeof(double)*NMAX_ROWS_TRANSFER);
+  double *transfer_function_baryon_tmp = my_malloc(sizeof(double)*NMAX_ROWS_TRANSFER);
+  double *transfer_function_cdm_tmp    = my_malloc(sizeof(double)*NMAX_ROWS_TRANSFER);
+  double *transfer_function_total_tmp  = my_malloc(sizeof(double)*NMAX_ROWS_TRANSFER);
+  double *logk_tmp                     = my_malloc(sizeof(double)*NMAX_ROWS_TRANSFER);
 
   // Open fileinfo file
   char filepath[400];
@@ -57,7 +65,7 @@ void read_and_spline_transfer_functions(char *transferfileinfofilename){
 
   double *transfer_function_nu = NULL, *transfer_function_cdm = NULL, *logk = NULL,
          *transfer_function_baryon = NULL, *transfer_function_total = NULL;
-  double *redshifts  = malloc(sizeof(double) * nredshift);
+  double *redshifts  = my_malloc(sizeof(double) * nredshift);
   int nk = 0;
 
   // Read all files
@@ -78,11 +86,11 @@ void read_and_spline_transfer_functions(char *transferfileinfofilename){
 
     // Allocate memory
     if(i == 0){
-      transfer_function_nu     = malloc(sizeof(double) * nredshift * npts);
-      transfer_function_cdm    = malloc(sizeof(double) * nredshift * npts);
-      transfer_function_baryon = malloc(sizeof(double) * nredshift * npts);
-      transfer_function_total  = malloc(sizeof(double) * nredshift * npts);
-      logk                     = malloc(sizeof(double) * nredshift * npts);
+      transfer_function_nu     = my_malloc(sizeof(double) * nredshift * npts);
+      transfer_function_cdm    = my_malloc(sizeof(double) * nredshift * npts);
+      transfer_function_baryon = my_malloc(sizeof(double) * nredshift * npts);
+      transfer_function_total  = my_malloc(sizeof(double) * nredshift * npts);
+      logk                     = my_malloc(sizeof(double) * nredshift * npts);
       nk = npts;
     }
 
@@ -145,15 +153,16 @@ void read_and_spline_transfer_functions(char *transferfileinfofilename){
   }
 
   // Free memory
-  free(logk);
-  free(transfer_function_nu);
-  free(transfer_function_nu_tmp);
-  free(transfer_function_cdm);
-  free(transfer_function_cdm_tmp);
-  free(transfer_function_baryon);
-  free(transfer_function_baryon_tmp);
-  free(transfer_function_total);
-  free(transfer_function_total_tmp);
+  my_free(redshifts);
+  my_free(logk);
+  my_free(transfer_function_nu);
+  my_free(transfer_function_cdm);
+  my_free(transfer_function_baryon);
+  my_free(transfer_function_total);
+  my_free(transfer_function_nu_tmp);
+  my_free(transfer_function_cdm_tmp);
+  my_free(transfer_function_baryon_tmp);
+  my_free(transfer_function_total_tmp);
 }
 
 //=============================================
@@ -199,6 +208,8 @@ double get_total_transfer_function(double k, double a){
 
 //=============================================
 // Total (CDM+b+nu) power-spectrum 
+// As written this is P(k) / A_s
+// where A_s is the primordial amplitude
 //=============================================
 double get_total_power_spectrum(double k){
   return 2.0 * M_PI * M_PI * pow(get_total_transfer_function(k, 1.0), 2) * (k * HubbleParam) 
