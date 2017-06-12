@@ -169,7 +169,7 @@ double Lookup_GSL_Spline(GSL_Spline *splinecontainer, double x){
 //=================================
 // Wrapper on malloc
 //=================================
-void *my_malloc(size_t bytes){
+inline void *my_malloc(size_t bytes){
   void *ptr =  malloc(bytes);
   if(memory_monitoring_active){
     size_t addr = (size_t) ptr;
@@ -186,7 +186,7 @@ void *my_malloc(size_t bytes){
 //=================================
 // Wrapper on calloc
 //=================================
-void* my_calloc(size_t n, size_t bytes_per_element){
+inline void* my_calloc(size_t n, size_t bytes_per_element){
   void *ptr = calloc(n, bytes_per_element);
   size_t bytes = n * bytes_per_element;
   if(memory_monitoring_active){
@@ -206,7 +206,7 @@ void* my_calloc(size_t n, size_t bytes_per_element){
 // We should add a proper hashmap or similar to store the
 // (addr,bytes) pairs below
 //======================================================
-void my_free(void *ptr){
+inline void my_free(void *ptr){
   if(memory_monitoring_active){
     size_t addr = (size_t)ptr;
     int i = find_index_in_memmap(addr);

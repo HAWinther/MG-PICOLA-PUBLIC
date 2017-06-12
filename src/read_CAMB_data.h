@@ -159,6 +159,7 @@ void read_and_spline_transfer_functions(char *transferfileinfofilename){
   my_free(transfer_function_cdm);
   my_free(transfer_function_baryon);
   my_free(transfer_function_total);
+  my_free(logk_tmp);
   my_free(transfer_function_nu_tmp);
   my_free(transfer_function_cdm_tmp);
   my_free(transfer_function_baryon_tmp);

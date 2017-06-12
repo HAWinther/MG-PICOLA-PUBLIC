@@ -155,6 +155,7 @@ void initialize_parts(void) {
     fflush(stdout);
   }
 
+  NTaskWithN = 0;
   for(int i = 0; i < NTask; i++) {
     if(Local_np_table[i] > 0) NTaskWithN++;
   }
@@ -303,10 +304,8 @@ void displacement_fields(void) {
   cdelta_cdm  = my_malloc(sizeof(complex_kind)*Total_size);
   cdelta_cdm2 = my_malloc(sizeof(complex_kind)*Total_size);
   for(i = 0; i < Total_size; i++) {
-    cdelta_cdm[i][0]  = 0.0;
-    cdelta_cdm[i][1]  = 0.0;
-    cdelta_cdm2[i][0] = 0.0;
-    cdelta_cdm2[i][1] = 0.0;
+    cdelta_cdm[i][0]  = cdelta_cdm[i][1]  = 0.0;
+    cdelta_cdm2[i][0] = cdelta_cdm2[i][1] = 0.0;
   }
 #endif
 

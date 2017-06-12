@@ -782,6 +782,12 @@ void AssignDisplacementField(complex_kind *(cdisp[3])){
           cdisp[axes][coord][1] =  kvec[axes] / kmag2 * P3D[coord][0] * grid_corr * rescale_fac;
         }
 
+#ifdef SCALEDEPENDENT
+        // We store the density field itself here
+        cdelta_cdm[coord][0] = P3D[coord][0] * grid_corr * rescale_fac;
+        cdelta_cdm[coord][1] = P3D[coord][1] * grid_corr * rescale_fac;
+#endif
+
         // Assign the mirror along the y axis
         if ((j != (unsigned int)(Nmesh/2)) && (j != 0)) {
           coord = (i*Nmesh + (Nmesh-j))*(Nmesh/2+1)+k;
@@ -815,11 +821,12 @@ void write_gadget_header(FILE *fp, double A){
     header.npartTotal[k] = 0;
     header.mass[k]       = 0;
   }
+  
   header.npart[1]      = NumPart;
   header.npartTotal[1] = (unsigned int) TotNumPart;
   header.npartTotalHighWord[1] = (unsigned int) (TotNumPart >> 32);
-
   header.mass[1]       = (3.0 * Omega * Hubble * Hubble * Box * Box * Box) / (8.0 * PI * G * TotNumPart);
+
   header.time          = A;
   header.redshift      = Z;
 
@@ -834,6 +841,8 @@ void write_gadget_header(FILE *fp, double A){
 
   header.num_files = NTaskWithN;
 
+  // We might rescale the positions when outputting
+  // so do the same to the Boxsize
   double lengthfac    = UnitLength_in_cm / 3.085678e24;
   header.BoxSize      = Box * lengthfac;
   

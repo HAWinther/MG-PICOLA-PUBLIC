@@ -488,7 +488,7 @@ static FoFGroup *assign_particles_to_fof(Particles *particles,Cell *cll,lint *n_
     int np=fof[i].np;
     if(np>0) {
       n_fof_true++;
-      fof[i].ids=my_malloc(np*sizeof(lint));
+      fof[i].ids=malloc(np*sizeof(lint));
       if(fof[i].ids==NULL)
         mm_msg_abort(123,"Failed to allocate memory for particle ids in FoF groups\n");
       fof[i].np=0;
@@ -715,7 +715,7 @@ static FoFHalo *get_halos(lint *n_halos_out,lint n_fof,FoFGroup *fg,Particles *p
 
   for(i=0;i<n_fof;i++) {
     if(fg[i].np>0)
-      my_free(fg[i].ids);
+      free(fg[i].ids);
   }
   my_free(fg);
 

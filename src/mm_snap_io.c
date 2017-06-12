@@ -282,7 +282,7 @@ void write_halos_multi(char *prefix,lint n_halos,FoFHalo *fhal,long n_halos_tota
     mm_msg_printf(" Writing to file %s\n",fname);
     write_halos_ascii(fname,n_halos,fhal);
   } else if(Param.output_format==1) {
-    sprintf(fname,"!%s.fits",prefix);
+    sprintf(fname,"%s.fits",prefix);
     mm_msg_printf(" Writing to file %s\n",fname);
     write_halos_fits(fname,n_halos,fhal);
   } else if(Param.output_format==2) {
