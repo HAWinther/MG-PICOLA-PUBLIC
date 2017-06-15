@@ -191,7 +191,17 @@ This is the Hu-Sawicky $f(R)$ model. If true growth-factors then this requires t
 
 \subsection*{$\{m(a),\beta(a)\}$ models}
 
-This is implemented in the code, and one should just have to specify $m(a)$ and $\beta(a)$ in \textbf{src/user\_defined\_functions.h} and add relevant parameters to the parameter-file to be able to use this. The integration of $\phi(a)$ needed for the screening method is done automatically (in \textbf{src/new\_cosmo.h::compute\_phi\_of\_a()}) however one should double check that this gives the correct results. This requires the code to be compiled with the define MBETAMODEL.
+This is implemented in the code, and one should just have to specify $m^2(a)$, $dm^2(a)/da$ and $\beta(a)$ in \textbf{src/user\_defined\_functions.h} and add relevant parameters to the parameter-file to be able to use this. The integration of $\phi(a)$ needed for the screening method is done automatically (in \textbf{src/new\_cosmo.h::compute\_phi\_of\_a()}) however one should double check that this gives the correct results. This requires the code to be compiled with the define MBETAMODEL.
+
+The example model implemented this way is the symmetron for which we need the following parameters:
+\begin{itemize}
+
+\item \textbf{assb\_symm = float} The symmetry braking scalefactor (no modifications at all for $a<a_{\rm ssb}$)
+\item \textbf{range\_symm = float} The range of the field in Mpc$/h$.
+\item \textbf{beta\_symm = float} The coupling strength
+
+\end{itemize}
+Note that $f(R)$ discussed above can also be implemented this way.
 
 \subsection*{Jordan-Brans-Dicke model}
 
@@ -199,10 +209,10 @@ The constrained Jordan-Brans-Dicke model. When solving the background and scalar
 
 \begin{itemize}
 
-\item \textbf{wBD} The JBD parameter.
-\item \textbf{Omegah2} The physical matter density parameter
-\item \textbf{Omegarh2} The physical radiation density parameter
-\item \textbf{Omegavh2} The physical dark energy density parameter
+\item \textbf{wBD = float} The JBD parameter.
+\item \textbf{Omegah2 = float} The physical matter density parameter
+\item \textbf{Omegarh2 = float} The physical radiation density parameter
+\item \textbf{Omegavh2 = float} The physical dark energy density parameter
 
 \end{itemize}
 
