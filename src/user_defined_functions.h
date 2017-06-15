@@ -797,7 +797,7 @@ double fofr_pi_factor(double k, double a){
   double a3   = a*a*a;
   double fac  = (Omega/a3 + 4.0*(1.0 - Omega));
   double fac0 = (Omega    + 4.0*(1.0 - Omega));
-  return pow2(k * INVERSE_H0_MPCH / a) + fac0 * pow( fac / fac0, nfofr + 2.0) / (1.0 + nfofr);
+  return pow2(k * INVERSE_H0_MPCH / a) + fac0 * pow( fac / fac0, nfofr + 2.0) / (1.0 + nfofr) / fofr0;
 }
 #endif
 
@@ -817,6 +817,7 @@ double second_order_kernel(double k, double k1, double k2, double costheta, doub
   double a3     = a*a*a;
   double fac    = Omega/a3 + 4.0*(1.0 - Omega);
   double fac0   = Omega    + 4.0*(1.0 - Omega);
+
   gamma2 = - (3.0 * (nfofr+2.0) /(12.0 * (1.0+nfofr) * (1.0+nfofr))) * pow2( k * INVERSE_H0_MPCH / (a * hubble(a)) ) * pow2(Omega/a3) * fac0 * pow(fac/fac0, 2.0*nfofr+3.0) / pow2(fofr0);
   gamma2 /= fofr_pi_factor(k,a) * fofr_pi_factor(k1,a) * fofr_pi_factor(k2,a);
 
