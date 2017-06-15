@@ -1,0 +1,9 @@
+% =============================== %
+% Power-spectrum calculation
+% =============================== %
+pofk_compute_every_step   1           % Turn on this option [1], off [0]
+pofk_nbins                64          % Number of bins
+pofk_bintype              1           % Linear bins [0] or logarithm spacing [1]
+pofk_subtract_shotnoise   1           % Subtract shotnoise contribution = 1/Npart^3
+pofk_kmin                 0.03        % kmin in h/Mpc ( should be >= 2pi/Box)
+pofk_kmax                 2.0         % kmax in h/Mpc ( should be <= 2pi/Box * Nmesh)

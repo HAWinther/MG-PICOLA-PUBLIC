@@ -1,0 +1,9 @@
+% =============================== %
+% Halofinding
+% =============================== %
+mm_run_matchmaker 1     % Turn on halo-finding (every time we output)
+mm_output_format  0     % 0 = ascii, 1 = binary, 2 = fits 
+mm_min_npart_halo 20    % Minimum number of particles to output halo
+mm_linking_length 0.2   % FoF linking length in units of mean particle separation
+mm_dx_extra_mpc   3.0   % Buffer radius in Mpc/h
+mm_output_pernode 0 

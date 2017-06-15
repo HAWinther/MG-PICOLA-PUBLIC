@@ -1,0 +1,11 @@
+% =============================== %
+% Read IC Particles From File
+% or generate from scratch in code
+% =============================== %
+ReadParticlesFromFile   1                                        % Read particles from file [1] or generate ic in code [0]
+                                                                 % If [0] then parameters below are ignored (but must be provided)
+NumInputParticleFiles   1                                        % Number of RAMSES / GADGET / ASCII particle-files
+InputParticleFileDir    /Users/hans/ramses_run/output_00001/     % Path to particle files
+InputParticleFilePrefix part                                     % Prefix for particle-files. Ignored for Ramses
+RamsesOutputNumber      1                                        % The number X in output_0000X. Ignored for ascii / gadget
+TypeInputParticleFiles  1   
