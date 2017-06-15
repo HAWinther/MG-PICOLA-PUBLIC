@@ -46,6 +46,7 @@ void Output_Info(double A);
 void Output(double A, double AF, double AFF, double dDdy, double dD2dy);
 void Kick(double AI, double AF, double A, double Di);
 void Drift(double A, double AFF, double AF, double Di, double Di2);
+void write_gadget_header(FILE *fp, double A);
 
 //===================================================
 // Modified gravity routines mg.h
@@ -82,7 +83,7 @@ double JBD_GeffG_of_a(double a);
 #endif
 
 //===================================================
-// Updated cosmo routines new_cosmo.h
+// Updated cosmo routines cosmo.c
 //===================================================
 
 void   solve_for_growth_factors();
@@ -305,8 +306,6 @@ void read_int_vec(FILE* fp, int *buffer, int n);
 int  read_int(FILE* fp);
 int  ProcessParticlesSingleFile(char *buffer, int npart_loc);
 #endif
-
-void write_gadget_header(FILE *fp, double A);
 
 #ifdef SCALEDEPENDENT
 int    ode_second_order_growth_kernel_D2(double x, const double D2[], double dD2dy[], void *params);

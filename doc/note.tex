@@ -35,7 +35,7 @@ Some optimizations should be done in the SCALEDEPENDENT versions with respect to
 When running with a modified model note that what the code calls $\Lambda$CDM is the cosmological model which has no modifications to the growth-rate of perturbations (i.e. not fifth-forces). However if the background is modified then this will be what we call $\Lambda$CDM.
 \newline
 \newline
-The original fitting functions for the $\Lambda$CDM growth-functions can be found as \textbf{*\_LCDMFit} in \textbf{src/new\_cosmo.h}.
+The original fitting functions for the $\Lambda$CDM growth-functions can be found as \textbf{*\_LCDMFit} in \textbf{src/cosmo.c}.
 \newline
 \newline
 The time-variable in the integration of growth-factors is ${\rm d}y = \frac{{\rm d}a}{E(a)a^3}$.
@@ -191,7 +191,7 @@ This is the Hu-Sawicky $f(R)$ model. If true growth-factors then this requires t
 
 \subsection*{$\{m(a),\beta(a)\}$ models}
 
-This is implemented in the code, and one should just have to specify $m^2(a)$, $dm^2(a)/da$ and $\beta(a)$ in \textbf{src/user\_defined\_functions.h} and add relevant parameters to the parameter-file to be able to use this. The integration of $\phi(a)$ needed for the screening method is done automatically (in \textbf{src/new\_cosmo.h::compute\_phi\_of\_a()}) however one should double check that this gives the correct results. This requires the code to be compiled with the define MBETAMODEL.
+This is implemented in the code, and one should just have to specify $m^2(a)$, $dm^2(a)/da$ and $\beta(a)$ in \textbf{src/user\_defined\_functions.h} and add relevant parameters to the parameter-file to be able to use this. The integration of $\phi(a)$ needed for the screening method is done automatically (in \textbf{src/cosmo.c::compute\_phi\_of\_a()}) however one should double check that this gives the correct results. This requires the code to be compiled with the define MBETAMODEL.
 
 The example model implemented this way is the symmetron for which we need the following parameters:
 \begin{itemize}

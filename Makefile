@@ -314,7 +314,7 @@ ifdef LIGHTCONE
 OBJS += src/lightcone.o
 endif
 
-INCL   = src/vars.h src/proto.h src/mg.h src/new_cosmo.h src/user_defined_functions.h src/wrappers.h Makefile
+INCL   = src/vars.h src/proto.h src/mg.h src/user_defined_functions.h src/wrappers.h Makefile
 INCL  += src/read_CAMB_data.h
 ifdef MATCHMAKER
 OBJS += src/mm_main.o src/mm_msg.o src/mm_fof.o src/mm_snap_io.o
