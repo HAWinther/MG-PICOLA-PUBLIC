@@ -126,6 +126,7 @@ void read_parameterfile(char * fname) {
   // generating them in the code
   //=======================================
 
+#ifdef READICFROMFILE
   strcpy(tag[nt], "ReadParticlesFromFile");
   addr[nt] = &ReadParticlesFromFile;
   id[nt++] = INT;
@@ -149,6 +150,9 @@ void read_parameterfile(char * fname) {
   strcpy(tag[nt], "RamsesOutputNumber");
   addr[nt] = &RamsesOutputNumber;
   id[nt++] = INT;
+#else
+  ReadParticlesFromFile = 0;
+#endif
 
   //===================================
   // Read modified gravity parameters
