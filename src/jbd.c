@@ -267,12 +267,12 @@ void JBD_Solve_Background(double w, double omegamh2, double omegavh2, double ome
   Create_GSL_Spline(&JBD_dHdaSpline, loga, dHda, gg.npts);
 
   // Free up memory
-  my_free(loga,      sizeof(double)*gg.npts);
-  my_free(Geff,      sizeof(double)*gg.npts);
-  my_free(H,         sizeof(double)*gg.npts);
-  my_free(dHda,      sizeof(double)*gg.npts);
-  my_free(gg.x_arr,  sizeof(double)*gg.npts);
-  my_free(gg.y_arr,  sizeof(double)*gg.npts);
-  my_free(gg.dy_arr, sizeof(double)*gg.npts);
+  my_free(loga);
+  my_free(Geff);
+  my_free(H);
+  my_free(dHda);
+  my_free(gg.x_arr);
+  my_free(gg.y_arr);
+  my_free(gg.dy_arr);
 }
 
