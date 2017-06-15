@@ -285,31 +285,26 @@ double sigma2_int(double k, void * params);
 
 //===================================================
 // Read IC from RAMSES / Gadget / Ascii file instead 
-// of computing it [readICfromfile.h]
+// of computing it [readICfromfile.c]
 //===================================================
 
-void check_realgrid(float_kind *grid, char *desc);
-void check_complexgrid(complex_kind *grid, char *desc);
-
-void ReadFilesMakeDisplacementField(void);
-int  ProcessParticlesSingleFile(char *buffer, int npart_loc);
+#ifdef READICFROMFILE
 void AssignDisplacementField(complex_kind *(cdisp[3]));
-
-int  read_int(FILE* fp);
+void ReadFilesMakeDisplacementField(void);
+int  read_gadget_file(char *filedir, char *fileprefix, int filenum, char *buffer, int *npart_read);
+int  read_ascii_file(char *filedir, char *fileprefix, int filenum, char *buffer, int *npart_read);
+int  read_ramses_file(char *filedir, int outnumber, int filenum, char *buffer, int *npart_read);
+int  find_maxpart_gadgetfiles(char *outputdir, char *fileprefix, int nfiles);
+int  find_maxpart_asciifiles(char *outputdir, char *fileprefix, int nfiles);
+int  find_maxpart_ramsesfiles(char *outputdir, int outnumber, int nfiles);
+void read_gadget_header(FILE *fp);
+void read_ramses_header(FILE *fp);
+void read_double_vec(FILE* fp, double *buffer, int n);
 void read_float_vec(FILE* fp, float *buffer, int n);
 void read_int_vec(FILE* fp, int *buffer, int n);
-void read_double_vec(FILE* fp, double *buffer, int n);
-
-int find_maxpart_ramsesfiles(char *filebase, int outnumber, int nfiles);
-int find_maxpart_asciifiles(char *outputdir, char *fileprefix, int nfiles);
-int find_maxpart_gadgetfiles(char *outputdir, char *fileprefix, int nfiles);
-
-int read_ramses_file(char *filebase, int outnumber, int filenum, char *buffer, int *npart_read);
-int read_ascii_file(char *filedir, char *fileprefix, int filenum, char *buffer, int *npart_read);
-int read_gadget_file(char *filedir, char *fileprefix, int filenum, char *buffer, int *npart_read);
-
-void read_ramses_header(FILE *fp);
-void read_gadget_header(FILE *fp);
+int  read_int(FILE* fp);
+int  ProcessParticlesSingleFile(char *buffer, int npart_loc);
+#endif
 
 void write_gadget_header(FILE *fp, double A);
 

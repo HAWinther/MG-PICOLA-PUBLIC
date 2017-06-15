@@ -306,7 +306,7 @@ LIBS   =   -lm $(MPI_LIBs) $(FFTW_LIBS) $(GSL_LIBS)
 CFLAGS =   $(OPTIMIZE) $(FFTW_INCL) $(GSL_INCL) $(MPI_INCL) $(OPTIONS)
 
 OBJS  = src/main.o src/cosmo.o src/auxPM.o src/2LPT.o src/power.o src/vars.o src/read_param.o src/timer.o src/msg.o src/wrappers.o src/jbd.o
-OBJS += src/compute_pofk.c
+OBJS += src/compute_pofk.o src/readICfromfile.c
 ifdef GENERIC_FNL
   OBJS += src/kernel.o
 endif
@@ -314,7 +314,7 @@ ifdef LIGHTCONE
 OBJS += src/lightcone.o
 endif
 
-INCL   = src/vars.h src/proto.h src/mg.h src/readICfromfile.h src/new_cosmo.h src/user_defined_functions.h src/wrappers.h Makefile
+INCL   = src/vars.h src/proto.h src/mg.h src/new_cosmo.h src/user_defined_functions.h src/wrappers.h Makefile
 INCL  += src/read_CAMB_data.h
 ifdef MATCHMAKER
 OBJS += src/mm_main.o src/mm_msg.o src/mm_fof.o src/mm_snap_io.o

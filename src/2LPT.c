@@ -27,7 +27,6 @@
 
 #include "vars.h"
 #include "proto.h"
-#include "readICfromfile.h"
 #include <limits.h>
 
 //================
@@ -316,7 +315,9 @@ void displacement_fields(void) {
     // computed from the particles we have read from file
     //=========================================
 
+#ifdef READICFROMFILE
     AssignDisplacementField(cdisp);
+#endif
 
   } else {
 

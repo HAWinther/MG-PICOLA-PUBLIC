@@ -29,7 +29,7 @@
 #include "proto.h"
 #include "timer.h"
 #include "msg.h"
-  
+
 int main(int argc, char **argv) {
 
   //======================================
@@ -190,12 +190,14 @@ int main(int argc, char **argv) {
 
     //===========================================================================================
     // Read particle from RAMSES, GADGET or ASCII file(s) and use it to create the displacement-field
-    // All methods are in file [readICfromfile.h]
+    // All methods are in file [readICfromfile.c]
     // After density(k,zi) has been created we use LCDM growth-factor to bring it to z = 0 and
     // then call displacement_fields()
     //===========================================================================================
 
+#ifdef READICFROMFILE
     ReadFilesMakeDisplacementField();
+#endif
 
   } else {
 
@@ -375,701 +377,705 @@ int main(int argc, char **argv) {
   // Loop over all the timesteps in the timestep list
   //=================================================
   timeSteptot = 0;
+
+  // For light-cone sims we do not run the loop below for i = Noutputs
+  int Nend = Noutputs;
 #ifdef LIGHTCONE
-  for (i = NoutputStart; i < Noutputs;i++){
+  Nend = Noutputs-1;
 #else
-    for (i = NoutputStart;i <= Noutputs;i++){
+  Nend = Noutputs;
 #endif
-      int nsteps = 0;
-      double ao = 0;
-      if (i == Noutputs) {
-        nsteps = 1;
-      } else {
-        nsteps = OutputList[i].Nsteps;
-        ao  = 1.0/(1.0+OutputList[i].Redshift);
-        if (stepDistr == 0) da = (ao-A)/((double)nsteps);
-        if (stepDistr == 1) da = (log(ao)-log(A))/((double)nsteps);
-        if (stepDistr == 2) da = (CosmoTime(ao)-CosmoTime(A))/((double)nsteps);
-      }
+  for (i = NoutputStart; i <= Nend;i++){
+    int nsteps = 0;
+    double ao = 0;
+    if (i == Noutputs) {
+      nsteps = 1;
+    } else {
+      nsteps = OutputList[i].Nsteps;
+      ao  = 1.0/(1.0+OutputList[i].Redshift);
+      if (stepDistr == 0) da = (ao-A)/((double)nsteps);
+      if (stepDistr == 1) da = (log(ao)-log(A))/((double)nsteps);
+      if (stepDistr == 2) da = (CosmoTime(ao)-CosmoTime(A))/((double)nsteps);
+    }
 
-      //=========================================================
-      // Perform the required number of timesteps between outputs
-      //=========================================================
-      for (timeStep = 0; timeStep < nsteps; timeStep++) {
+    //=========================================================
+    // Perform the required number of timesteps between outputs
+    //=========================================================
+    for (timeStep = 0; timeStep < nsteps; timeStep++) {
 
 #ifdef LIGHTCONE
+
+      //=====================================================================================
+      // For a lightcone simulation we always want the velocity set to mid-point of interval.
+      //=====================================================================================
+
+      if (stepDistr == 0) AF = A + da*0.5;
+      if (stepDistr == 1) AF = A * exp(da*0.5);
+      if (stepDistr == 2) AF = AofTime((CosmoTime(AFF)+CosmoTime(A))*0.5); 
+
+#else
+      //=====================================================================================
+      // Calculate the time to update to
+      // Half timestep for kick at output redshift to bring the velocities and positions to the same time
+      //=====================================================================================
+
+      if ((timeStep == 0) && (i != NoutputStart)) {
+        AF = A; 
+      } else { 
 
         //=====================================================================================
-        // For a lightcone simulation we always want the velocity set to mid-point of interval.
+        // Set to mid-point of interval. In the infinitesimal timestep limit, these choices are identical. 
+        // How one chooses the mid-point when not in that limit is really an extra degree of freedom in the code 
+        // but Tassev et al. report negligible effects from the different choices below. 
+        // Hence, this is not exported as an extra switch at this point.
         //=====================================================================================
 
         if (stepDistr == 0) AF = A + da*0.5;
         if (stepDistr == 1) AF = A * exp(da*0.5);
         if (stepDistr == 2) AF = AofTime((CosmoTime(AFF)+CosmoTime(A))*0.5); 
-
-#else
-        //=====================================================================================
-        // Calculate the time to update to
-        // Half timestep for kick at output redshift to bring the velocities and positions to the same time
-        //=====================================================================================
-
-        if ((timeStep == 0) && (i != NoutputStart)) {
-          AF = A; 
-        } else { 
-
-          //=====================================================================================
-          // Set to mid-point of interval. In the infinitesimal timestep limit, these choices are identical. 
-          // How one chooses the mid-point when not in that limit is really an extra degree of freedom in the code 
-          // but Tassev et al. report negligible effects from the different choices below. 
-          // Hence, this is not exported as an extra switch at this point.
-          //=====================================================================================
-
-          if (stepDistr == 0) AF = A + da*0.5;
-          if (stepDistr == 1) AF = A * exp(da*0.5);
-          if (stepDistr == 2) AF = AofTime((CosmoTime(AFF)+CosmoTime(A))*0.5); 
-        }
+      }
 #endif
-        if (stepDistr == 0) AFF = A + da;
-        if (stepDistr == 1) AFF = A * exp(da);
-        if (stepDistr == 2) AFF = AofTime(CosmoTime(A)+da);
+      if (stepDistr == 0) AFF = A + da;
+      if (stepDistr == 1) AFF = A * exp(da);
+      if (stepDistr == 2) AFF = AofTime(CosmoTime(A)+da);
 
-        // Compute the maximum particle number over all the CPUs
-        int NumPart_max = NumPart;
-        ierr = MPI_Allreduce(MPI_IN_PLACE, &NumPart_max, 1, MPI_INT, MPI_MAX, MPI_COMM_WORLD);
+      // Compute the maximum particle number over all the CPUs
+      int NumPart_max = NumPart;
+      ierr = MPI_Allreduce(MPI_IN_PLACE, &NumPart_max, 1, MPI_INT, MPI_MAX, MPI_COMM_WORLD);
 
-        timeSteptot++;
-        if (ThisTask == 0) {
-          printf("Iteration = %d\n------------------\n",timeSteptot);
-          printf("Maximum Particle Memory Used: %f %%\n", NumPart_max / (double)(Local_np*Nsample*Nsample*Buffer) * 100.0);
-          if (i != Noutputs) {
-            printf("a = %lf -> a = %lf\n", A, AFF);
-            printf("z = %lf -> z = %lf\n", 1.0/A-1.0, 1.0/AFF-1.0);
-            fflush(stdout);
-          } else {
-            printf("Final half timestep to update velocities...\n");
-            fflush(stdout);
-          }
-        }
-          
-        print_memory_summary();
-
-        //================================================================
-        // Copy value of A to global variable. Needed by the mg.h routines
-        //================================================================
-        aexp_global = A;
-
-        //=======================================================
-        // Calculate the particle accelerations for this timestep
-        //=======================================================
-        GetDisplacements();
-
-        /**********************************************************************************************/
-        // If we wanted to interpolate the lightcone velocities we could put section currently in the // 
-        // Drift subroutine here. This would allow us to have the velocities at AF and AFF which we   //
-        // can use to invert the previous drift step and get the particle positions at AF and AFF     //
-        /**********************************************************************************************/
-
-#ifdef SCALEDEPENDENT
-        // Compute the displacement fields for cases where we have scale depdendent growth
-        if(ThisTask == 0){
-          printf("\n=================================\n");
-          printf("Compute displacment fields...   \n");
-          printf("=================================\n");
-        }
-
-        // Place [ddDddy] in Particles.D and [deltaD] in Particles.dDdy
-        assign_displacment_field_to_particles(A, AF, AFF, FIELD_deltaD, LPT_ORDER_ONE);
-        assign_displacment_field_to_particles(A, AF, AFF, FIELD_deltaD, LPT_ORDER_TWO);
-        if(ThisTask == 0) printf("\n");
-
-        assign_displacment_field_to_particles(A, AF, AFF, FIELD_ddDddy, LPT_ORDER_ONE);
-        assign_displacment_field_to_particles(A, AF, AFF, FIELD_ddDddy, LPT_ORDER_TWO);
-        if(ThisTask == 0) printf("\n");
-
-#endif
-        //=============================
-        // Kick the particle velocities
-        //=============================
-        if (ThisTask == 0) {
-          printf("Kicking the particles...\n");
+      timeSteptot++;
+      if (ThisTask == 0) {
+        printf("Iteration = %d\n------------------\n",timeSteptot);
+        printf("Maximum Particle Memory Used: %f %%\n", NumPart_max / (double)(Local_np*Nsample*Nsample*Buffer) * 100.0);
+        if (i != Noutputs) {
+          printf("a = %lf -> a = %lf\n", A, AFF);
+          printf("z = %lf -> z = %lf\n", 1.0/A-1.0, 1.0/AFF-1.0);
+          fflush(stdout);
+        } else {
+          printf("Final half timestep to update velocities...\n");
           fflush(stdout);
         }
+      }
 
-        Kick(AI, AF, A, Di);
+      print_memory_summary();
+
+      //================================================================
+      // Copy value of A to global variable. Needed by the mg.h routines
+      //================================================================
+      aexp_global = A;
+
+      //=======================================================
+      // Calculate the particle accelerations for this timestep
+      //=======================================================
+      GetDisplacements();
+
+      /**********************************************************************************************/
+      // If we wanted to interpolate the lightcone velocities we could put section currently in the // 
+      // Drift subroutine here. This would allow us to have the velocities at AF and AFF which we   //
+      // can use to invert the previous drift step and get the particle positions at AF and AFF     //
+      /**********************************************************************************************/
+
+#ifdef SCALEDEPENDENT
+      // Compute the displacement fields for cases where we have scale depdendent growth
+      if(ThisTask == 0){
+        printf("\n=================================\n");
+        printf("Compute displacment fields...   \n");
+        printf("=================================\n");
+      }
+
+      // Place [ddDddy] in Particles.D and [deltaD] in Particles.dDdy
+      assign_displacment_field_to_particles(A, AF, AFF, FIELD_deltaD, LPT_ORDER_ONE);
+      assign_displacment_field_to_particles(A, AF, AFF, FIELD_deltaD, LPT_ORDER_TWO);
+      if(ThisTask == 0) printf("\n");
+
+      assign_displacment_field_to_particles(A, AF, AFF, FIELD_ddDddy, LPT_ORDER_ONE);
+      assign_displacment_field_to_particles(A, AF, AFF, FIELD_ddDddy, LPT_ORDER_TWO);
+      if(ThisTask == 0) printf("\n");
+
+#endif
+      //=============================
+      // Kick the particle velocities
+      //=============================
+      if (ThisTask == 0) {
+        printf("Kicking the particles...\n");
+        fflush(stdout);
+      }
+
+      Kick(AI, AF, A, Di);
 
 #ifndef LIGHTCONE
 
+      //======================================================================================
+      // If we are at an output timestep we modify the velocities and output the
+      // particles. Then, if we are not yet at the end of the simulation, we update  
+      // the velocity again up to the middle of the next timestep as per the usual KDK method.
+      //======================================================================================
+
+      if ((timeStep == 0) && (i != NoutputStart)) {
+
+        if (ThisTask == 0) {
+          printf("Outputting the particles...\n");
+          fflush(stdout);
+        }
+
         //======================================================================================
-        // If we are at an output timestep we modify the velocities and output the
-        // particles. Then, if we are not yet at the end of the simulation, we update  
-        // the velocity again up to the middle of the next timestep as per the usual KDK method.
+        // At the output timestep, add back LPT velocities if we had subtracted them. 
+        // This corresponds to L_+ operator in TZE.
         //======================================================================================
 
-        if ((timeStep == 0) && (i != NoutputStart)) {
+        dDdy  = growth_dDdy(A);    // dD_{za}/dy
+        dD2dy = growth_dD2dy(A);   // dD_{2lpt}/dy
 
+        Output(A, AF, AFF, dDdy, dD2dy);
+
+        //======================================================================================
+        // If we have reached the last output timestep we skip to the end
+        //======================================================================================
+
+        if(i == Noutputs) {
           if (ThisTask == 0) {
-            printf("Outputting the particles...\n");
+            printf("Iteration %d finished\n------------------\n\n", timeSteptot);
             fflush(stdout);
           }
 
-          //======================================================================================
-          // At the output timestep, add back LPT velocities if we had subtracted them. 
-          // This corresponds to L_+ operator in TZE.
-          //======================================================================================
+          // Remember to free up displacement-field before we exit
+          for (j = 0; j < 3; j++) my_free(Disp[j]);
 
-          dDdy  = growth_dDdy(A);    // dD_{za}/dy
-          dD2dy = growth_dD2dy(A);   // dD_{2lpt}/dy
-
-          Output(A, AF, AFF, dDdy, dD2dy);
-
-          //======================================================================================
-          // If we have reached the last output timestep we skip to the end
-          //======================================================================================
-
-          if(i == Noutputs) {
-            if (ThisTask == 0) {
-              printf("Iteration %d finished\n------------------\n\n", timeSteptot);
-              fflush(stdout);
-            }
-          
-            // Remember to free up displacement-field before we exit
-            for (j = 0; j < 3; j++) my_free(Disp[j]);
-            
-            goto finalize;
-          }
-
-          // =====================================================================================
-          // Otherwise we simply update the velocity to the middle of the timestep, where it
-          // would have been if we weren't outputting. This involves only recalculating and applying `dda'
-          // as the acceleration remains the same as calculated earlier
-          // =====================================================================================
-
-          AI = A;
-          if (stepDistr == 0) AF = A + da * 0.5;
-          if (stepDistr == 1) AF = A * exp(da * 0.5);
-          if (stepDistr == 2) AF = AofTime((CosmoTime(AFF)+CosmoTime(A)) * 0.5); 
-          for(int axes = 0; axes < 3; axes++)
-            sumDxyz[axes] = 0;
-
-          Kick(AI, AF, A, Di);
+          goto finalize;
         }
+
+        // =====================================================================================
+        // Otherwise we simply update the velocity to the middle of the timestep, where it
+        // would have been if we weren't outputting. This involves only recalculating and applying `dda'
+        // as the acceleration remains the same as calculated earlier
+        // =====================================================================================
+
+        AI = A;
+        if (stepDistr == 0) AF = A + da * 0.5;
+        if (stepDistr == 1) AF = A * exp(da * 0.5);
+        if (stepDistr == 2) AF = AofTime((CosmoTime(AFF)+CosmoTime(A)) * 0.5); 
+        for(int axes = 0; axes < 3; axes++)
+          sumDxyz[axes] = 0;
+
+        Kick(AI, AF, A, Di);
+      }
 #endif
 
-        // Free up displacement-field
-        for (j = 0; j < 3; j++) my_free(Disp[j]);
-    
-        // ============================
-        // Drift the particle positions
-        // ============================
+      // Free up displacement-field
+      for (j = 0; j < 3; j++) my_free(Disp[j]);
 
-        if (ThisTask == 0) {
-          printf("Drifting the particles...\n");
-          fflush(stdout);
-        }
+      // ============================
+      // Drift the particle positions
+      // ============================
+
+      if (ThisTask == 0) {
+        printf("Drifting the particles...\n");
+        fflush(stdout);
+      }
 
 #ifdef LIGHTCONE
-        if (i > 0) {
-          Drift_Lightcone(A, AFF, AF, Di, Di2);
-        } else {
-          Drift(A, AFF, AF, Di, Di2);
-        }
-#else
+      if (i > 0) {
+        Drift_Lightcone(A, AFF, AF, Di, Di2);
+      } else {
         Drift(A, AFF, AF, Di, Di2);
-#endif
-        //=================
-        // Step in time
-        //=================
-
-        A  = AFF;
-        AI = AF;
-
-        Di  = growth_D(A);
-        Di2 = growth_D2(A);
-
-        if (ThisTask == 0) {
-          printf("Iteration %d finished\n------------------\n\n", timeSteptot);
-          fflush(stdout);
-        }
-
-        ierr = MPI_Barrier(MPI_COMM_WORLD); 
       }
-    }
+#else
+      Drift(A, AFF, AF, Di, Di2);
+#endif
+      //=================
+      // Step in time
+      //=================
 
-    //============================
-    // Here is the last little bit
-    //============================
+      A  = AFF;
+      AI = AF;
+
+      Di  = growth_D(A);
+      Di2 = growth_D2(A);
+
+      if (ThisTask == 0) {
+        printf("Iteration %d finished\n------------------\n\n", timeSteptot);
+        fflush(stdout);
+      }
+
+      ierr = MPI_Barrier(MPI_COMM_WORLD); 
+    }
+  }
+
+  //============================
+  // Here is the last little bit
+  //============================
 #ifndef LIGHTCONE
 finalize:
 #endif
 
-    if (ThisTask == 0) {
-      printf("===============================\n");
-      printf("Finishing up! Timing:\n");
-      printf("===============================\n");
-      fflush(stdout);
-    }
+  if (ThisTask == 0) {
+    printf("===============================\n");
+    printf("Finishing up! Timing:\n");
+    printf("===============================\n");
+    fflush(stdout);
+  }
 
 #ifdef LIGHTCONE
-    Output_Info_Lightcone();
+  Output_Info_Lightcone();
 #endif
 
-    // Free up memory
-    free_powertable();
-    free_transfertable();
-    
-    my_free(P);
-    my_free(OutputList);
-    my_free(Slab_to_task);
-    my_free(Part_to_task);
-    my_free(Local_nx_table);
-    my_free(Local_np_table);
+  // Free up memory
+  free_powertable();
+  free_transfertable();
+
+  my_free(P);
+  my_free(OutputList);
+  my_free(Slab_to_task);
+  my_free(Part_to_task);
+  my_free(Local_nx_table);
+  my_free(Local_np_table);
 
 #ifdef GENERIC_FNL
-    my_free(KernelTable);
+  my_free(KernelTable);
 #endif
 
 #ifdef LIGHTCONE
-    my_free(Noutput);
-    my_free(repflag);
+  my_free(Noutput);
+  my_free(repflag);
 #endif
 
 #ifndef MEMORY_MODE
-    my_free(density);
-    my_free(N11);
-    my_free(N12);
-    my_free(N13);  
-    my_fftw_destroy_plan(plan);
-    my_fftw_destroy_plan(p11);
-    my_fftw_destroy_plan(p12);
-    my_fftw_destroy_plan(p13);
-    if(modified_gravity_active) FreeMGArrays();
+  my_free(density);
+  my_free(N11);
+  my_free(N12);
+  my_free(N13);  
+  my_fftw_destroy_plan(plan);
+  my_fftw_destroy_plan(p11);
+  my_fftw_destroy_plan(p12);
+  my_fftw_destroy_plan(p13);
+  if(modified_gravity_active) FreeMGArrays();
 #endif
 
-    free_up_splines();
-    
+  free_up_splines();
+
 #ifdef MASSIVE_NEUTRINOS
-    free_CAMB_splines();
+  free_CAMB_splines();
 #endif
 
 #ifdef SCALEDEPENDENT
-    my_free(cdelta_cdm);
-    my_free(cdelta_cdm2);
+  my_free(cdelta_cdm);
+  my_free(cdelta_cdm2);
 #endif
 
-    my_fftw_mpi_cleanup();
+  my_fftw_mpi_cleanup();
 
-    timer_print();
+  timer_print();
 
-    print_memory_summary();
+  print_memory_summary();
 
-    MPI_Finalize();    
+  MPI_Finalize();    
 
-    return 0;
-  }
+  return 0;
+}
 
-  //================================
-  // Kicking the particle velocities
-  //================================
-  void Kick(double AI, double AF, double A, double Di) {
-    timer_start(_Kick);
-    double dda;
-    double force[3];
+//================================
+// Kicking the particle velocities
+//================================
+void Kick(double AI, double AF, double A, double Di) {
+  timer_start(_Kick);
+  double dda;
+  double force[3];
 
-    for(int axes = 0; axes < 3; axes++)
-      sumxyz[axes] = 0;
+  for(int axes = 0; axes < 3; axes++)
+    sumxyz[axes] = 0;
 
-    if (StdDA == 0) {
-      dda = Sphi(AI, AF, A);
-    } else if (StdDA == 1) {
-      dda = (AF - AI) * A / Qfactor(A);
-    } else {
-      dda = SphiStd(AI, AF);
-    }  
+  if (StdDA == 0) {
+    dda = Sphi(AI, AF, A);
+  } else if (StdDA == 1) {
+    dda = (AF - AI) * A / Qfactor(A);
+  } else {
+    dda = SphiStd(AI, AF);
+  }  
 
 #ifdef SCALEDEPENDENT
 
-    // Update velocity
-    for(unsigned int n = 0; n < NumPart; n++) {
-      for(int axes = 0; axes < 3; axes ++) {
-        Disp[axes][n]  -= sumDxyz[axes];
+  // Update velocity
+  for(unsigned int n = 0; n < NumPart; n++) {
+    for(int axes = 0; axes < 3; axes ++) {
+      Disp[axes][n]  -= sumDxyz[axes];
 
-        // NB: D/D2 here contains ddDddy/ddD2ddy. This is done to save memory
-        force[axes]     = -1.5 * Omega * Disp[axes][n] - UseCOLA * ( P[n].D[axes] + P[n].D2[axes] ) / A;
-        P[n].Vel[axes] += force[axes] * dda;
-        sumxyz[axes]   += P[n].Vel[axes];
-      }
+      // NB: D/D2 here contains ddDddy/ddD2ddy. This is done to save memory
+      force[axes]     = -1.5 * Omega * Disp[axes][n] - UseCOLA * ( P[n].D[axes] + P[n].D2[axes] ) / A;
+      P[n].Vel[axes] += force[axes] * dda;
+      sumxyz[axes]   += P[n].Vel[axes];
     }
+  }
 
 #else
 
-    // Second derivate of the growth factors
-    double ddDddy  = growth_ddDddy(A);   // T^2[D_{ZA}]=d^2 D_{ZA}/dy^2
-    double ddD2ddy = growth_ddD2ddy(A);  // T^2[D_{2lpt}]=d^2 D_{2lpt}/dy^2
+  // Second derivate of the growth factors
+  double ddDddy  = growth_ddDddy(A);   // T^2[D_{ZA}]=d^2 D_{ZA}/dy^2
+  double ddD2ddy = growth_ddD2ddy(A);  // T^2[D_{2lpt}]=d^2 D_{2lpt}/dy^2
 
-    // Update velocity
-    for(unsigned int n = 0; n < NumPart; n++) {
-      for(int axes = 0; axes < 3; axes ++) {
-        Disp[axes][n]  -= sumDxyz[axes];
-        force[axes]     = -1.5 * Omega * Disp[axes][n] - UseCOLA * ( P[n].D[axes] * ddDddy + P[n].D2[axes] * ddD2ddy ) / A;
-        P[n].Vel[axes] += force[axes] * dda;
-        sumxyz[axes]   += P[n].Vel[axes];
-      }
+  // Update velocity
+  for(unsigned int n = 0; n < NumPart; n++) {
+    for(int axes = 0; axes < 3; axes ++) {
+      Disp[axes][n]  -= sumDxyz[axes];
+      force[axes]     = -1.5 * Omega * Disp[axes][n] - UseCOLA * ( P[n].D[axes] * ddDddy + P[n].D2[axes] * ddD2ddy ) / A;
+      P[n].Vel[axes] += force[axes] * dda;
+      sumxyz[axes]   += P[n].Vel[axes];
     }
+  }
 #endif
 
-    // Make sumx, sumy and sumz global averages
-    for(int axes = 0; axes < 3; axes ++){
-      ierr = MPI_Allreduce(MPI_IN_PLACE, &(sumxyz[axes]), 1, MPI_DOUBLE, MPI_SUM, MPI_COMM_WORLD); 
-      sumxyz[axes] /= (double) TotNumPart;
-    }
-
-    timer_stop(_Kick);
+  // Make sumx, sumy and sumz global averages
+  for(int axes = 0; axes < 3; axes ++){
+    ierr = MPI_Allreduce(MPI_IN_PLACE, &(sumxyz[axes]), 1, MPI_DOUBLE, MPI_SUM, MPI_COMM_WORLD); 
+    sumxyz[axes] /= (double) TotNumPart;
   }
 
-  //================================
-  // Drifting the particle positions
-  //================================
-  void Drift(double A, double AFF, double AF, double Di, double Di2) {
-    timer_start(_Drift);
-    double dyyy;
+  timer_stop(_Kick);
+}
 
-    if (StdDA == 0) {
-      dyyy = Sq(A, AFF, AF);
-    } else if (StdDA == 1) {
-      dyyy = (AFF - A) / Qfactor(AF);
-    } else {
-      dyyy = SqStd(A, AFF);
-    }
+//================================
+// Drifting the particle positions
+//================================
+void Drift(double A, double AFF, double AF, double Di, double Di2) {
+  timer_start(_Drift);
+  double dyyy;
+
+  if (StdDA == 0) {
+    dyyy = Sq(A, AFF, AF);
+  } else if (StdDA == 1) {
+    dyyy = (AFF - A) / Qfactor(AF);
+  } else {
+    dyyy = SqStd(A, AFF);
+  }
 
 #ifdef SCALEDEPENDENT
 
-    // Update positions
-    for(unsigned int n = 0; n < NumPart; n++) {
-      for(int axes = 0; axes < 3; axes++){
-        P[n].Pos[axes] += (P[n].Vel[axes] - sumxyz[axes]) * dyyy;
+  // Update positions
+  for(unsigned int n = 0; n < NumPart; n++) {
+    for(int axes = 0; axes < 3; axes++){
+      P[n].Pos[axes] += (P[n].Vel[axes] - sumxyz[axes]) * dyyy;
 
-        // NB: dDdy here contain (deltaD = D(AFF) - D(A)). This is done to save memory
-        P[n].Pos[axes]  = periodic_wrap(P[n].Pos[axes] + UseCOLA*( P[n].dDdy[axes] + P[n].dD2dy[axes] ));
-      }
+      // NB: dDdy here contain (deltaD = D(AFF) - D(A)). This is done to save memory
+      P[n].Pos[axes]  = periodic_wrap(P[n].Pos[axes] + UseCOLA*( P[n].dDdy[axes] + P[n].dD2dy[axes] ));
     }
+  }
 
 #else
 
-    // Change in growth-factors
-    double deltaD  = (growth_D(AFF) - Di);    // change in D
-    double deltaD2 = (growth_D2(AFF) - Di2);  // change in D_{2lpt}
+  // Change in growth-factors
+  double deltaD  = (growth_D(AFF) - Di);    // change in D
+  double deltaD2 = (growth_D2(AFF) - Di2);  // change in D_{2lpt}
 
-    // Update positions
-    for(unsigned int n = 0; n < NumPart; n++) {
-      for(int axes = 0; axes < 3; axes++){
-        P[n].Pos[axes] += (P[n].Vel[axes] - sumxyz[axes]) * dyyy;
-        P[n].Pos[axes]  = periodic_wrap(P[n].Pos[axes] + UseCOLA*(P[n].D[axes] * deltaD + P[n].D2[axes] * deltaD2 ));
-      }
+  // Update positions
+  for(unsigned int n = 0; n < NumPart; n++) {
+    for(int axes = 0; axes < 3; axes++){
+      P[n].Pos[axes] += (P[n].Vel[axes] - sumxyz[axes]) * dyyy;
+      P[n].Pos[axes]  = periodic_wrap(P[n].Pos[axes] + UseCOLA*(P[n].D[axes] * deltaD + P[n].D2[axes] * deltaD2 ));
     }
+  }
 #endif
 
-    timer_stop(_Drift);
-  }
+  timer_stop(_Drift);
+}
 
-  //=================
-  // Output the data
-  //=================
-  void Output(double A, double AF, double AFF, double dDdy, double dD2dy) {
-    timer_set_category(_Output);
-    FILE * fp; 
-    char buf[300];
-    int nprocgroup, groupTask, masterTask;
-    unsigned int n;
-    double Z         = (1.0/A)-1.0;
-    double fac       = Hubble / pow(A,1.5);
-    double lengthfac = UnitLength_in_cm / 3.085678e24;     // Convert positions to Mpc/h
-    double velfac    = UnitVelocity_in_cm_per_s / 1.0e5;   // Convert velocities to km/s
+//=================
+// Output the data
+//=================
+void Output(double A, double AF, double AFF, double dDdy, double dD2dy) {
+  timer_set_category(_Output);
+  FILE * fp; 
+  char buf[300];
+  int nprocgroup, groupTask, masterTask;
+  unsigned int n;
+  double Z         = (1.0/A)-1.0;
+  double fac       = Hubble / pow(A,1.5);
+  double lengthfac = UnitLength_in_cm / 3.085678e24;     // Convert positions to Mpc/h
+  double velfac    = UnitVelocity_in_cm_per_s / 1.0e5;   // Convert velocities to km/s
 
 #ifdef SCALEDEPENDENT
 
-    /* We can avoid some computation below at the expense of copying
-     * but this requires memory
-     * We make a copy of the displacment-field [dDdy] which contains [deltaD]
-     * and add in dDdy in this field needed for velocities below
-    float *tmp_buffer_deltaD  = my_malloc(sizeof(float) * NumPart * 3);
-    float *tmp_buffer_deltaD2 = my_malloc(sizeof(float) * NumPart * 3);
-    for(unsigned int i = 0; i < NumPart; i++){
-      for(int axes = 0; axes < 3; axes++){
-        tmp_buffer_deltaD[3*i + axes]  = P[i].dDdy[axes];
-        tmp_buffer_deltaD2[3*i + axes] = P[i].dD2dy[axes];
-      }
-    }
-     */
+  /* We can avoid some computation below at the expense of copying
+   * but this requires memory
+   * We make a copy of the displacment-field [dDdy] which contains [deltaD]
+   * and add in dDdy in this field needed for velocities below
+   float *tmp_buffer_deltaD  = my_malloc(sizeof(float) * NumPart * 3);
+   float *tmp_buffer_deltaD2 = my_malloc(sizeof(float) * NumPart * 3);
+   for(unsigned int i = 0; i < NumPart; i++){
+   for(int axes = 0; axes < 3; axes++){
+   tmp_buffer_deltaD[3*i + axes]  = P[i].dDdy[axes];
+   tmp_buffer_deltaD2[3*i + axes] = P[i].dD2dy[axes];
+   }
+   }
+   */
 
-    // Compute dDdy
-    assign_displacment_field_to_particles(A, AF, AFF, FIELD_dDdy, LPT_ORDER_ONE);
-    assign_displacment_field_to_particles(A, AF, AFF, FIELD_dDdy, LPT_ORDER_TWO);
-    if(ThisTask == 0) printf("\n");
+  // Compute dDdy
+  assign_displacment_field_to_particles(A, AF, AFF, FIELD_dDdy, LPT_ORDER_ONE);
+  assign_displacment_field_to_particles(A, AF, AFF, FIELD_dDdy, LPT_ORDER_TWO);
+  if(ThisTask == 0) printf("\n");
 
 #endif
 
 #ifdef MATCHMAKER_HALOFINDER
-    //==================================================================================================================
-    // Run FoF halofinder. NB: For scaledependent case we must have dD/dy and dD2/dy in the P->dDdy and P->dD2dy vectors
-    // This is the case here. As currently written we duplicate particles in this routine which requires extra memory.
-    //==================================================================================================================
-    if(mm_run_matchmaker) {
-      struct PicolaToMatchMakerData data;
-      data.output_format  = mm_output_format;
-      data.output_pernode = mm_output_pernode;
-      data.np_min         = mm_min_npart_halo;
-      data.b_fof          = mm_linking_length;
-      data.NumPart        = NumPart;
-      data.n_part_1d      = Nsample;
-      data.omega_m        = Omega;
-      data.omega_l        = 1.0 - Omega;
-      data.HubbleParam    = HubbleParam;
-      data.redshift       = 1.0/A - 1.0;
-      data.Local_p_start  = (int)Local_p_start;
-      data.P              = P;
-      data.growth_dDdy    = &growth_dDdy;
-      data.growth_dD2dy   = &growth_dD2dy;
+  //==================================================================================================================
+  // Run FoF halofinder. NB: For scaledependent case we must have dD/dy and dD2/dy in the P->dDdy and P->dD2dy vectors
+  // This is the case here. As currently written we duplicate particles in this routine which requires extra memory.
+  //==================================================================================================================
+  if(mm_run_matchmaker) {
+    struct PicolaToMatchMakerData data;
+    data.output_format  = mm_output_format;
+    data.output_pernode = mm_output_pernode;
+    data.np_min         = mm_min_npart_halo;
+    data.b_fof          = mm_linking_length;
+    data.NumPart        = NumPart;
+    data.n_part_1d      = Nsample;
+    data.omega_m        = Omega;
+    data.omega_l        = 1.0 - Omega;
+    data.HubbleParam    = HubbleParam;
+    data.redshift       = 1.0/A - 1.0;
+    data.Local_p_start  = (int)Local_p_start;
+    data.P              = P;
+    data.growth_dDdy    = &growth_dDdy;
+    data.growth_dD2dy   = &growth_dD2dy;
 
-      // Particle mass in 10^{10} Msun/h (10^{10} = MATCHMAKER_MASS_FACTOR)
-      data.mass_part      = (3.0 * Omega * Hubble * Hubble * Box * Box * Box) / (8.0 * PI * G * TotNumPart);
+    // Particle mass in 10^{10} Msun/h (10^{10} = MATCHMAKER_MASS_FACTOR)
+    data.mass_part      = (3.0 * Omega * Hubble * Hubble * Box * Box * Box) / (8.0 * PI * G * TotNumPart);
 
-      // We use user-units in MatchMaker
-      data.norm_pos       = lengthfac;
-      data.boxsize        = Box * lengthfac;
-      data.dx_extra       = mm_dx_extra_mpc * lengthfac;
+    // We use user-units in MatchMaker
+    data.norm_pos       = lengthfac;
+    data.boxsize        = Box * lengthfac;
+    data.dx_extra       = mm_dx_extra_mpc * lengthfac;
 
-      // We work with comoving velocity [ dx/dt ] in km/s in MatchMaker
-      data.norm_vel       = (Hubble / A / A);
+    // We work with comoving velocity [ dx/dt ] in km/s in MatchMaker
+    data.norm_vel       = (Hubble / A / A);
 
-      sprintf(data.OutputDir, OutputDir);
-      sprintf(data.FileBase,  FileBase);
+    sprintf(data.OutputDir, OutputDir);
+    sprintf(data.FileBase,  FileBase);
 
-      // Could perhaps try to free some memory here just to make sure we don't run out? 
-      // If not in memory mode then we can do this. Consider adding this here
+    // Could perhaps try to free some memory here just to make sure we don't run out? 
+    // If not in memory mode then we can do this. Consider adding this here
 
-      timer_start(_HaloFinding);
-      MatchMaker(data);
-      timer_stop(_HaloFinding);
-    }
+    timer_start(_HaloFinding);
+    MatchMaker(data);
+    timer_stop(_HaloFinding);
+  }
 #endif
 
 #ifdef COMPUTE_POFK
-    if(pofk_compute_rsd_pofk == 2){
-      // Compute the RSD power-spectrum
-      compute_RSD_powerspectrum(A, 1);
-    }
+  if(pofk_compute_rsd_pofk == 2){
+    // Compute the RSD power-spectrum
+    compute_RSD_powerspectrum(A, 1);
+  }
 #endif
 
-    timer_start(_WriteOutput);
+  timer_start(_WriteOutput);
 
 #ifdef GADGET_STYLE
-    size_t bytes;
-    int k, pc, dummy, blockmaxlen;
-    float * block;
+  size_t bytes;
+  int k, pc, dummy, blockmaxlen;
+  float * block;
 #ifdef PARTICLE_ID
-    unsigned long long * blockid;
+  unsigned long long * blockid;
 #endif
 #endif
 
-    nprocgroup = NTask / NumFilesWrittenInParallel;
-    if (NTask % NumFilesWrittenInParallel) nprocgroup++;
-    masterTask = (ThisTask / nprocgroup) * nprocgroup;
-    for(groupTask = 0; groupTask < nprocgroup; groupTask++) {
-      if (ThisTask == (masterTask + groupTask)) {
-        if(NumPart > 0) {
-          int Zint  = (int)floor(Z);
-          int Zfrac = (int)((Z - Zint)*1000);
-          sprintf(buf, "%s/%s_z%dp%03d.%d", OutputDir, FileBase, Zint, Zfrac, ThisTask);
+  nprocgroup = NTask / NumFilesWrittenInParallel;
+  if (NTask % NumFilesWrittenInParallel) nprocgroup++;
+  masterTask = (ThisTask / nprocgroup) * nprocgroup;
+  for(groupTask = 0; groupTask < nprocgroup; groupTask++) {
+    if (ThisTask == (masterTask + groupTask)) {
+      if(NumPart > 0) {
+        int Zint  = (int)floor(Z);
+        int Zfrac = (int)((Z - Zint)*1000);
+        sprintf(buf, "%s/%s_z%dp%03d.%d", OutputDir, FileBase, Zint, Zfrac, ThisTask);
 
-          if(!(fp = fopen(buf, "w"))) {
-            printf("\nERROR: Can't write in file '%s'.\n\n", buf);
-            FatalError((char *)"main.c Output, can't write to file!");
-          }
-          fflush(stdout);
+        if(!(fp = fopen(buf, "w"))) {
+          printf("\nERROR: Can't write in file '%s'.\n\n", buf);
+          FatalError((char *)"main.c Output, can't write to file!");
+        }
+        fflush(stdout);
 
 #ifdef GADGET_STYLE
 
-          //===============================================================
-          // Write a GADGET file
-          //===============================================================
+        //===============================================================
+        // Write a GADGET file
+        //===============================================================
 
-          //===================
-          // Write header
-          //===================
-          write_gadget_header(fp, A);
+        //===================
+        // Write header
+        //===================
+        write_gadget_header(fp, A);
 
 #ifdef MEMORY_MODE
-          // Allocate buffer for output. We make it so that we have to gather and write 6 times
-          bytes = sizeof(float) * NumPart;
-          block = my_malloc(bytes);
+        // Allocate buffer for output. We make it so that we have to gather and write 6 times
+        bytes = sizeof(float) * NumPart;
+        block = my_malloc(bytes);
 #else
-          // When not in memory mode we are a bit more conservative here
-          bytes = 10*1024*1024;
-          block = my_malloc(bytes);
+        // When not in memory mode we are a bit more conservative here
+        bytes = 10*1024*1024;
+        block = my_malloc(bytes);
 #endif
-          blockmaxlen = bytes / (3 * sizeof(float));
+        blockmaxlen = bytes / (3 * sizeof(float));
 
-          //===================
-          // Write coordinates
-          //===================
-          dummy = sizeof(float) * 3 * NumPart;
-          my_fwrite(&dummy, sizeof(dummy), 1, fp);
-          for(n = 0, pc = 0; n < NumPart; n++) {
-            for(k = 0; k < 3; k++) block[3 * pc + k] = (float)(lengthfac*P[n].Pos[k]);
-            pc++;
-            if(pc == blockmaxlen) {
-              my_fwrite(block, sizeof(float), 3 * pc, fp);
-              pc = 0;
-            }
+        //===================
+        // Write coordinates
+        //===================
+        dummy = sizeof(float) * 3 * NumPart;
+        my_fwrite(&dummy, sizeof(dummy), 1, fp);
+        for(n = 0, pc = 0; n < NumPart; n++) {
+          for(k = 0; k < 3; k++) block[3 * pc + k] = (float)(lengthfac*P[n].Pos[k]);
+          pc++;
+          if(pc == blockmaxlen) {
+            my_fwrite(block, sizeof(float), 3 * pc, fp);
+            pc = 0;
           }
-          if(pc > 0) my_fwrite(block, sizeof(float), 3 * pc, fp);
-          my_fwrite(&dummy, sizeof(dummy), 1, fp);
-
-          //===================
-          // Write velocities
-          //===================
-          my_fwrite(&dummy, sizeof(dummy), 1, fp);
-          for(n = 0, pc = 0; n < NumPart; n++) {
-            // Remember to add the ZA and 2LPT velocities back on and convert to PTHalos velocity units
-#ifdef SCALEDEPENDENT
-            for(k = 0; k < 3; k++) 
-              block[3 * pc + k] = (float)(velfac*fac*(P[n].Vel[k] - sumxyz[k] 
-                    + (P[n].dDdy[k] + P[n].dD2dy[k] ) * UseCOLA));
-#else
-            for(k = 0; k < 3; k++) 
-              block[3 * pc + k] = (float)(velfac*fac*(P[n].Vel[k] - sumxyz[k] 
-                    + (P[n].D[k] * dDdy + P[n].D2[k] * dD2dy ) * UseCOLA));
-#endif
-            pc++;
-            if(pc == blockmaxlen) {
-              my_fwrite(block, sizeof(float), 3 * pc, fp);
-              pc = 0;
-            }
-          }
-          if(pc > 0) my_fwrite(block, sizeof(float), 3 * pc, fp);
-          my_fwrite(&dummy, sizeof(dummy), 1, fp);
-
-#ifdef PARTICLE_ID
-          blockid = (unsigned long long *)block;
-          blockmaxlen = bytes / sizeof(unsigned long long);
-
-          //===================
-          // Write particle ID
-          //===================
-          dummy = sizeof(unsigned long long) * NumPart;
-          my_fwrite(&dummy, sizeof(dummy), 1, fp);
-          for(n = 0, pc = 0; n < NumPart; n++) {
-            blockid[pc] = P[n].ID;
-            pc++;
-            if(pc == blockmaxlen) {
-              my_fwrite(blockid, sizeof(unsigned long long), pc, fp);
-              pc = 0;
-            }
-          }
-          if(pc > 0) my_fwrite(blockid, sizeof(unsigned long long), pc, fp);
-          my_fwrite(&dummy, sizeof(dummy), 1, fp);
-#endif
-          my_free(block);   
-#else
-          //==========================================================
-          // Output as ASCII
-          //==========================================================
-
-          // Total number of particle in each file on the first line
-          fprintf(fp,"%u\n", NumPart);
-
-          for(n = 0; n < NumPart; n++){
-            double P_Vel[3];
-            for(int axes = 0; axes < 3; axes++) {
-#ifdef SCALEDEPENDENT
-              P_Vel[axes] = fac*(P[n].Vel[axes] - sumxyz[axes] + (P[n].dDdy[axes] + P[n].dD2dy[axes] ) * UseCOLA);
-#else
-              P_Vel[axes] = fac*(P[n].Vel[axes] - sumxyz[axes] + (P[n].D[axes] * dDdy + P[n].D2[axes] * dD2dy) * UseCOLA);
-#endif
-            }
-
-            // Output positions in Mpc/h and velocities in km/s
-#ifdef PARTICLE_ID
-            fprintf(fp,"%12llu %12.6f %12.6f %12.6f %12.6f %12.6f %12.6f\n",
-                P[n].ID, (float)(lengthfac*P[n].Pos[0]), (float)(lengthfac*P[n].Pos[1]), (float)(lengthfac*P[n].Pos[2]),
-                (float)(velfac*P_Vel[0]),      (float)(velfac*P_Vel[1]),       (float)(velfac*P_Vel[2]));
-#else
-            fprintf(fp,"%12.6f %12.6f %12.6f %12.6f %12.6f %12.6f\n",
-                (float)(lengthfac*P[n].Pos[0]), (float)(lengthfac*P[n].Pos[1]), (float)(lengthfac*P[n].Pos[2]),
-                (float)(velfac*P_Vel[0]),       (float)(velfac*P_Vel[1]),       (float)(velfac*P_Vel[2]));
-#endif
-          }
-#endif
-          fclose(fp);
         }
+        if(pc > 0) my_fwrite(block, sizeof(float), 3 * pc, fp);
+        my_fwrite(&dummy, sizeof(dummy), 1, fp);
+
+        //===================
+        // Write velocities
+        //===================
+        my_fwrite(&dummy, sizeof(dummy), 1, fp);
+        for(n = 0, pc = 0; n < NumPart; n++) {
+          // Remember to add the ZA and 2LPT velocities back on and convert to PTHalos velocity units
+#ifdef SCALEDEPENDENT
+          for(k = 0; k < 3; k++) 
+            block[3 * pc + k] = (float)(velfac*fac*(P[n].Vel[k] - sumxyz[k] 
+                  + (P[n].dDdy[k] + P[n].dD2dy[k] ) * UseCOLA));
+#else
+          for(k = 0; k < 3; k++) 
+            block[3 * pc + k] = (float)(velfac*fac*(P[n].Vel[k] - sumxyz[k] 
+                  + (P[n].D[k] * dDdy + P[n].D2[k] * dD2dy ) * UseCOLA));
+#endif
+          pc++;
+          if(pc == blockmaxlen) {
+            my_fwrite(block, sizeof(float), 3 * pc, fp);
+            pc = 0;
+          }
+        }
+        if(pc > 0) my_fwrite(block, sizeof(float), 3 * pc, fp);
+        my_fwrite(&dummy, sizeof(dummy), 1, fp);
+
+#ifdef PARTICLE_ID
+        blockid = (unsigned long long *)block;
+        blockmaxlen = bytes / sizeof(unsigned long long);
+
+        //===================
+        // Write particle ID
+        //===================
+        dummy = sizeof(unsigned long long) * NumPart;
+        my_fwrite(&dummy, sizeof(dummy), 1, fp);
+        for(n = 0, pc = 0; n < NumPart; n++) {
+          blockid[pc] = P[n].ID;
+          pc++;
+          if(pc == blockmaxlen) {
+            my_fwrite(blockid, sizeof(unsigned long long), pc, fp);
+            pc = 0;
+          }
+        }
+        if(pc > 0) my_fwrite(blockid, sizeof(unsigned long long), pc, fp);
+        my_fwrite(&dummy, sizeof(dummy), 1, fp);
+#endif
+        my_free(block);   
+#else
+        //==========================================================
+        // Output as ASCII
+        //==========================================================
+
+        // Total number of particle in each file on the first line
+        fprintf(fp,"%u\n", NumPart);
+
+        for(n = 0; n < NumPart; n++){
+          double P_Vel[3];
+          for(int axes = 0; axes < 3; axes++) {
+#ifdef SCALEDEPENDENT
+            P_Vel[axes] = fac*(P[n].Vel[axes] - sumxyz[axes] + (P[n].dDdy[axes] + P[n].dD2dy[axes] ) * UseCOLA);
+#else
+            P_Vel[axes] = fac*(P[n].Vel[axes] - sumxyz[axes] + (P[n].D[axes] * dDdy + P[n].D2[axes] * dD2dy) * UseCOLA);
+#endif
+          }
+
+          // Output positions in Mpc/h and velocities in km/s
+#ifdef PARTICLE_ID
+          fprintf(fp,"%12llu %12.6f %12.6f %12.6f %12.6f %12.6f %12.6f\n",
+              P[n].ID, (float)(lengthfac*P[n].Pos[0]), (float)(lengthfac*P[n].Pos[1]), (float)(lengthfac*P[n].Pos[2]),
+              (float)(velfac*P_Vel[0]),      (float)(velfac*P_Vel[1]),       (float)(velfac*P_Vel[2]));
+#else
+          fprintf(fp,"%12.6f %12.6f %12.6f %12.6f %12.6f %12.6f\n",
+              (float)(lengthfac*P[n].Pos[0]), (float)(lengthfac*P[n].Pos[1]), (float)(lengthfac*P[n].Pos[2]),
+              (float)(velfac*P_Vel[0]),       (float)(velfac*P_Vel[1]),       (float)(velfac*P_Vel[2]));
+#endif
+        }
+#endif
+        fclose(fp);
       }
-      MPI_Barrier(MPI_COMM_WORLD); 
     }
-    Output_Info(A);
+    MPI_Barrier(MPI_COMM_WORLD); 
+  }
+  Output_Info(A);
 
 #ifdef SCALEDEPENDENT
 
-    /* We can avoid some computation below at the expense of copying
-     * but this requires memory
-     * We make a copy of the displacment-field [dDdy] which contains [deltaD]
-     * and add in dDdy in this field needed for velocities below
-    for(unsigned int i = 0; i < NumPart; i++){
-      for(int axes = 0; axes < 3; axes++){
-        P[i].dDdy[axes]  = tmp_buffer_deltaD[3*i + axes];
-        P[i].dD2dy[axes] = tmp_buffer_deltaD2[3*i + axes];
-      }
-    }
-    my_free(tmp_buffer_deltaD);
-    my_free(tmp_buffer_deltaD2);
-    */
+  /* We can avoid some computation below at the expense of copying
+   * but this requires memory
+   * We make a copy of the displacment-field [dDdy] which contains [deltaD]
+   * and add in dDdy in this field needed for velocities below
+   for(unsigned int i = 0; i < NumPart; i++){
+   for(int axes = 0; axes < 3; axes++){
+   P[i].dDdy[axes]  = tmp_buffer_deltaD[3*i + axes];
+   P[i].dD2dy[axes] = tmp_buffer_deltaD2[3*i + axes];
+   }
+   }
+   my_free(tmp_buffer_deltaD);
+   my_free(tmp_buffer_deltaD2);
+   */
 
-    // Compute deltaD
-    assign_displacment_field_to_particles(A, AF, AFF, FIELD_deltaD, LPT_ORDER_ONE);
-    assign_displacment_field_to_particles(A, AF, AFF, FIELD_deltaD, LPT_ORDER_TWO);
-    if(ThisTask == 0) printf("\n");
-    
+  // Compute deltaD
+  assign_displacment_field_to_particles(A, AF, AFF, FIELD_deltaD, LPT_ORDER_ONE);
+  assign_displacment_field_to_particles(A, AF, AFF, FIELD_deltaD, LPT_ORDER_TWO);
+  if(ThisTask == 0) printf("\n");
+
 #endif
 
-    timer_stop(_WriteOutput);
-    timer_set_category(_TimeStepping);
-    return;
-  }
+  timer_stop(_WriteOutput);
+  timer_set_category(_TimeStepping);
+  return;
+}
 
-  //=====================================================================================
-  // Generate the info file which contains a list of all the output files, 
-  // the 8 corners of the slices on those files and the number of particles in the slice
-  //=====================================================================================
-  void Output_Info(double A) {
-    FILE * fp; 
-    char buf[300];
-    double Z = (1.0/A) - 1.0;
+//=====================================================================================
+// Generate the info file which contains a list of all the output files, 
+// the 8 corners of the slices on those files and the number of particles in the slice
+//=====================================================================================
+void Output_Info(double A) {
+  FILE * fp; 
+  char buf[300];
+  double Z = (1.0/A) - 1.0;
 
-    int *Local_p_start_table    = my_malloc(sizeof(int) * NTask);
-    unsigned int *Noutput_table = my_malloc(sizeof(unsigned int) * NTask);
-    int local_p_start_int = (int)Local_p_start;
-    MPI_Allgather(&local_p_start_int, 1, MPI_INT, Local_p_start_table, 1, MPI_INT, MPI_COMM_WORLD); 
-    MPI_Allgather(&NumPart, 1, MPI_UNSIGNED, Noutput_table, 1, MPI_UNSIGNED, MPI_COMM_WORLD); 
+  int *Local_p_start_table    = my_malloc(sizeof(int) * NTask);
+  unsigned int *Noutput_table = my_malloc(sizeof(unsigned int) * NTask);
+  int local_p_start_int = (int)Local_p_start;
+  MPI_Allgather(&local_p_start_int, 1, MPI_INT, Local_p_start_table, 1, MPI_INT, MPI_COMM_WORLD); 
+  MPI_Allgather(&NumPart, 1, MPI_UNSIGNED, Noutput_table, 1, MPI_UNSIGNED, MPI_COMM_WORLD); 
 
-    if (ThisTask == 0) { // Added info_ to filename
-      sprintf(buf, "%s/info_%s_z%dp%03d.txt", OutputDir, FileBase, (int)Z, (int)rint((Z-(int)Z)*1000));
-      if(!(fp = fopen(buf, "w"))) {
-        printf("\nERROR: Can't write in file '%s'.\n\n", buf);
-        FatalError((char *)"main.c Output_Info, can't write to file");
-      }
-      fflush(stdout);
-      fprintf(fp, "#    FILENUM      XMIN         YMIN        ZMIN         XMAX         YMAX         ZMAX         NPART    \n");
-      double y0 = 0.0, z0 = 0.0, y1 = Box, z1 = Box;
-      for (int i = 0; i < NTask; i++) {
-        double x0 = Local_p_start_table[i] * (Box / (double)Nsample); 
-        double x1 = (Local_p_start_table[i] + Local_np_table[i]) * (Box / (double)Nsample);
-        fprintf(fp, "%12d %12.6lf %12.6lf %12.6lf %12.6lf %12.6lf %12.6lf %12u\n", i, x0, y0, z0, x1, y1, z1, Noutput_table[i]);
-      }
-      fclose(fp);
+  if (ThisTask == 0) { // Added info_ to filename
+    sprintf(buf, "%s/info_%s_z%dp%03d.txt", OutputDir, FileBase, (int)Z, (int)rint((Z-(int)Z)*1000));
+    if(!(fp = fopen(buf, "w"))) {
+      printf("\nERROR: Can't write in file '%s'.\n\n", buf);
+      FatalError((char *)"main.c Output_Info, can't write to file");
     }
-
-    my_free(Noutput_table);
-    my_free(Local_p_start_table);
-
-    return;
+    fflush(stdout);
+    fprintf(fp, "#    FILENUM      XMIN         YMIN        ZMIN         XMAX         YMAX         ZMAX         NPART    \n");
+    double y0 = 0.0, z0 = 0.0, y1 = Box, z1 = Box;
+    for (int i = 0; i < NTask; i++) {
+      double x0 = Local_p_start_table[i] * (Box / (double)Nsample); 
+      double x1 = (Local_p_start_table[i] + Local_np_table[i]) * (Box / (double)Nsample);
+      fprintf(fp, "%12d %12.6lf %12.6lf %12.6lf %12.6lf %12.6lf %12.6lf %12u\n", i, x0, y0, z0, x1, y1, z1, Noutput_table[i]);
+    }
+    fclose(fp);
   }
+
+  my_free(Noutput_table);
+  my_free(Local_p_start_table);
+
+  return;
+}
 

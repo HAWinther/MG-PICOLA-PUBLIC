@@ -1,7 +1,7 @@
-#ifndef READICFROMFILEINC
-#define READICFROMFILEINC
 #include "msg.h"
 #include "timer.h"
+#include "vars.h"
+#include "proto.h"
 
 //==========================================================================//
 //                                                                          //
@@ -122,67 +122,6 @@ struct Gadget_Header{
   int  flag_entropy_instead_u;
   char fill[60];
 } gadget_header;
-
-//==================================================================
-// Check a real-grid by computing some quantities like max/min/avg/rms
-//==================================================================
-void check_realgrid(float_kind *grid, char *desc){
-  double mingrid = 1e100, maxgrid = -1e100;
-  double avggrid = 0.0,   rmsgrid = 0.0;
-  for(int IX = 0; IX < Local_nx; IX++){
-    for(int IY = 0; IY < Nmesh; IY++){
-      for(int IZ = 0; IZ < Nmesh; IZ++){
-        double curgrid = grid[(IX*Nmesh+IY)*2*(Nmesh/2+1)+IZ];
-        avggrid += curgrid;
-        rmsgrid += curgrid*curgrid;
-        if(curgrid > maxgrid) maxgrid = curgrid;
-        if(curgrid < mingrid) mingrid = curgrid;
-      }
-    }
-  }
-
-  // Allreduce over all CPUs
-  ierr = MPI_Allreduce(&mingrid,   &mingrid, 1, MPI_DOUBLE, MPI_MIN, MPI_COMM_WORLD);
-  ierr = MPI_Allreduce(&maxgrid,   &maxgrid, 1, MPI_DOUBLE, MPI_MAX, MPI_COMM_WORLD);
-  ierr = MPI_Allreduce(&avggrid,   &avggrid, 1, MPI_DOUBLE, MPI_SUM, MPI_COMM_WORLD);
-  ierr = MPI_Allreduce(&rmsgrid,   &rmsgrid, 1, MPI_DOUBLE, MPI_SUM, MPI_COMM_WORLD);
-  
-  avggrid /= pow((double) Nmesh,3);
-  rmsgrid = sqrt(rmsgrid / pow((double) Nmesh,3) );
-  
-  if(ThisTask == 0) {
-    printf("Check grid [%s]  Min: [%e]  Max: [%e]  Avg: [%e]  Rms: [%e]\n", desc, mingrid, maxgrid, avggrid, rmsgrid);
-  }
-}
-
-//==================================================================
-// Check a complex grid by computing some quantities like min/max
-//==================================================================
-void check_complexgrid(complex_kind *grid, char *desc){
-  double mingridre = 1e100, maxgridre = -1e100;
-  double mingridim = 1e100, maxgridim = -1e100;
-  for (int i = 0; i < Local_nx; i++) {
-    for (int j = 0; j < (unsigned int)(Nmesh/2+1); j++) {
-      for (int k = 0; k < (unsigned int)(Nmesh/2+1); k++) {
-        unsigned int ind = (i*Nmesh + j)*(Nmesh/2+1) + k;
-        if(grid[ind][0] < mingridre) mingridre = grid[ind][0];
-        if(grid[ind][0] > maxgridre) maxgridre = grid[ind][0];
-        if(grid[ind][1] < mingridim) mingridim = grid[ind][0];
-        if(grid[ind][1] > maxgridim) maxgridim = grid[ind][0];
-      }
-    }
-  }
-
-  // Allreduce over all CPUs
-  ierr = MPI_Allreduce(&mingridre, &mingridre, 1, MPI_DOUBLE, MPI_MIN, MPI_COMM_WORLD);
-  ierr = MPI_Allreduce(&maxgridre, &maxgridre, 1, MPI_DOUBLE, MPI_MAX, MPI_COMM_WORLD);
-  ierr = MPI_Allreduce(&mingridim, &mingridim, 1, MPI_DOUBLE, MPI_MIN, MPI_COMM_WORLD);
-  ierr = MPI_Allreduce(&maxgridim, &maxgridim, 1, MPI_DOUBLE, MPI_MAX, MPI_COMM_WORLD);
-
-  if(ThisTask == 0) {
-    printf("Check grid [%s]  Min_Re: [%e]  Max_Re: [%e]  Min_Im: [%e]  Max_Im: [%e]\n", desc, mingridre, maxgridre, mingridim, maxgridim);
-  }
-}
 
 //==================================================================
 // This routine reads a single particle file and bins the particles to the [density] grid
@@ -698,9 +637,6 @@ void ReadFilesMakeDisplacementField(void){
   }
   my_free(temp_density);
 
-  // Check density field
-  // check_realgrid(density, "density-field");
-
   if(ThisTask == 0) printf("Fourier transforming density field...\n");
 
   // FFT the density field
@@ -711,9 +647,6 @@ void ReadFilesMakeDisplacementField(void){
   normfac *= growth_DLCDM(1.0) / growth_DLCDM(1.0/(1.0+Init_Redshift));
   for(unsigned int i = 0; i < 2*Total_size; i++) density[i] *= normfac;
 
-  // Compute some quantities (min / max / avg of density)
-  // check_complexgrid(P3D, "density-field-k");
-  
   timer_stop(_ReadParticlesFromFile);
 
   // We now have delta(k, z = 0) in P3D and are is ready to compute the displacement-field
@@ -855,6 +788,4 @@ void write_gadget_header(FILE *fp, double A){
   my_fwrite(&header, sizeof(header), 1, fp);
   my_fwrite(&dummy,  sizeof(dummy),  1, fp);
 }
-#endif
-
 #endif
