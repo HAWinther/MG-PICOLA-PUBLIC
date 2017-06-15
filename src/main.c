@@ -403,6 +403,9 @@ int main(int argc, char **argv) {
     //=========================================================
     for (timeStep = 0; timeStep < nsteps; timeStep++) {
 
+      timeStep_global = timeStep;
+      NoutputStart_global = NoutputStart;
+
 #ifdef LIGHTCONE
 
       //=====================================================================================
@@ -860,7 +863,7 @@ void Output(double A, double AF, double AFF, double dDdy, double dD2dy) {
 #endif
 
 #ifdef COMPUTE_POFK
-  if(pofk_compute_rsd_pofk == 2){
+  if(pofk_compute_rsd_pofk >= 1){
     // Compute the RSD power-spectrum
     compute_RSD_powerspectrum(A, 1);
   }

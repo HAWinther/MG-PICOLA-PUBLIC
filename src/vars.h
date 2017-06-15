@@ -461,4 +461,8 @@ extern double mm_dx_extra_mpc;
 
 #endif
 
+// Global book-keeping variables for timesteps
+extern int NoutputStart_global;
+extern int timeStep_global;
+
 #endif

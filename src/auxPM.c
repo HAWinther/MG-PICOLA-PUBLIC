@@ -365,13 +365,19 @@ void PtoMesh(void) {
   my_fftw_execute(plan);
 
 #ifdef COMPUTE_POFK
+  
   // Compute matter P(k) every time-step
-  if(pofk_compute_every_step)
+  if(pofk_compute_every_step){
     compute_power_spectrum(P3D, aexp_global, "CDM");
+  }
 
   // Compute matter RSD P0(k),P2(k),P4(k) every time-step
-  if(pofk_compute_rsd_pofk == 1)
+  // If we output to file in this step then we compute it then instead as this will ensure 
+  // velocities are synchronized to the positions (which is not the case here!)
+  int we_will_output_this_step = (timeStep_global == 0) && (i != NoutputStart_global);
+  if(pofk_compute_rsd_pofk == 1 && !we_will_output_this_step){
     compute_RSD_powerspectrum(aexp_global, 0);
+  }
 #endif
 
 #ifdef MASSIVE_NEUTRINOS

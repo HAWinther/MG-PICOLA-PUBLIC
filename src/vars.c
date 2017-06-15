@@ -291,3 +291,7 @@ double mm_linking_length;  // FoF linking length (0.2)
 double mm_dx_extra_mpc;    // Buffer radius for FoF search in units of the boxsize (3.0 Mpc/h)
 #endif
 
+// Global book-keeping variables for timesteps
+int NoutputStart_global;
+int timeStep_global;
+
