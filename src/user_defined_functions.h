@@ -115,12 +115,16 @@ void init_modified_version(){
   if(ThisTask == 0 && modified_gravity_active){
     printf("============================================\n");
     printf("Running with Modified Gravity, (m(a),b(a))  \n");
+    printf("The example model used is the symmetron     \n");
     printf("============================================\n");
     printf("  Modified gravity active = %i\n", modified_gravity_active);
     printf("  Include screening       = %i\n", include_screening);
     printf("  Use LCDM growthfactor   = %i\n", use_lcdm_growth_factors);
     printf("  Input P(k) is for LCDM  = %i\n", input_pofk_is_for_lcdm);
     printf("  Sigma8 is for LCDM      = %i\n", input_sigma8_is_for_lcdm);
+    printf("  assb_symm               = %f\n", assb_symm);
+    printf("  beta_symm               = %f\n", beta_symm);
+    printf("  range_symm              = %f Mpc/h\n", range_symm);
     printf("\n");
     fflush(stdout);
   }
@@ -346,12 +350,16 @@ void read_mg_parameters(void **addr, char (*tag)[50], int *id, int (*nt)){
 
 #elif defined(MBETAMODEL)
 
-  strcpy(tag[(*nt)], "fofr0");
-  addr[(*nt)] = &fofr0;
+  strcpy(tag[(*nt)], "range_symm");
+  addr[(*nt)] = &range_symm;
   id[(*nt)++] = FLOAT;
 
-  strcpy(tag[(*nt)], "nfofr");
-  addr[(*nt)] = &nfofr;
+  strcpy(tag[(*nt)], "assb_symm");
+  addr[(*nt)] = &assb_symm;
+  id[(*nt)++] = FLOAT;
+  
+  strcpy(tag[(*nt)], "beta_symm");
+  addr[(*nt)] = &beta_symm;
   id[(*nt)++] = FLOAT;
 
 #elif defined(DGPGRAVITY)
@@ -449,20 +457,19 @@ double beta_of_a(double a){
   return 1.0/sqrt(6.0);
 
 #elif defined(MBETAMODEL)
+  
+  // For the symmetron model we have
+  if(a > assb_symm){
+    return beta_symm * sqrt(1.0 - pow3(assb_symm/a));
+  } else {
+    return 0.0;
+  }
 
-  // This is beta using f(R) as an example
-  return 1.0/sqrt(6.0);
+  // For f(R) we have
+  // return 1.0/sqrt(6.0);
 
 #else
 
-  // E.g. for the symmetron we have
-  // if(a > assb_symm){
-  //   return beta_symm * sqrt(1.0 - pow3(a/assb_symm));
-  // } else {
-  //   return 0.0;
-  // }
-
-  // Define your function here...
   return 0.0;
 
 #endif
@@ -484,23 +491,61 @@ double mass2_of_a(double a){
 
 #elif defined(MBETAMODEL)
 
-  // This is m^2/H0^2 using f(R) as an example
+  // For the symmetron we have
+  if(a > assb_symm){
+    return 0.5 * pow2(2998.0 / range_symm ) * (1.0 - pow3(assb_symm/a));
+  } else {
+    return 1.0; // Unimporant as beta == 0, but non-zero value 
+                // useful to avoid errors in computing phi(a)
+  }
+
+  // For Hu-Sawicky f(R) we have
+  // double a3    = a * a * a;
+  // double fac   = Omega/a3 + 4.0 * (1.0-Omega);
+  // double fac0  = Omega    + 4.0 * (1.0-Omega);
+  // double mass2 = fac0 * pow( fac / fac0, nfofr + 2.0) / ((1.0 + nfofr) * fofr0);
+  // return mass2; 
+
+#else
+  
+  return 0.0;
+
+#endif
+}
+
+//=========================================================//
+// The derivative dm^2(a)/da needed for the gamma2 factor
+//=========================================================//
+double dmass2_of_ada(double a){
+#if defined(FOFRGRAVITY)
+
+  // This is dm^2(a)/da / H0^2
   double a3    = a * a * a;
   double fac   = Omega/a3 + 4.0 * (1.0-Omega);
   double fac0  = Omega    + 4.0 * (1.0-Omega);
-  double mass2 = fac0 * pow( fac / fac0, nfofr + 2.0) / ((1.0 + nfofr) * fofr0);
+  double mass2 = fac0 * (nfofr + 2.0) * pow( fac / fac0, nfofr + 1.0) / ((1.0 + nfofr) * fofr0 * fac0);
+  mass2 *= -3.0*Omega/a3/a;
   return mass2; 
+
+#elif defined(MBETAMODEL)
+  
+  // For the symmetron we have
+  if(a > assb_symm){
+    return 0.5 * pow2(2998.0 / range_symm ) * ( + 3.0 * pow3(assb_symm/a) / a);
+  } else {
+    return 0.0;
+  }
+
+  // For Hu-Sawicky f(R) we have
+  // double a3    = a * a * a;
+  // double fac   = Omega/a3 + 4.0 * (1.0-Omega);
+  // double fac0  = Omega    + 4.0 * (1.0-Omega);
+  // double mass2 = fac0 * (nfofr + 2.0) * pow( fac / fac0, nfofr + 1.0) / ((1.0 + nfofr) * fofr0 * fac0);
+  // mass2 *= -3.0*Omega/a3/a;
+  // return mass2; 
 
 #else
 
-  // E.g. for the symmetron we have
-  // if(a > assb_symm){
-  //   return 0.5 * pow2(2998.0 / range_symm ) * (1.0 - pow3(a/assb_symm));
-  // } else {
-  //   return 1.0; // Unimporant as beta == 0
-  // }
-
-  // Define your function here...
   return 0.0;
 
 #endif
@@ -513,7 +558,6 @@ double mass2_of_a(double a){
 // phi(a)/2beta(a) in the notation of Brax et al. This is  //
 // computed by the code, but if the analytical expression  //
 // is known it's better to just define it here             //
-// Not used for DGP                                        //
 //=========================================================//
 #if defined(MBETAMODEL)
 double phi_of_a(double a){
@@ -826,6 +870,16 @@ double second_order_kernel(double k, double k1, double k2, double costheta, doub
   // For completeness, for DGP one should use the now SCALEDEPENDENT version.
   // In terms of Factor_2LPT we have second_order_kernel = 0.5 * (Factor_2LPT(a) - 1) * (1.5 * Omega * GeffoverG(a) * a) * ( 1 - cos^2theta )
   gamma2 = -1.0/6.0/pow3(beta_DGP(a)) * pow2(rcH0_DGP / hubble(a)) * pow2(Omega/(a*a*a)) * (1.0 - costheta*costheta);
+
+#elif defined(MBETAMODEL)
+
+  // The general expression for gamma2 in terms of beta and m
+  double m2 = mass2_of_a(a);
+  double dm2da = dmass2_of_ada(a);
+  double pifac_k  = pow2(k  * INVERSE_H0_MPCH / a) + m2;
+  double pifac_k1 = pow2(k1 * INVERSE_H0_MPCH / a) + m2;
+  double pifac_k2 = pow2(k2 * INVERSE_H0_MPCH / a) + m2;
+  gamma2 = (dm2da/m2) * pow2(beta_of_a(a)) * Omega / (2.0 * a * a) * (m2/pifac_k1) * (m2/pifac_k2) * (1.0 - m2/pifac_k) / pow2(hubble(a));
 
 #else
 

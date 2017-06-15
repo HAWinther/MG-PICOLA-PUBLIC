@@ -109,12 +109,16 @@ double w_0; // Background parametrization
 double w_a; // w(a) = w0 + wa(1-a)
 #endif
 
-#if defined(FOFRGRAVITY) || defined(MBETAMODEL)
-double fofr0;                     // Hu-Sawicky f(R) parameters: f(R0)            
-double nfofr;                     // Hu-Sawicky f(R) parameters: n                
+#if defined(FOFRGRAVITY)
+double fofr0;                    // Hu-Sawicky f(R) parameters: f(R0)            
+double nfofr;                    // Hu-Sawicky f(R) parameters: n                
+#elif defined(MBETAMODEL)
+double beta_symm;                // Coupling beta(a->infty)
+double assb_symm;                // Symmetry-breaking redshift
+double range_symm;               // Range of force in Mpc/h
 #elif defined(DGPGRAVITY)
-double Rsmooth_global;            // Smoothing radius for density field (DGP relevant)
-double rcH0_DGP;                  // DGP cross-over scale in units of c/H0
+double Rsmooth_global;           // Smoothing radius for density field (DGP relevant)
+double rcH0_DGP;                 // DGP cross-over scale in units of c/H0
 #elif defined(BRANSDICKE)
 double wBD;                      // The Brans-Dicke parameter
 double Omegah2;                  // The physical matter density parameter Omega * h^2

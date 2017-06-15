@@ -87,6 +87,7 @@ double JBD_GeffG_of_a(double a);
 
 void   solve_for_growth_factors();
 void   free_up_splines();
+void   free_CAMB_splines();
 
 // Growth factor splines
 double growth_D(double a);
@@ -347,6 +348,6 @@ void MatchMaker(struct PicolaToMatchMakerData);
 #endif
 
 void create_MPI_type_for_Particles(MPI_Datatype *mpi_particle_type);
-void free_CAMB_splines();
+void write_grid_to_file(float_kind *grid, double a, char *prefix);
 
 #endif

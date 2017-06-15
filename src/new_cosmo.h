@@ -72,12 +72,25 @@ struct MySplineContainer{
 #if defined(MBETAMODEL)
 //===============================================
 // The integrand for phi(a) defined above
+// Note dx = da/a so only a^3 in the denominator
 //===============================================
 double integrand_phiofa(double x, void *params){
   double a = exp(x);
 
-  // This is dphi(a) / dlog(a)
-  double source = 9.0 * Omega * beta_of_a(a) / (mass2_of_a(a) * a * a * a);
+  double beta  = beta_of_a(a);
+  double mass2 = mass2_of_a(a);
+  double source = 0.0;
+  if(beta != 0.0){
+    if(mass2 == 0.0){
+      printf("Error in integrating phi(a) for MBETA models. m^2(a) = 0 and beta(a) != 0\n");
+      MPI_Abort(MPI_COMM_WORLD,1);
+      exit(1);
+    }
+
+    // This is dphi(a) / dlog(a)
+    source = 9.0 * Omega * beta / (mass2 * a * a * a);
+  }
+
   return source;
 }
 
@@ -126,11 +139,14 @@ void compute_phi_of_a(){
   for(int i = 0; i < npts; i++){
     double anow = exp(x_arr[i]);
 
-    phi_arr[i] = phi_arr[i] / (2.0 * beta_of_a(anow));
-    err_arr[i] = err_arr[i] / (2.0 * beta_of_a(anow));
+    double beta = beta_of_a(anow);
+    if(beta != 0.0){
+      phi_arr[i] = phi_arr[i] / (2.0 * beta);
+      err_arr[i] = err_arr[i] / (2.0 * beta);
+    }
 
-    if(ThisTask == 0 && i % 100 == 0){
-      printf("a = %6.3f    Phi_critical = %10.5e   [Est. error in integration = %10.5e %%]\n", anow, phi_arr[i], (err_arr[i] / phi_arr[i])*100.0);
+    if(ThisTask == 0 && i % 25 == 0){
+      printf("a = %6.3f    Phi_critical = %10.5e   [Est. error in integration = %10.5e %%]\n", anow, phi_arr[i], (err_arr[i] / (phi_arr[i] + 1e-100)*100.0));
 
     }
   }

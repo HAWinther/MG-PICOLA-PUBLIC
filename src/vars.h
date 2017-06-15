@@ -160,9 +160,14 @@ extern double w_0; // Background parametrization
 extern double w_a; // w(a) = w0 + wa(1-a)
 #endif
 
-#if defined(FOFRGRAVITY) || defined(MBETAMODEL)
+#if defined(FOFRGRAVITY)
 extern double fofr0;                    // Hu-Sawicky f(R) parameters: f(R0)            
 extern double nfofr;                    // Hu-Sawicky f(R) parameters: n                
+#elif defined(MBETAMODEL)
+                                        // We currently use the symmetron as an example here
+extern double beta_symm;                // Coupling beta(a->infty)   
+extern double assb_symm;                // Symmetry-breaking redshift
+extern double range_symm;               // Range of force in Mpc/h   
 #elif defined(DGPGRAVITY)
 extern double Rsmooth_global;           // Smoothing radius for density field (DGP relevant)
 extern double rcH0_DGP;                 // DGP cross-over scale in units of c/H0
