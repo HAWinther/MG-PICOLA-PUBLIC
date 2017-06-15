@@ -1,13 +1,14 @@
-# ===================
-# The executable name
-# ===================
-EXEC = MG_PICOLA_MBETA
+# =====================================
+# The executable name (EXECPREFIX_MODEL)
+# =====================================
+EXECPREFIX = MG_PICOLA
 
 # ========================================
 # Choose the machine you are running on. 
 # Set paths to mpicc, FFTW3 and GSL below
 # ========================================
 #MACHINE = SCIAMA2
+#MACHINE = OKEANOS
 MACHINE  = WINTHERMACBOOK
 
 # ========================
@@ -15,51 +16,149 @@ MACHINE  = WINTHERMACBOOK
 # ========================
 OPTIMIZE  = -O3 -Wall -std=c99 
 
+# ==================================
+# Fetch any options from commandline
+# ==================================
+ifndef OPT
+  OPTIONS = 
+else
+  OPTIONS = $(OPT)
+endif
+
 # ====================================================================
-# Various C preprocessor directives that change the way PICOLA is made
+# Select model. For LCDM sims one can use any of the below, but 
+# without scaledependent is faster so use this
 # ====================================================================
 
-MGMODEL  = -DMBETAMODEL                  # General (m,beta) parametrisation
-OPTIONS += $(MGMODEL) -DSCALEDEPENDENT   # The scaledependent version is so far incompatible with LIGHTCONE
-                                         # so use LCDM growth-factors for lightcone sims
+ifndef MODEL
+  MODEL = DGP
+  #MODEL = FOFR
+  #MODEL = FOFR_LCDM
+  #MODEL = MBETA
+  #MODEL = BRANSDICKE
+  #MODEL = LCDMNU
+endif
+
+EXEC = $(EXECPREFIX)_$(MODEL)
+$(info )
+$(info =====================================================)
+$(info MODEL = [${MODEL}]  EXEC = [${EXEC}])
+$(info External options = [${OPT}])  
+$(info =====================================================)
+$(info )
+
+ifeq ($(MODEL), FOFR)
+  # Hu-Sawicky f(R) model
+  MGMODEL  = -DFOFRGRAVITY
+  OPTIONS += $(MGMODEL)
+  OPTIONS += -DSCALEDEPENDENT
+  MODELISDEFINED = TRUE
+endif
+
+ifeq ($(MODEL), FOFR_LCDM)
+  # f(R) for using non-scaledependent (LCDM) growth-factors
+  MGMODEL  = -DFOFRGRAVITY
+  OPTIONS += $(MGMODEL)
+  MODELISDEFINED = TRUE
+endif
+
+ifeq ($(MODEL), DGP)
+  # Normal branch DGP model
+  MGMODEL         = -DDGPGRAVITY             
+  SMOOTHINGFILTER = -DGAUSSIANFILTER          
+  OPTIONS        += $(MGMODEL) 
+  OPTIONS        += $(SMOOTHINGFILTER) 
+  MODELISDEFINED  = TRUE
+endif
+
+ifeq ($(MODEL), BRANSDICKE)
+  # Brans-Dicke model
+  MGMODEL  = -DBRANSDICKE
+  OPTIONS += $(MGMODEL) 
+  MODELISDEFINED = TRUE
+endif
+
+ifeq ($(MODEL), MBETA)
+  # General (m,beta) parametrisation
+  MGMODEL  = -DMBETAMODEL 
+  OPTIONS += $(MGMODEL) 
+  OPTIONS += -DSCALEDEPENDENT
+  MODELISDEFINED = TRUE
+endif
+
+ifndef MODELISDEFINED
+  $(error ERROR: MODEL is not recognized)
+endif
+
+# ====================================================================
+# Various C preprocessor directives that change the way the code is made
+# ====================================================================
 
 GAUSSIAN = -DGAUSSIAN                    # Switch this if you want gaussian initial conditions (fnl otherwise)
 OPTIONS += $(GAUSSIAN) 
 
+# ====================================================================
+
 MEMORY_MODE = -DMEMORY_MODE	             # Save memory by making sure to allocate and deallocate arrays only when we need them
 OPTIONS += $(MEMORY_MODE)	   	           # and by making the particle data single precision
+
+# ====================================================================
 
 GADGET_STYLE = -DGADGET_STYLE            # If we are running snapshots this writes all the output in Gadget's '1' style format, 
                                          # with the corresponding header
 OPTIONS += $(GADGET_STYLE)               # This option is incompatible with LIGHTCONE simulations. 
                                          # For binary outputs with LIGHTCONE simulations use the UNFORMATTED option.
 
+# ====================================================================
+
+#MASSIVE_NEUTRINOS = -DMASSIVE_NEUTRINOS  
+#OPTIONS += $(MASSIVE_NEUTRINOS)          # Include support for massive neutrinos
+#OPTIONS += -DSCALEDEPENDENT              # Massive neutrinos require scale-dependent version
+
+# ====================================================================
+
 #COMPUTE_POFK = -DCOMPUTE_POFK           # Compute P(k) in the code and output. Needs extra runtime parameters
 #OPTIONS += $(COMPUTE_POFK)               
+
+# ====================================================================
 
 #MATCHMAKER = -DMATCHMAKER_HALOFINDER    # Switch this on to do FoF halo-finding on the fly using MatchMaker (David Alonso)
 #OPTIONS += $(MATCHMAKER)                
 
+# ====================================================================
+
 #SINGLE_PRECISION = -DSINGLE_PRECISION	 # Single precision floats and FFTW (else use double precision)
 #OPTIONS += $(SINGLE_PRECISION)
+
+# ====================================================================
 
 #PARTICLE_ID = -DPARTICLE_ID             # Assigns unsigned long long ID's to each particle and outputs them. This adds
 #OPTIONS += $(PARTICLE_ID)               # an extra 8 bytes to the storage required for each particle
 
+# ====================================================================
+
 #LIGHTCONE = -DLIGHTCONE                 # Builds a lightcone based on the run parameters and only outputs particles
 #OPTIONS += $(LIGHTCONE)                 # at a given timestep if they have entered the lightcone 
+
+# ====================================================================
 
 #LOCAL_FNL = -DLOCAL_FNL                 # Switch this if you want only local non-gaussianities
 #OPTIONS += $(LOCAL_FNL)                 # NOTE this option is only for invariant inital power spectrum
                                          # for local with ns != 1 use DGENERIC_FNL and input_kernel_local.txt
 
+# ====================================================================
+
 #EQUIL_FNL = -DEQUIL_FNL                 # Switch this if you want equilateral Fnl
 #OPTIONS += $(EQUIL_FNL)                 # NOTE this option is only for invariant inital power spectrum
                                          # for local with ns != 1 use DGENERIC_FNL and input_kernel_equil.txt
 
+# ====================================================================
+
 #ORTHO_FNL = -DORTHO_FNL                 # Switch this if you want ortogonal Fnl
 #OPTIONS += $(ORTHO_FNL)                 # NOTE this option is only for invariant inital power spectrum
                                          # for local with ns != 1 use DGENERIC_FNL and input_kernel_ortog.txt
+
+# ====================================================================
 
 #GENERIC_FNL += -DGENERIC_FNL            # Switch this if you want generic Fnl implementation
 #OPTIONS += $(GENERIC_FNL)               # This option allows for ns != 1 and should include an input_kernel_file.txt 
@@ -67,12 +166,15 @@ OPTIONS += $(GADGET_STYLE)               # This option is incompatible with LIGH
                                          # see README and Manera et al astroph/NNNN.NNNN
                                          # For local, equilateral and orthogonal models you can use the provided files
                                          # input_kernel_local.txt, input_kernel_equil.txt, input_kernel_orthog.txt 
+
+# ====================================================================
 																				
 #UNFORMATTED = -DUNFORMATTED             # If we are running lightcones this writes all the output in binary. 
                                          # All the particles are output in chunks with each 
 #OPTIONS += $(UNFORMATTED)               # chunk preceded by the number of particles in the chunk. With the chunks we output all the data 
                                          # (id, position and velocity) for a given particle contiguously
 
+# ====================================================================
 
 # =================================================================================================================
 # Nothing below here should need changing unless you are adding in/modifying libraries for existing or new machines
@@ -187,19 +289,25 @@ endif
   MPI_LIBS  = -L/opt/local/lib/ -lmpi
 endif
 
+ifeq ($(MACHINE),OKEANOS)
+  CC = cc
+  GSL_INCL =  -I/lustre/tetyda/home/winther/local/include 
+  GSL_LIBS =  -L/lustre/tetyda/home/winther/local/lib -lgsl -lgslcblas 
+endif
+
 LIBS   =   -lm $(MPI_LIBs) $(FFTW_LIBS) $(GSL_LIBS)
 
 CFLAGS =   $(OPTIMIZE) $(FFTW_INCL) $(GSL_INCL) $(MPI_INCL) $(OPTIONS)
 
-OBJS  = src/main.o src/cosmo.o src/auxPM.o src/2LPT.o src/power.o src/vars.o src/read_param.o src/timer.o src/msg.o src/wrappers.o
+OBJS  = src/main.o src/cosmo.o src/auxPM.o src/2LPT.o src/power.o src/vars.o src/read_param.o src/timer.o src/msg.o src/wrappers.o src/jbd.o
 ifdef GENERIC_FNL
-OBJS += src/kernel.o
+  OBJS += src/kernel.o
 endif
 ifdef LIGHTCONE
 OBJS += src/lightcone.o
 endif
 
-INCL   = src/vars.h src/proto.h src/mg.h src/readICfromfile.h src/new_cosmo.h src/wrappers.h src/user_defined_functions.h Makefile.mbeta
+INCL   = src/vars.h src/proto.h src/mg.h src/readICfromfile.h src/new_cosmo.h src/user_defined_functions.h src/wrappers.h Makefile
 INCL  += src/read_CAMB_data.h
 ifdef COMPUTE_POFK
 INCL  += src/compute_pofk.h
