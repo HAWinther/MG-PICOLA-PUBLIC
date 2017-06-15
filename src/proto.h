@@ -341,6 +341,8 @@ void adjust_pofk_parameters(int *nbins, int *bintype, int *subtract_shotnoise, d
 void compute_RSD_powerspectrum(double A, int dDdy_set_in_particles);
 void PtoMesh_RSD(float_kind *dens, int axis, double A);
 void bin_up_RSD_power_spectrum(complex_kind *dens_k, struct RSD_Pofk_Data *pofk_data);
+int pofk_bin_index(double kmag, double kmin, double kmax, int nbins, int bintype);
+double k_from_index(int index, double kmin, double kmax, int nbins, int bintype);
 #endif
 
 #ifdef MATCHMAKER_HALOFINDER

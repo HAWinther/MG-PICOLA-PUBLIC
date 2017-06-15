@@ -1,19 +1,28 @@
+#include "vars.h"
+#include "proto.h"
+#include "msg.h"
+#include "timer.h"
+#define LINEAR_SPACING 0
+#define LOG_SPACING    1
+#define XAXIS          0
+#define YAXIS          1
+#define ZAXIS          2
 
 //==========================================================================//
 //                                                                          //
 //  MG-PICOLA written by Hans Winther (ICG Portsmouth) March 2017           //
 //                                                                          //
+//  This files contains methods to compute P(k) and RSD multiplole P_ell(k) //
+//                                                                          //
 //==========================================================================//
 
-#include "vars.h"
-#include "proto.h"
-#include "msg.h"
-#include "timer.h"
-
-#define LINEAR_SPACING 0
-#define LOG_SPACING    1
-#define YAXIS          1
-#define ZAXIS          2
+void compute_power_spectrum(complex_kind *dens_k, double a, char *label);
+void adjust_pofk_parameters(int *nbins, int *bintype, int *subtract_shotnoise, double *kmin, double *kmax);
+void compute_RSD_powerspectrum(double A, int dDdy_set_in_particles);
+void PtoMesh_RSD(float_kind *dens, int axis, double A);
+void bin_up_RSD_power_spectrum(complex_kind *dens_k, struct RSD_Pofk_Data *pofk_data);
+int pofk_bin_index(double kmag, double kmin, double kmax, int nbins, int bintype);
+double k_from_index(int index, double kmin, double kmax, int nbins, int bintype);
 
 //===========================================================================
 // Defines the binning for the power-spectrum estimation
@@ -36,6 +45,9 @@ int pofk_bin_index(double kmag, double kmin, double kmax, int nbins, int bintype
   return 0;
 }
 
+//===========================================================================
+// Compute k in h/Mpc from it's index
+//===========================================================================
 double k_from_index(int index, double kmin, double kmax, int nbins, int bintype){
 
   if(bintype == LINEAR_SPACING) {

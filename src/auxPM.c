@@ -30,9 +30,6 @@
 #include "msg.h"
 #include "timer.h"
 #include "mg.h"            
-#ifdef COMPUTE_POFK
-#include "compute_pofk.h"
-#endif
 
 //=================================================================
 // A master routine called from main.c to calculate the acceleration
