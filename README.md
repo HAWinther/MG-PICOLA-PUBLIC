@@ -12,7 +12,7 @@ This code is based on the [L-PICOLA](https://github.com/CullanHowlett/l-picola) 
 
  - Requires [GSL (GNU Scientific Library)](https://www.gnu.org/software/gsl/)
 
- - Compile the code as make -f Makefile.model and run as mpirun -np 1 MG\_PICOLA\_MODEL paramfile.txt. See [paramfiles](paramfiles) for some example parameter-files and the [documentation](doc/note.pdf) for more information.
+ - Compile the code as make Makefile MODEL=FOFR (DGP, BRANSDICKE, MBETA, etc.) and run as mpirun -np 1 MG\_PICOLA\_MODEL paramfile.txt. See [paramfiles](paramfiles) for some example parameter-files and the [documentation](doc/note.pdf) for more information.
 
  - To implement a new model see [src\_v3/user\_defined\_functions.h](src_v3/user_defined_functions.h). The code have LCDM, LCDM with (wa,w0) parametrization, Jordan-Brans-Dicke, f(R), nDGP and general (m(a), beta(a)) models included so far + massive neutrinos.
 

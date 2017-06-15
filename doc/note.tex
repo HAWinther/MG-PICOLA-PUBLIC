@@ -19,7 +19,7 @@ Requires the FFTW3 library (needs to be compiled with --enable-float to use the 
 Requires GSL (GNU Scientific Library)
 \newline
 \newline
-Compile the code as make -f Makefile.model and run as mpirun -np 1 MG\_PICOLA\_MODEL paramfile.txt. See paramfiles for some example parameter-files.
+Set desired options and the model in the parameterfile and run make. Alternatively compile as make Makefile MODEL=MYMODEL (MYMODEL = FOFR, DGP, BRANSDICKE, MBETA etc.). The code is run as mpirun -np 1 MG\_PICOLA\_MODEL paramfile.txt. See paramfiles for some example parameter-files. Note that the parmeterfile must contain all parameters asked for (and nothing else)!
 
 \subsection*{Random notes}
 
@@ -42,6 +42,9 @@ The time-variable in the integration of growth-factors is ${\rm d}y = \frac{{\rm
 \newline
 \newline
 Functions of scale (Fourier wavenumber) require $k$ to be in units of $h/$Mpc ($2\pi/B$ times the integer wave-number where $B$ is the box-size).
+\newline
+\newline
+Memory monitoring is done by wrapping around malloc and free. Use my\_malloc to allocate and my\_free to free memory to keep track of the memory we are using.
 
 \section*{Modifying the code}
 
