@@ -50,13 +50,8 @@ fofr0                           $fofr0
 nfofr                           1.0
 include_screening               $include_screening 
 use_lcdm_growth_factors         $use_lcdm_growth_factors 
+input_pofk_is_for_lcdm          1
 input_sigma8_is_for_lcdm        $input_sigma8_is_for_lcdm 
-ReadParticlesFromFile           0
-NumInputParticleFiles           1 
-InputParticleFileDir            -
-InputParticleFilePrefix         -
-RamsesOutputNumber              1
-TypeInputParticleFiles          1   
 OutputDir                       $OutputDir
 FileBase                        $FileBase
 OutputRedshiftFile              $OutputDir/output_redshifts.dat
@@ -93,7 +88,7 @@ if [[ "$runsim" == "true" ]]; then
   # Recompile code?
   if [[ "$recompile" == "true" ]]; then
     cd ../
-    make -f Makefile.fofr clean; make -f Makefile.fofr
+    make clean; make MODEL=FOFR
     cp $mymgpicolaexec test_runs/
     cd test_runs
   fi
@@ -101,7 +96,7 @@ if [[ "$runsim" == "true" ]]; then
   # Compile code if executable is not found
   if [[ ! -e $mymgpicolaexec ]]; then
     cd ../
-    make -f Makefile.fofr clean; make -f Makefile.fofr
+    make clean; make MODEL=FOFR
     cp $mymgpicolaexec test_runs/
     cd test_runs
   fi
