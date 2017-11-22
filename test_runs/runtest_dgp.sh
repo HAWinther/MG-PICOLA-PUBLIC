@@ -5,8 +5,6 @@
 # test of the code for DGP. 
 # Runs the code, computes P(k) and
 # makes a plot of P / P_LCDM 
-# Assumes SimplePofk has been compiled
-# and the path is set in calcPofkSimple script
 #=============================================
 
 #==================================

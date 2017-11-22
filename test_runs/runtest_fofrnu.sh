@@ -1,5 +1,11 @@
 #!/bin/bash
 
+#=============================================
+# This is for running a simple
+# test of the code for massive neutrinos with
+# LCDM and f(R)
+#=============================================
+
 #==================================
 # Paths and options
 #==================================
@@ -8,9 +14,9 @@ mymgpicolaexec="MG_PICOLA_FOFRNU"
 mympirun="mpirun-openmpi-gcc6"
 myepspdf="epspdf"
 plotname="pofk_fofrnu_testrun"
-recompile="false"
+recompile="true"
 makeplot="true"
-runsim="false"
+runsim="true"
 ncolasteps="20"
 inputfiledir="inputfiles_fofrnu"
 ncpu="4"

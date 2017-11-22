@@ -5,8 +5,6 @@
 # test of the code for f(R). 
 # Runs the code, computes P(k) and
 # makes a plot of P / P_LCDM 
-# Assumes SimplePofk has been compiled
-# and the path is set in calcPofkSimple script
 #=============================================
 
 #==================================
@@ -19,7 +17,7 @@ myepspdf="epspdf"
 plotname="pofk_fofr_testrun"
 recompile="true"
 makeplot="true"
-runsim="false"
+runsim="true"
 ncolasteps="10"
 fofr0="1e-5"
 ngrid="64"
