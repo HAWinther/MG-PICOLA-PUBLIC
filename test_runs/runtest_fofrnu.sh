@@ -48,12 +48,13 @@ if [[ "$runsim" == "true" ]]; then
   # Make step/output file
   echo "0, $ncolasteps" > $picolaoutputdir/output_redshifts.dat
 
-  # Run LCDM simulation
+  # Run LCDM simulations
   mpirun -np $ncpu $mymgpicolaexec $inputfiledir/lcdm_nu0.0.inp
   mpirun -np $ncpu $mymgpicolaexec $inputfiledir/lcdm_nu0.2.inp
   mpirun -np $ncpu $mymgpicolaexec $inputfiledir/lcdm_nu0.4.inp
   mpirun -np $ncpu $mymgpicolaexec $inputfiledir/lcdm_nu0.6.inp
   
+  # Run f(R) simulations
   mpirun -np $ncpu $mymgpicolaexec $inputfiledir/fofr_nu0.0.inp
   mpirun -np $ncpu $mymgpicolaexec $inputfiledir/fofr_nu0.2.inp
   mpirun -np $ncpu $mymgpicolaexec $inputfiledir/fofr_nu0.4.inp
@@ -97,7 +98,6 @@ if [[ "$makeplot" == "true" ]]; then
 
   # Run gnuplot
   echo "$gnuplotscript" | gnuplot
-  echo "$gnuplotscript" > mordi.txt
   
   # Convert to PDF
   $myepspdf $plotname.eps

@@ -14,14 +14,12 @@
 #==================================
 picolaoutputdir="output_fofr"
 mymgpicolaexec="MG_PICOLA_FOFR"
-mypofksimple="../SimplePofk/calcPofkSimple"
 mympirun="mpirun-openmpi-gcc6"
 myepspdf="epspdf"
 plotname="pofk_fofr_testrun"
 recompile="true"
-comppofk="true"
 makeplot="true"
-runsim="true"
+runsim="false"
 ncolasteps="10"
 fofr0="1e-5"
 ngrid="64"
@@ -77,6 +75,14 @@ UnitLength_in_cm                3.085678e24
 UnitMass_in_g                   1.989e43   
 UnitVelocity_in_cm_per_s        1e5        
 InputSpectrum_UnitLength_in_cm  3.085678e24
+
+pofk_compute_every_step         1 
+pofk_compute_rsd_pofk           0
+pofk_nbins                      0 
+pofk_bintype                    0 
+pofk_subtract_shotnoise         1 
+pofk_kmin                       0.
+pofk_kmax                       0.
 "
   echo "$paramfile"                         
 }
@@ -88,7 +94,7 @@ if [[ "$runsim" == "true" ]]; then
   # Recompile code?
   if [[ "$recompile" == "true" ]]; then
     cd ../
-    make clean; make MODEL=FOFR
+    make clean; make MODEL=FOFR OPT="-DCOMPUTE_POFK"
     cp $mymgpicolaexec test_runs/
     cd test_runs
   fi
@@ -96,7 +102,7 @@ if [[ "$runsim" == "true" ]]; then
   # Compile code if executable is not found
   if [[ ! -e $mymgpicolaexec ]]; then
     cd ../
-    make clean; make MODEL=FOFR
+    make clean; make MODEL=FOFR OPT="-DCOMPUTE_POFK"
     cp $mymgpicolaexec test_runs/
     cd test_runs
   fi
@@ -138,18 +144,6 @@ if [[ "$runsim" == "true" ]]; then
 fi
 
 #==================================
-# Compute P(k). Output is file
-# with (integer-k, P(k))
-#==================================
-if [[ "$comppofk" == "true" ]]; then
-  $mypofksimple $picolaoutputdir/lcdm_z0p000.               $picolaoutputdir/lcdm.pofk              $ngrid GADGET
-  $mypofksimple $picolaoutputdir/fofr_z0p000.               $picolaoutputdir/fofr.pofk              $ngrid GADGET
-  $mypofksimple $picolaoutputdir/fofr_screen_z0p000.        $picolaoutputdir/fofr_screen.pofk       $ngrid GADGET
-  $mypofksimple $picolaoutputdir/fofr_Dlcdm_z0p000.         $picolaoutputdir/fofr_Dlcdm.pofk        $ngrid GADGET
-  $mypofksimple $picolaoutputdir/fofr_Dlcdm_screen_z0p000.  $picolaoutputdir/fofr_Dlcdm_screen.pofk $ngrid GADGET
-fi
-
-#==================================
 # Make plot
 #==================================
 if [[ "$makeplot" == "true" ]]; then
@@ -173,11 +167,11 @@ if [[ "$makeplot" == "true" ]]; then
     fit_f5(x) = ((1.075 + 0.063*log(x/0.1) - 1)*( 12.0*x/(1+12.0*x)  ) + 1.0) 
     
     plot \\
-         '<paste $picolaoutputdir/fofr_Dlcdm_screen.pofk $picolaoutputdir/lcdm.pofk'  u (\$1*2*pi/$box):(\$2/\$4) w l ti label1 dashtype 1, \\
-         '<paste $picolaoutputdir/fofr_Dlcdm.pofk        $picolaoutputdir/lcdm.pofk'  u (\$1*2*pi/$box):(\$2/\$4) w l ti label2 dashtype 2, \\
-         '<paste $picolaoutputdir/fofr_screen.pofk       $picolaoutputdir/lcdm.pofk'  u (\$1*2*pi/$box):(\$2/\$4) w l ti label3 dashtype 3, \\
-         '<paste $picolaoutputdir/fofr.pofk              $picolaoutputdir/lcdm.pofk'  u (\$1*2*pi/$box):(\$2/\$4) w l ti label4 dashtype 4, \\
-         fit_f5(x)                                                                                ti label5 dashtype 5 lc -1, \\
+         '<paste $picolaoutputdir/pofk_fofr_Dlcdm_screen_z0.000_CDM.txt $picolaoutputdir/pofk_lcdm_z0.000_CDM.txt'  u (\$1):(\$2/\$6) w l ti label1 dashtype 1, \\
+         '<paste $picolaoutputdir/pofk_fofr_Dlcdm_z0.000_CDM.txt        $picolaoutputdir/pofk_lcdm_z0.000_CDM.txt'  u (\$1):(\$2/\$6) w l ti label2 dashtype 2, \\
+         '<paste $picolaoutputdir/pofk_fofr_screen_z0.000_CDM.txt       $picolaoutputdir/pofk_lcdm_z0.000_CDM.txt'  u (\$1):(\$2/\$6) w l ti label3 dashtype 3, \\
+         '<paste $picolaoutputdir/pofk_fofr_z0.000_CDM.txt              $picolaoutputdir/pofk_lcdm_z0.000_CDM.txt'  u (\$1):(\$2/\$6) w l ti label4 dashtype 4, \\
+         fit_f5(x) ti label5 dashtype 5 lc -1, \\
          1 lt 0 not
     
     set output"
