@@ -64,6 +64,14 @@ struct MySplineContainer{
   GSL_2D_Spline D2_of_scale_spline;
   GSL_2D_Spline dD2dy_of_scale_spline;
   GSL_2D_Spline ddD2ddy_of_scale_spline;
+#ifdef MASSIVE_NEUTRINOS
+  GSL_2D_Spline DLCDM_of_scale_spline;
+  GSL_2D_Spline dDLCDMdy_of_scale_spline;
+  GSL_2D_Spline ddDLCDMddy_of_scale_spline;
+  GSL_2D_Spline D2LCDM_of_scale_spline;
+  GSL_2D_Spline dD2LCDMdy_of_scale_spline;
+  GSL_2D_Spline ddD2LCDMddy_of_scale_spline;
+#endif
 #endif
 
   GSL_Spline D_spline;
@@ -658,6 +666,14 @@ void free_up_splines(){
   Free_GSL_2D_Spline(&SplineContainer.D2_of_scale_spline);
   Free_GSL_2D_Spline(&SplineContainer.dD2dy_of_scale_spline);
   Free_GSL_2D_Spline(&SplineContainer.ddD2ddy_of_scale_spline);
+#ifdef MASSIVE_NEUTRINOS
+  Free_GSL_2D_Spline(&SplineContainer.DLCDM_of_scale_spline);
+  Free_GSL_2D_Spline(&SplineContainer.dDLCDMdy_of_scale_spline);
+  Free_GSL_2D_Spline(&SplineContainer.ddDLCDMddy_of_scale_spline);
+  Free_GSL_2D_Spline(&SplineContainer.D2LCDM_of_scale_spline);
+  Free_GSL_2D_Spline(&SplineContainer.dD2LCDMdy_of_scale_spline);
+  Free_GSL_2D_Spline(&SplineContainer.ddD2LCDMddy_of_scale_spline);
+#endif
 #endif
 
 #ifdef MBETAMODEL
@@ -673,8 +689,13 @@ double mg_pofk_ratio(double k, double a){
   if(! modified_gravity_active ) return 1.0;
 
 #ifdef SCALEDEPENDENT
-  return pow2( Lookup_GSL_2D_Spline(&SplineContainer.D_of_scale_spline, log(a), log(k)) 
+#ifdef MASSIVE_NEUTRINOS
+  return pow2( Lookup_GSL_2D_Spline(&SplineContainer.D_of_scale_spline,     log(a), log(k))
+             / Lookup_GSL_2D_Spline(&SplineContainer.DLCDM_of_scale_spline, log(a), log(k)) );
+#else
+  return pow2( Lookup_GSL_2D_Spline(&SplineContainer.D_of_scale_spline, log(a), log(k))
              / Lookup_GSL_Spline(&SplineContainer.DLCDM_spline,         log(a)        ) );
+#endif
 #else
   return pow2( Lookup_GSL_Spline(&SplineContainer.D_spline,             log(a)        )        
              / Lookup_GSL_Spline(&SplineContainer.DLCDM_spline,         log(a)        ) );
@@ -796,6 +817,73 @@ void calculate_scale_dependent_growth_factor(){
   // Define x-array to store values in
   for(int i = 0; i < npts; i++)
     x_arr[i] = xini + (xend - xini) * i/(double) (npts-1);
+
+#ifdef MASSIVE_NEUTRINOS
+
+  //=======================================================
+  // For massive neutrinos we have scale-dependent growth
+  // for LCDM so...
+  // Solve the growth ODEs for each value of k for LCDM
+  //=======================================================
+
+  int tmp_modified_gravity_active = modified_gravity_active;
+  modified_gravity_active = 0;
+
+  double *DLCDM_k_x       = malloc(sizeof(double) * npts * nk);
+  double *dDLCDMdy_k_x    = malloc(sizeof(double) * npts * nk);
+  double *ddDLCDMddy_k_x  = malloc(sizeof(double) * npts * nk);
+  double *D2LCDM_k_x      = malloc(sizeof(double) * npts * nk);
+  double *dD2LCDMdy_k_x   = malloc(sizeof(double) * npts * nk);
+  double *ddD2LCDMddy_k_x = malloc(sizeof(double) * npts * nk);
+
+  for(int k = 0; k < nk; k++){
+    // Current value of k in h/Mpc
+    double know = exp( log(kmin) + log(kmax/kmin) * k / (double) (nk-1) );
+
+    double *D_arr       = &DLCDM_k_x[k * npts];
+    double *dDdy_arr    = &dDLCDMdy_k_x[k * npts];
+    double *ddDddy_arr  = &ddDLCDMddy_k_x[k * npts];
+    double *D2_arr      = &D2LCDM_k_x[k * npts];
+    double *dD2dy_arr   = &dD2LCDMdy_k_x[k * npts];
+    double *ddD2ddy_arr = &ddD2LCDMddy_k_x[k * npts];
+
+    // IC for growing mode
+    D_arr[0]     = 1.0;
+    dDdy_arr[0]  = 1.0;
+    D2_arr[0]    = -3.0/7.0;
+    dD2dy_arr[0] = -6.0/7.0;
+
+    // Integrate PDE
+    integrate_scale_dependent_growth_ode(x_arr, D_arr, dDdy_arr, D2_arr, dD2dy_arr, know, npts);
+
+    // Set dDdy and ddDddy
+    for(int i = 0; i < npts; i++){
+      double anow    = exp(x_arr[i]);
+      double mu      = GeffoverG(anow, know);
+      dDdy_arr[i]    = dDdy_arr[i] * Qfactor(anow) / anow;
+      ddDddy_arr[i]  = 1.5 * mu * Omega * anow * D_arr[i];
+      dD2dy_arr[i]   = dD2dy_arr[i] * Qfactor(anow) / anow;
+      ddD2ddy_arr[i] = 1.5 * mu * Omega * anow * (D2_arr[i] - pow2(D_arr[i]) );
+    }
+  }
+
+  Create_GSL_2D_Spline(&SplineContainer.DLCDM_of_scale_spline,       x_arr, logk_arr, DLCDM_k_x,       npts, nk);
+  Create_GSL_2D_Spline(&SplineContainer.dDLCDMdy_of_scale_spline,    x_arr, logk_arr, dDLCDMdy_k_x,    npts, nk);
+  Create_GSL_2D_Spline(&SplineContainer.ddDLCDMddy_of_scale_spline,  x_arr, logk_arr, ddDLCDMddy_k_x,  npts, nk);
+  Create_GSL_2D_Spline(&SplineContainer.D2LCDM_of_scale_spline,      x_arr, logk_arr, D2LCDM_k_x,      npts, nk);
+  Create_GSL_2D_Spline(&SplineContainer.dD2LCDMdy_of_scale_spline,   x_arr, logk_arr, dD2LCDMdy_k_x,   npts, nk);
+  Create_GSL_2D_Spline(&SplineContainer.ddD2LCDMddy_of_scale_spline, x_arr, logk_arr, ddD2LCDMddy_k_x, npts, nk);
+
+  free(DLCDM_k_x);
+  free(dDLCDMdy_k_x);
+  free(ddDLCDMddy_k_x);
+  free(D2LCDM_k_x);
+  free(dD2LCDMdy_k_x);
+  free(ddD2LCDMddy_k_x);
+
+  modified_gravity_active = tmp_modified_gravity_active;
+
+#endif
 
   // Solve the growth ODEs for each value of k
   for(int k = 0; k < nk; k++){
