@@ -86,6 +86,12 @@ ifeq ($(MODEL), MBETA)
   MODELISDEFINED = TRUE
 endif
 
+ifeq ($(MODEL), LCDMNU)
+  MGMODEL  = -DMASSIVE_NEUTRINOS -DSCALEDEPENDENT
+  OPTIONS += $(MGMODEL)
+  MODELISDEFINED = TRUE
+endif
+
 ifndef MODELISDEFINED
   $(error ERROR: MODEL is not recognized)
 endif

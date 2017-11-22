@@ -170,7 +170,7 @@ int ProcessParticlesSingleFile(char *buffer, int npart_loc) {
       Y = pos[i + 1*npart_loc];
       Z = pos[i + 2*npart_loc];
     }
-
+    
     // Increase counter
     npart_processed++;
 
@@ -643,7 +643,7 @@ void ReadFilesMakeDisplacementField(void){
   my_fftw_execute(plan);
 
   // Account for FFTW normalization and use LCDM growth-factor to bring the density-field to redshift 0
-  double normfac = 1.0/(double)(Nmesh*Nmesh*Nmesh);
+  double normfac = 1.0/pow((double) Nmesh,3);
   normfac *= growth_DLCDM(1.0) / growth_DLCDM(1.0/(1.0+Init_Redshift));
   for(unsigned int i = 0; i < 2*Total_size; i++) density[i] *= normfac;
 

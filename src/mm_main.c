@@ -182,6 +182,7 @@ void MatchMaker(struct PicolaToMatchMakerData data){
   // Check buffer size
   if(Param.dx_extra >= 0.5 * Param.boxsize/(double) Param.n_nodes){
     mm_msg_printf("Buffer size might be too big! MatchMaker will not be run!\nReduce it or the number of cores!\n");
+    mm_msg_printf("The maximum number of cores for this buffersize is: %i\n",  (int)(0.5 * Param.boxsize/Param.dx_extra));
     return;
   }
 

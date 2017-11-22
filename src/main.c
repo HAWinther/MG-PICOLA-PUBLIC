@@ -195,6 +195,8 @@ int main(int argc, char **argv) {
     // then call displacement_fields()
     //===========================================================================================
 
+    P = my_malloc((size_t) (ceil(NumPart*Buffer)) * sizeof(struct part_data));
+
 #ifdef READICFROMFILE
     ReadFilesMakeDisplacementField();
 #endif
@@ -222,9 +224,12 @@ int main(int argc, char **argv) {
   //===========================================================================================
 
   // Allocate memory for the particles
-  P = my_malloc((size_t) (ceil(NumPart*Buffer)) * sizeof(struct part_data));
+  if(!ReadParticlesFromFile){
+    P = my_malloc((size_t) (ceil(NumPart*Buffer)) * sizeof(struct part_data));
+  }
 
 #ifdef SCALEDEPENDENT
+
   // Store the particle IDs 
   for(i = 0; i < Local_np; i++) {
     for (j = 0; j < Nsample; j++) {
@@ -288,6 +293,7 @@ int main(int argc, char **argv) {
         //======================================================================================================================
         // Initial 2LPT position: x = q + Psi^(1) D1 + Psi(2) D2 
         //======================================================================================================================
+
 #ifdef SCALEDEPENDENT
         P[coord].Pos[0] = periodic_wrap((i + Local_p_start)*(Box / (double)Nsample) + P[coord].D[0] + P[coord].D2[0]);
         P[coord].Pos[1] = periodic_wrap( j                 *(Box / (double)Nsample) + P[coord].D[1] + P[coord].D2[1]);
@@ -356,10 +362,10 @@ int main(int argc, char **argv) {
   FN12    = (complex_kind *) N12;
   FN13    = (complex_kind *) N13;
 
-  plan    = my_fftw_mpi_plan_dft_r2c_3d(Nmesh, Nmesh, Nmesh, density, P3D, MPI_COMM_WORLD, FFTW_ESTIMATE); 
-  p11     = my_fftw_mpi_plan_dft_c2r_3d(Nmesh, Nmesh, Nmesh, FN11,    N11, MPI_COMM_WORLD, FFTW_ESTIMATE);
-  p12     = my_fftw_mpi_plan_dft_c2r_3d(Nmesh, Nmesh, Nmesh, FN12,    N12, MPI_COMM_WORLD, FFTW_ESTIMATE);
-  p13     = my_fftw_mpi_plan_dft_c2r_3d(Nmesh, Nmesh, Nmesh, FN13,    N13, MPI_COMM_WORLD, FFTW_ESTIMATE);
+  plan    = my_fftw_mpi_plan_dft_r2c_3d(Nmesh, Nmesh, Nmesh, density, P3D, MPI_COMM_WORLD, FFTW_MEASURE); 
+  p11     = my_fftw_mpi_plan_dft_c2r_3d(Nmesh, Nmesh, Nmesh, FN11,    N11, MPI_COMM_WORLD, FFTW_MEASURE);
+  p12     = my_fftw_mpi_plan_dft_c2r_3d(Nmesh, Nmesh, Nmesh, FN12,    N12, MPI_COMM_WORLD, FFTW_MEASURE);
+  p13     = my_fftw_mpi_plan_dft_c2r_3d(Nmesh, Nmesh, Nmesh, FN13,    N13, MPI_COMM_WORLD, FFTW_MEASURE);
 
   // Modified gravity allocation
   if(modified_gravity_active) AllocateMGArrays();
@@ -793,6 +799,10 @@ void Output(double A, double AF, double AFF, double dDdy, double dD2dy) {
   double fac       = Hubble / pow(A,1.5);
   double lengthfac = UnitLength_in_cm / 3.085678e24;     // Convert positions to Mpc/h
   double velfac    = UnitVelocity_in_cm_per_s / 1.0e5;   // Convert velocities to km/s
+ 
+  // Are we outputting at the first step?
+  int first_step = ((Init_Redshift-OutputList[0].Redshift)/Init_Redshift <= 1.0E-6) || (Init_Redshift <= 1.0e-6); 
+  (void) first_step;
 
 #ifdef SCALEDEPENDENT
 
@@ -822,7 +832,7 @@ void Output(double A, double AF, double AFF, double dDdy, double dD2dy) {
   // Run FoF halofinder. NB: For scaledependent case we must have dD/dy and dD2/dy in the P->dDdy and P->dD2dy vectors
   // This is the case here. As currently written we duplicate particles in this routine which requires extra memory.
   //==================================================================================================================
-  if(mm_run_matchmaker) {
+  if(mm_run_matchmaker && !first_step) {
     struct PicolaToMatchMakerData data;
     data.output_format  = mm_output_format;
     data.output_pernode = mm_output_pernode;
@@ -863,8 +873,8 @@ void Output(double A, double AF, double AFF, double dDdy, double dD2dy) {
 #endif
 
 #ifdef COMPUTE_POFK
-  if(pofk_compute_rsd_pofk >= 1){
-    // Compute the RSD power-spectrum
+  // Compute the RSD power-spectrum
+  if(pofk_compute_rsd_pofk >= 1 && !first_step){
     compute_RSD_powerspectrum(A, 1);
   }
 #endif
