@@ -136,7 +136,7 @@ void read_and_spline_transfer_functions(char *transferfileinfofilename){
       for(int j = 0; j < nk; j++){
         if(rand() % 200 == 0){
           printf("z: %5.2f k: %8.4f   Tnu/Tnu0   / D: %10.5f \n", redshifts[i], exp(logk[j]),
-              transfer_function_nu[i * nk + j]  / transfer_function_nu[j]  / growth_D_LCDMFit(1.0/(1.0+redshifts[i])));
+              transfer_function_nu[i * nk + j]  / (transfer_function_nu[j] + 1e-20)  / growth_D_LCDMFit(1.0/(1.0+redshifts[i])));
         }
       }
     }

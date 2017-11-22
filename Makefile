@@ -31,12 +31,23 @@ endif
 # ====================================================================
 
 ifndef MODEL
+  # DGP gravity
   MODEL = DGP
-  #MODEL = FOFR
+  
+  # f(R) gravity
+  #MODEL = FOFR            
+  
+  # f(R) gravity with LCDM LPT growth factors
   #MODEL = FOFR_LCDM
+  
+  # General m(a),beta(a) model
   #MODEL = MBETA
+  
+  # Jordan-Brans-Dicke model
   #MODEL = BRANSDICKE
-  #MODEL = LCDMNU
+  
+  # Massive neutrino and f(R) gravity
+  #MODEL = FOFRNU
 endif
 
 EXEC = $(EXECPREFIX)_$(MODEL)
@@ -86,9 +97,11 @@ ifeq ($(MODEL), MBETA)
   MODELISDEFINED = TRUE
 endif
 
-ifeq ($(MODEL), LCDMNU)
-  MGMODEL  = -DMASSIVE_NEUTRINOS -DSCALEDEPENDENT
+ifeq ($(MODEL), FOFRNU)
+  # Massive neutrino and f(R) gravity
+  MGMODEL  = -DFOFRGRAVITY
   OPTIONS += $(MGMODEL)
+  OPTIONS += -DMASSIVE_NEUTRINOS -DSCALEDEPENDENT
   MODELISDEFINED = TRUE
 endif
 
