@@ -13,18 +13,17 @@
 #==========================
 # Set the parameters
 #==========================
-output_folder="$HOME/local/MG-PICOLA-PUBLIC/camb_data"
+suffix="nu0.2"
+output_folder="$HOME/local/MG-PICOLA-PUBLIC/camb_data/example_data_${suffix}"
 camb_template="$HOME/local/CAMB/HighLExtrapTemplate_lenspotentialCls.dat"
 camb_executable="$HOME/local/CAMB/camb"
-camb_parameter_file="$HOME/local/MG-PICOLA-PUBLIC/camb_data/sample.ini"
-
+camb_parameter_file="$HOME/local/MG-PICOLA-PUBLIC/camb_data/sample_${suffix}.ini"
+camb_output_root="lcdm_${suffix}"
+camb_input_filename="camb_${camb_output_root}.ini"
+picola_output_filename="picola_transfer_info_${suffix}.txt"
 number_redshifts="50"
 z_min="0.0"
 z_max="50.0"
-
-camb_output_root="lcdm"
-picola_output_filename="picola_transfer_info.txt"
-camb_input_filename="camb_${camb_output_root}.ini"
 
 #==========================
 # Make output folder

@@ -1,0 +1,61 @@
+% =============================== %
+% This is the run parameters file % 
+% =============================== %
+
+% Modified gravity parameters
+modified_gravity_active  1    
+fofr0                    1e-4
+nfofr                    1.0
+include_screening        1    
+use_lcdm_growth_factors  0    
+input_sigma8_is_for_lcdm 1 
+input_pofk_is_for_lcdm   1    
+
+% Simulation outputs
+OutputDir                   output_fofrnu 
+FileBase                    fofr_nu0.0 
+OutputRedshiftFile          output_fofrnu/output_redshifts.dat
+NumFilesWrittenInParallel   1                         
+
+% Simulation Specifications
+UseCOLA          1 
+Buffer           1.5 
+Nmesh            128 
+Nsample          128   
+Box              512.0 
+Init_Redshift    19.0   
+Seed             1  
+SphereMode       0     
+                      
+% Initial conditions
+WhichSpectrum          1
+WhichTransfer          0
+FileWithInputSpectrum  -
+FileWithInputTransfer  -
+
+% Parameters for massive neutrino implementation
+nu_FilenameTransferInfofile    /Users/hans/local/MG-PICOLA-PUBLIC/camb_data/example_data_nu0.0/picola_transfer_info_nu0.0.txt
+nu_include_massive_neutrinos   1
+nu_SumMassNuEV                 0.0
+
+% Cosmological Parameters
+Omega            0.3175 
+OmegaBaryon      0.049  
+HubbleParam      0.671  
+Sigma8           0.8503
+PrimordialIndex  0.966  
+
+% Units
+UnitLength_in_cm                3.085678e24 
+UnitMass_in_g                   1.989e43    
+UnitVelocity_in_cm_per_s        1e5         
+InputSpectrum_UnitLength_in_cm  3.085678e24 
+
+% Power-spectrum calculation
+pofk_compute_every_step   1          % Turn on this option [1], off [0]
+pofk_compute_rsd_pofk     2          % Every step 1, every time we output 2, off 0
+pofk_nbins                0          % Number of bins
+pofk_bintype              0          % Linear bins [0] or logarithm spacing [1]
+pofk_subtract_shotnoise   1          % Subtract shotnoise contribution = 1/Npart^3
+pofk_kmin                 0          % kmin in h/Mpc ( should be >= 2pi/Box)
+pofk_kmax                 0          % kmax in h/Mpc ( should be <= 2pi/Box * Nmesh)
