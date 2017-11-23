@@ -705,6 +705,10 @@ double mg_pofk_ratio(double k, double a){
 
 //=================================================================
 // Compute sigma8 enhancement at z=0 relative to LCDM
+// This is useful when generating IC for MG starting from a LCDM
+// P(k,z=0) such that we have exactly the same IC as for LCDM
+// at the initial redshift (run with input_pofk_is_for_lcdm=1
+// and input_sigma8_is_for_lcdm=1)
 //=================================================================
 double mg_sigma8_enhancement(double a){
   if(! modified_gravity_active ) return 1.0;
@@ -734,7 +738,11 @@ double mg_sigma8_enhancement(double a){
     double kR8   = know * 8.0;
     double w     = 3.0/(kR8*kR8*kR8) * (sin(kR8) - kR8 * cos(kR8));
     double D     = Lookup_GSL_2D_Spline(&SplineContainer.D_of_scale_spline, log(a), log(know));
+#ifdef MASSIVE_NEUTRINOS
+    double DLCDM = Lookup_GSL_Spline(&SplineContainer.DLCDM_of_scale_spline, log(a));
+#else
     double DLCDM = Lookup_GSL_Spline(&SplineContainer.DLCDM_spline, log(a));
+#endif
     double power = PowerSpec(know);
 
     integrand      += power * w * w * (D / DLCDM) * (D / DLCDM)   * know * know * know * dlogk / (2.0 * M_PI * M_PI);
