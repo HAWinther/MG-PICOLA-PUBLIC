@@ -739,7 +739,7 @@ double mg_sigma8_enhancement(double a){
     double w     = 3.0/(kR8*kR8*kR8) * (sin(kR8) - kR8 * cos(kR8));
     double D     = Lookup_GSL_2D_Spline(&SplineContainer.D_of_scale_spline, log(a), log(know));
 #ifdef MASSIVE_NEUTRINOS
-    double DLCDM = Lookup_GSL_Spline(&SplineContainer.DLCDM_of_scale_spline, log(a));
+    double DLCDM = Lookup_GSL_2D_Spline(&SplineContainer.DLCDM_of_scale_spline, log(a), log(know));
 #else
     double DLCDM = Lookup_GSL_Spline(&SplineContainer.DLCDM_spline, log(a));
 #endif
