@@ -27,7 +27,7 @@ ngrid="128.0"
 # Run code
 #==================================
 if [[ "$runsim" == "true" ]]; then
-  s
+  
   # Recompile code?
   if [[ "$recompile" == "true" ]]; then
     cd ../
@@ -92,13 +92,13 @@ if [[ "$makeplot" == "true" ]]; then
     label7 = \"{/Symbol L}CDM m = 0.6 eV\"
     
     plot \\
-         '<paste $picolaoutputdir/pofk_lcdm_nu0.0_z0.000_total.txt $picolaoutputdir/pofk_fofr_nu0.0_z0.000_total.txt' u 1:(\$6/\$2) w l ti label1 dashtype 1, \\
-         '<paste $picolaoutputdir/pofk_lcdm_nu0.0_z0.000_total.txt $picolaoutputdir/pofk_fofr_nu0.2_z0.000_total.txt' u 1:(\$6/\$2) w l ti label2 dashtype 2, \\
-         '<paste $picolaoutputdir/pofk_lcdm_nu0.0_z0.000_total.txt $picolaoutputdir/pofk_fofr_nu0.4_z0.000_total.txt' u 1:(\$6/\$2) w l ti label3 dashtype 3, \\
+         '<paste $picolaoutputdir/pofk_lcdm_nu0.0_z0.000_CDM.txt $picolaoutputdir/pofk_fofr_nu0.0_z0.000_CDM.txt' u 1:(\$6/\$2) w l ti label1 dashtype 1, \\
+         '<paste $picolaoutputdir/pofk_lcdm_nu0.0_z0.000_CDM.txt $picolaoutputdir/pofk_fofr_nu0.2_z0.000_CDM.txt' u 1:(\$6/\$2) w l ti label2 dashtype 2, \\
+         '<paste $picolaoutputdir/pofk_lcdm_nu0.0_z0.000_CDM.txt $picolaoutputdir/pofk_fofr_nu0.4_z0.000_CDM.txt' u 1:(\$6/\$2) w l ti label3 dashtype 3, \\
          1 lt 0 ti label4, \\
-         '<paste $picolaoutputdir/pofk_lcdm_nu0.0_z0.000_total.txt $picolaoutputdir/pofk_lcdm_nu0.2_z0.000_total.txt' u 1:(\$6/\$2) w l ti label5 dashtype 4, \\
-         '<paste $picolaoutputdir/pofk_lcdm_nu0.0_z0.000_total.txt $picolaoutputdir/pofk_lcdm_nu0.4_z0.000_total.txt' u 1:(\$6/\$2) w l ti label6 dashtype 5, \\
-         '<paste $picolaoutputdir/pofk_lcdm_nu0.0_z0.000_total.txt $picolaoutputdir/pofk_lcdm_nu0.6_z0.000_total.txt' u 1:(\$6/\$2) w l ti label7 dashtype 6
+         '<paste $picolaoutputdir/pofk_lcdm_nu0.0_z0.000_CDM.txt $picolaoutputdir/pofk_lcdm_nu0.2_z0.000_CDM.txt' u 1:(\$6/\$2) w l ti label5 dashtype 4, \\
+         '<paste $picolaoutputdir/pofk_lcdm_nu0.0_z0.000_CDM.txt $picolaoutputdir/pofk_lcdm_nu0.4_z0.000_CDM.txt' u 1:(\$6/\$2) w l ti label6 dashtype 5, \\
+         '<paste $picolaoutputdir/pofk_lcdm_nu0.0_z0.000_CDM.txt $picolaoutputdir/pofk_lcdm_nu0.6_z0.000_CDM.txt' u 1:(\$6/\$2) w l ti label7 dashtype 6
     
     set output"
 

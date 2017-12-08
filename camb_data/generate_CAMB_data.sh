@@ -13,7 +13,7 @@
 #==========================
 # Set the parameters
 #==========================
-suffix="nu0.2"
+suffix="nu0.6"
 output_folder="$HOME/local/MG-PICOLA-PUBLIC/camb_data/example_data_${suffix}"
 camb_template="$HOME/local/CAMB/HighLExtrapTemplate_lenspotentialCls.dat"
 camb_executable="$HOME/local/CAMB/camb"
