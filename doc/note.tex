@@ -154,6 +154,8 @@ Include massive neutrinos (only for the scaledependent version of the code) by c
 
 \end{itemize}
 
+NB: as the code is currently written the $\sigma_8$ value in the parameter-file needs to be computed from the CDM+baryon density and not the total matter density (the value CAMB outputs when transfer\_power\_var = 8).
+
 \subsection*{$w_0$,$w_a$ parametrization for background}
 
 The often used parametrization for the dark energy equation of state $w(a) = w_0 + w_a(1-a)$ is included in the code and is activated if we compile with the define EQUATIONOFSTATE\_PARAMETRIZATION. For the parameter-file one must add:
