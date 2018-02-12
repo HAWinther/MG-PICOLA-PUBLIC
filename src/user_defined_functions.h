@@ -890,7 +890,7 @@ double second_order_kernel(double k, double k1, double k2, double costheta, doub
   // Common for all models. If test to avoid dividing by zero
   if(k2 > 1e-3 && k1 > 1e-3){
     gamma2 += 1.5 * Omega / (a * a * a * hubble(a) * hubble(a) ) * 
-      ( (GeffoverG(a,k) - GeffoverG(a,k1))*(k1/k2) + (GeffoverG(a,k) - GeffoverG(a,k2)*(k2/k1)) ) * costheta/2.0;
+      ( (GeffoverG(a,k) - GeffoverG(a,k1))*(k1/k2) + (GeffoverG(a,k) - GeffoverG(a,k2))*(k2/k1) ) * costheta/2.0;
   }
   return gamma2;
 }
