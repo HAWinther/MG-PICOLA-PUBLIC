@@ -334,7 +334,7 @@ int main(int argc, char **argv) {
       sumxyz[axes] = 0;
 
     // Output particles
-    Output(A, AF, AFF, dDdy, dD2dy);
+    Output(A, AF, AFF, dDdy, dD2dy, OutputList[0].Redshift);
 
     // If this is the only output timestep then simply skip to the end
     if(Noutputs == 1) {
@@ -535,7 +535,7 @@ int main(int argc, char **argv) {
         dDdy  = growth_dDdy(A);    // dD_{za}/dy
         dD2dy = growth_dD2dy(A);   // dD_{2lpt}/dy
 
-        Output(A, AF, AFF, dDdy, dD2dy);
+        Output(A, AF, AFF, dDdy, dD2dy, OutputList[i-1].Redshift);
 
         //======================================================================================
         // If we have reached the last output timestep we skip to the end
@@ -789,19 +789,19 @@ void Drift(double A, double AFF, double AF, double Di, double Di2) {
 //=================
 // Output the data
 //=================
-void Output(double A, double AF, double AFF, double dDdy, double dD2dy) {
+void Output(double A, double AF, double AFF, double dDdy, double dD2dy, double z_from_outputlist) {
   timer_set_category(_Output);
   FILE * fp; 
   char buf[300];
   int nprocgroup, groupTask, masterTask;
   unsigned int n;
-  double Z         = (1.0/A)-1.0;
+  double Z         = z_from_outputlist;
   double fac       = Hubble / pow(A,1.5);
   double lengthfac = UnitLength_in_cm / 3.085678e24;     // Convert positions to Mpc/h
   double velfac    = UnitVelocity_in_cm_per_s / 1.0e5;   // Convert velocities to km/s
- 
+
   // Are we outputting at the first step?
-  int first_step = ((Init_Redshift-OutputList[0].Redshift)/Init_Redshift <= 1.0E-6) || (Init_Redshift <= 1.0e-6); 
+  int first_step = ( fabs(Init_Redshift - Z)/Init_Redshift <= 1.0E-6 ); 
   (void) first_step;
 
 #ifdef SCALEDEPENDENT
@@ -896,8 +896,14 @@ void Output(double A, double AF, double AFF, double dDdy, double dD2dy) {
   for(groupTask = 0; groupTask < nprocgroup; groupTask++) {
     if (ThisTask == (masterTask + groupTask)) {
       if(NumPart > 0) {
-        int Zint  = (int)floor(Z);
-        int Zfrac = (int)((Z - Zint)*1000);
+        int Zint, Zfrac;
+        if(Z < 0.0){
+          Zint = Zfrac = 0;
+        } else {
+          Zint  = (int)floor(Z);
+          Zfrac = (int)((Z - Zint)*1000);
+        }
+
         sprintf(buf, "%s/%s_z%dp%03d.%d", OutputDir, FileBase, Zint, Zfrac, ThisTask);
 
         if(!(fp = fopen(buf, "w"))) {

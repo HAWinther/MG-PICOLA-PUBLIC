@@ -43,7 +43,7 @@
 //===================================================
 
 void Output_Info(double A);
-void Output(double A, double AF, double AFF, double dDdy, double dD2dy);
+void Output(double A, double AF, double AFF, double dDdy, double dD2dy, double z_from_outputlist);
 void Kick(double AI, double AF, double A, double Di);
 void Drift(double A, double AFF, double AF, double Di, double Di2);
 void write_gadget_header(FILE *fp, double A);
