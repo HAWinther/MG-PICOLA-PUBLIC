@@ -733,6 +733,12 @@ void AssignDisplacementField(complex_kind *(cdisp[3])){
             cdisp[axes][coord][0] = -kvec[axes] / kmag2 * P3D[coord][1] * grid_corr * rescale_fac;
             cdisp[axes][coord][1] =  kvec[axes] / kmag2 * P3D[coord][0] * grid_corr * rescale_fac;
           }
+
+#ifdef SCALEDEPENDENT
+          // We store the density field itself here
+          cdelta_cdm[coord][0] = P3D[coord][0] * grid_corr * rescale_fac;
+          cdelta_cdm[coord][1] = P3D[coord][1] * grid_corr * rescale_fac;
+#endif
         }
       }
     }
