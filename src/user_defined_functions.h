@@ -245,6 +245,14 @@ void read_mg_parameters(void **addr, char (*tag)[50], int *id, int (*nt)){
   strcpy(tag[(*nt)], "input_sigma8_is_for_lcdm");
   addr[(*nt)] = &input_sigma8_is_for_lcdm;
   id[(*nt)++] = INT;
+  
+  strcpy(tag[(*nt)], "inverted_initial_condition");
+  addr[(*nt)] = &inverted_initial_condition;
+  id[(*nt)++] = INT;
+  
+  strcpy(tag[(*nt)], "amplitude_fixed_initial_condition");
+  addr[(*nt)] = &amplitude_fixed_initial_condition;
+  id[(*nt)++] = INT;
 
   strcpy(tag[(*nt)], "include_screening");
   addr[(*nt)] = &include_screening;
