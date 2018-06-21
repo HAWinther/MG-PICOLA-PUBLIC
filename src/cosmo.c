@@ -737,7 +737,7 @@ double mg_sigma8_enhancement(double a){
     double know  = exp( log(kmin) + log(kmax/kmin) * i / (double)(npts-1) );
     double kR8   = know * 8.0;
     double w     = 3.0/(kR8*kR8*kR8) * (sin(kR8) - kR8 * cos(kR8));
-    double D     = Lookup_GSL_2D_Spline(&SplineContainer.D_of_scale_spline, log(a), log(know));
+    double D     = Lookup_GSL_2D_Spline(&SplineContainer.D_of_scale_spline,     log(a), log(know));
 #ifdef MASSIVE_NEUTRINOS
     double DLCDM = Lookup_GSL_2D_Spline(&SplineContainer.DLCDM_of_scale_spline, log(a), log(know));
 #else
@@ -745,10 +745,10 @@ double mg_sigma8_enhancement(double a){
 #endif
     double power = PowerSpec(know);
 
-    integrand      += power * w * w * (D / DLCDM) * (D / DLCDM)   * know * know * know * dlogk / (2.0 * M_PI * M_PI);
-    integrand_LCDM += power * w * w * know * know * know * dlogk / (2.0 * M_PI * M_PI);
+    integrand      += power * w * w * D     * D     * know * know * know * dlogk / (2.0 * M_PI * M_PI);
+    integrand_LCDM += power * w * w * DLCDM * DLCDM * know * know * know * dlogk / (2.0 * M_PI * M_PI);
   }
-  integrand = sqrt(integrand);
+  integrand      = sqrt(integrand);
   integrand_LCDM = sqrt(integrand_LCDM);
   return integrand / integrand_LCDM;
 

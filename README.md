@@ -32,4 +32,6 @@ This code is based on the [L-PICOLA](https://github.com/CullanHowlett/l-picola) 
 
  - Added memory monitoring (using wrappers around malloc and free).
 
+ - Added support for amplitude fixed (|delta(k)|^2 == P(k)) and inverted (delta -> -delta) initial conditions (see Pontzen et al. 2016). This can dramatically reduce the sample variance in P(k) (and other observables) by running pairs of simulation (normal and inverted) and adding the resulting P(k). See e.g. [1806.01871](https://arxiv.org/pdf/1806.01871.pdf) which shows that this procedure is bias free.
+
 MG-PICOLA is distributed under the GNU Public License v3 (see COPYING for details).
