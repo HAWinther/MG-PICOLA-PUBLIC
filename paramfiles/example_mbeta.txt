@@ -13,6 +13,8 @@ include_screening        1              % Include screening [1] or not [0]
 use_lcdm_growth_factors  0              % Use growth-factors computed in LCDM
 input_pofk_is_for_lcdm   1              % If the input P(k) is for LCDM we get the correct MG P(k) by *= (D/DLCDM)^2
 input_sigma8_is_for_lcdm 1              % If Sigma8 provided below is for LCDM then we rescale P(k)
+inverted_initial_condition        0     % If 1 then delta(k) -> -delta(k) in IC
+amplitude_fixed_initial_condition 0     % If 1 then enforce amplitude |delta(k)|^2 == P(k) in IC
 
 % ==================
 % Simulation outputs

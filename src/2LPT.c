@@ -202,7 +202,7 @@ void displacement_fields(void) {
   float_kind *(digrad[6]);
   float_kind *(disp[3]), *(disp2[3]);
   double u, v, w;
-  double phase, ampl;
+  double phase, ampl = 0.0;
   double kvec[3], kmag, kmag2;
   double sumdis[3], sumdis2[3];
   double f1, f2, f3, f4, f5, f6, f7, f8;
@@ -325,7 +325,10 @@ void displacement_fields(void) {
     // If the power-spectrum we read is assumed to be for LCDM
     // then we need to rescale it. If LCDM then the ratio below is just 1
     //=====================================================================
-    double sigma8_mg_over_sigma8_lcdm_pow2 = pow( mg_sigma8_enhancement(1.0), 2);
+    double sigma8_mg_over_sigma8_lcdm_pow2 = 1.0;
+    if(modified_gravity_active && input_pofk_is_for_lcdm){
+      sigma8_mg_over_sigma8_lcdm_pow2 = pow( mg_sigma8_enhancement(1.0), 2);
+    }
 
     //=========================================
     // Create IC from skratch
@@ -342,9 +345,13 @@ void displacement_fields(void) {
 
           for(k = 0; k < Nmesh / 2; k++) {
             phase = gsl_rng_uniform(random_generator) * 2 * PI;
-            do {
-              ampl = gsl_rng_uniform(random_generator);
-            } while(ampl == 0);
+
+            // Amplitude fixed ic means we enforce |delta|^2 = P(k) and only draw the phase
+            if(! amplitude_fixed_initial_condition){
+              do {
+                ampl = gsl_rng_uniform(random_generator);
+              } while(ampl == 0);
+            } 
 
             if(i == Nmesh / 2 || j == Nmesh / 2 || k == Nmesh / 2) continue;
             if(i == 0 && j == 0 && k == 0) continue;
@@ -379,7 +386,7 @@ void displacement_fields(void) {
             }
 
             p_of_k  = PowerSpec(kmag);
-            p_of_k *= -log(ampl);
+            if(! amplitude_fixed_initial_condition) p_of_k *= -log(ampl);
 
             //====================================================================================
             // The power-spectrum we read in is assumed to be for LCDM so rescale it to get MG P(k)
@@ -400,6 +407,10 @@ void displacement_fields(void) {
             }
 
             delta = pow(Box,-1.5) * sqrt(p_of_k);  // keep at redshift 0.0
+            
+            // Inverted ic means we flip the sign
+            if(inverted_initial_condition) delta *= -1.0;
+
             double delta_cdm_re = delta * cos(phase);
             double delta_cdm_im = delta * sin(phase);
 
@@ -1260,7 +1271,7 @@ void displacement_fields(void) {
 
   if(ThisTask == 0) printf("Fourier transforming displacement gradient...\n");
   for(i = 0; i < 6; i++) {
-    Inverse_plan = my_fftw_mpi_plan_dft_c2r_3d(Nmesh,Nmesh,Nmesh,cdigrad[i],digrad[i],MPI_COMM_WORLD,FFTW_MEASURE);
+    Inverse_plan = my_fftw_mpi_plan_dft_c2r_3d(Nmesh,Nmesh,Nmesh,cdigrad[i],digrad[i],MPI_COMM_WORLD,FFTW_ESTIMATE);
     my_fftw_execute(Inverse_plan);
     my_fftw_destroy_plan(Inverse_plan);
   }
@@ -1552,23 +1563,12 @@ void from_cdisp_store_to_ZA(double A, double AF, double AFF, int fieldtype, int 
   }
 
   // Pointer to the stored [LPTorder]LPT displacment field in k-space
-#ifdef SCALEDEPENDENT
   complex_kind *stored_delta;
   if(LPTorder == 1){
     stored_delta = cdelta_cdm;
   } else if(LPTorder == 2){
     stored_delta = cdelta_cdm2;
   }
-#else
-  complex_kind *(stored_disp_field[3]);
-  if(LPTorder == 1){
-    for(int axes = 0; axes < 3; axes++)
-      stored_disp_field[axes] = cdisp_store[axes];
-  } else if(LPTorder == 2){
-    for(int axes = 0; axes < 3; axes++)
-      stored_disp_field[axes] = cdisp2_store[axes];
-  }
-#endif
 
   // Allocate temporary memory
   complex_kind *(cdisp_D[3]);
@@ -1617,13 +1617,8 @@ void from_cdisp_store_to_ZA(double A, double AF, double AFF, int fieldtype, int 
 
         for(int axes = 0; axes < 3; axes++) {
           if(kmag2 > 0.0) {
-#ifdef SCALEDEPENDENT
             cdisp_D[axes][coord][0] = -stored_delta[coord][1] * kvec[axes]/kmag2 * growth_factor;
             cdisp_D[axes][coord][1] =  stored_delta[coord][0] * kvec[axes]/kmag2 * growth_factor;
-#else
-            cdisp_D[axes][coord][0] = stored_disp_field[axes][coord][0] * growth_factor;
-            cdisp_D[axes][coord][1] = stored_disp_field[axes][coord][1] * growth_factor;
-#endif
           } else {
             cdisp_D[axes][coord][0] = 0.0;
             cdisp_D[axes][coord][1] = 0.0;

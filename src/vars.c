@@ -295,3 +295,7 @@ double mm_dx_extra_mpc;    // Buffer radius for FoF search in units of the boxsi
 int NoutputStart_global;
 int timeStep_global;
 
+// For improved IC
+int inverted_initial_condition = 0;
+int amplitude_fixed_initial_condition = 0;
+

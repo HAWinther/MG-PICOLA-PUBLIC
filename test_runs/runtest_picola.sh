@@ -34,6 +34,8 @@ include_screening               1
 use_lcdm_growth_factors         1
 input_pofk_is_for_lcdm          1
 input_sigma8_is_for_lcdm        1
+amplitude_fixed_initial_condition 0
+inverted_initial_condition        0
 OutputDir                       $OutputDir
 FileBase                        $FileBase
 OutputRedshiftFile              data_picola_comparison/output_redshifts_n20.dat

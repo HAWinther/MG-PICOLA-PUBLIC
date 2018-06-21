@@ -71,7 +71,13 @@ The code uses the same parameter-file as \texttt{PICOLA} with some additions. No
 
 \item \textbf{input\_sigma8\_is\_for\_lcdm = 0, 1} Only used if input\_pofk\_is\_for\_lcdm = 1. Useful if one wants to do MG and $\Lambda$CDM simulations with exactly the same IC. The power-spectrum is normalized according to the linear $\Lambda$CDM model. This means the linear $\sigma_8$ for a MG run will be different than what is in the parameter-file.
 
+\item \textbf{inverted\_initial\_condition = 0, 1} We multiply $\delta(k)$ by $-1$ if $1$.
+
+\item \textbf{amplitude\_fixed\_initial\_condition = 0, 1} Use amplitude fixed IC. We enforce $|\delta(k)|^2 = P(k)$.
+
 \end{itemize}
+
+It has been shown that inverted and amplitude fixed IC does not lead to biased results, but significantly reduces cosmic variance in most clustering statistics. Suggested use: run pairs of simulations. For a given seed run one simulation with inverted IC = 0 and one simulation with IC = 1 (both with amplitude fixing turned on) and average observables over these two simulations.
 
 The code can also read IC from file:
 

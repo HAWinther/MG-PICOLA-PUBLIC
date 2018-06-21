@@ -465,4 +465,8 @@ extern double mm_dx_extra_mpc;
 extern int NoutputStart_global;
 extern int timeStep_global;
 
+// For improved IC
+extern int inverted_initial_condition;
+extern int amplitude_fixed_initial_condition;
+
 #endif

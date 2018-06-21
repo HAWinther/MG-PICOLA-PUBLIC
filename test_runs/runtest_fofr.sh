@@ -48,6 +48,8 @@ include_screening               $include_screening
 use_lcdm_growth_factors         $use_lcdm_growth_factors 
 input_pofk_is_for_lcdm          1
 input_sigma8_is_for_lcdm        $input_sigma8_is_for_lcdm 
+amplitude_fixed_initial_condition 0
+inverted_initial_condition        0
 OutputDir                       $OutputDir
 FileBase                        $FileBase
 OutputRedshiftFile              $OutputDir/output_redshifts.dat
