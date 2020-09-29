@@ -646,6 +646,38 @@ void ReadFilesMakeDisplacementField(void){
   double normfac = 1.0/pow((double) Nmesh,3);
   normfac *= growth_DLCDM(1.0) / growth_DLCDM(1.0/(1.0+Init_Redshift));
   for(unsigned int i = 0; i < 2*Total_size; i++) density[i] *= normfac;
+  
+  // If Nmesh > Nsample = the grid size the IC was created at then there is no information about smaller
+  // modes so these scales are very noisy and will lead to problems. To solve this we apply a
+  // low pass filter (sharp-k) removing all modes beyond the nyquisy frequency of the grid used to generate the particles
+  // which is just Nsample/2
+  if(Nmesh > Nsample){
+    complex_kind *cdensity = (complex_kind *) density;
+    for (int i = 0; i < Local_nx; i++) {
+      int iglobal = i + Local_x_start;
+      for (int j = 0 ; j < (unsigned int)(Nmesh/2+1); j++) {
+        for (int k = 0; k < (unsigned int) (Nmesh/2+1); k++) {
+          double d[3] = {iglobal > Nmesh/2 ? iglobal-Nmesh : iglobal, j, k};
+          double d2 = 0.0;
+          for(int axes = 0; axes < 3; axes++){
+            d2 += d[axes] * d[axes];
+          }
+         
+          // Apply filter
+          if(sqrt(d2) > Nsample / 2){
+            unsigned int coord = (i * Nmesh + j) * (Nmesh/2+1) + k;
+            cdensity[coord][0] = cdensity[coord][1] = 0.0;
+          
+            // Mirror mode about y-axis
+            if ((j != (unsigned int)(Nmesh/2)) && (j != 0)) {
+              coord = (i*Nmesh+(Nmesh-j))*(Nmesh/2+1)+k;
+              cdensity[coord][0] = cdensity[coord][1] = 0.0;
+            }
+          }
+        }
+      }
+    }
+  }
 
   timer_stop(_ReadParticlesFromFile);
 
