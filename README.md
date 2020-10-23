@@ -2,6 +2,8 @@
 MG-PICOLA v0.9, May 2017
 Author: Hans A. Winther
 
+NOTE: [A better version](https://github.com/HAWinther/FML/tree/master/FML/COLASolverhttps://github.com/HAWinther/FML/tree/master/FML/COLASolver) of this code (though not as well tested yet) written in C++ in a more systematic way that makes it easier to modify and with many more options can be found [here](https://github.com/HAWinther/FML/tree/master/FML/COLASolverhttps://github.com/HAWinther/FML/tree/master/FML/COLASolver). This requires quite a new C++ compiler though. The code here still works well, but I will not be adding anything new to it.
+
 The code extends the [COLA (COmoving Lagrangian Acceleration)](https://arxiv.org/abs/1301.0322) method for simulating cosmological structure formation from LCDM to theories that exhibit scale-dependent growth at the level of 2LPT. The code includes the fast approximate screening method of [Winther & Ferreira (2014)](https://arxiv.org/abs/1403.6492). For the scientific paper explaining the approach see [Winther, Koyama, Manera, Wright and Zhao (2017)](https://arxiv.org/abs/1703.00879).
 
 This code is based on the [L-PICOLA](https://github.com/CullanHowlett/l-picola) code written by Cullan Howlett & Marc Manera. For a documentation of L-PICOLA see [L-PICOLA/Documentation](https://github.com/CullanHowlett/l-picola/tree/master/Documentation)
