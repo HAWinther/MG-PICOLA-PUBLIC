@@ -30,7 +30,8 @@ const std::string gridassignment = "CIC";
 const std::string gridassignment = "TSC";
 #define powwindow(x) ((x)*(x)*(x))
 #endif
-  
+
+
 //======================================
 // Global container 
 //======================================
@@ -40,7 +41,7 @@ struct Simulation {
   int nfiles;           // Number of input files
   int ngrid;            // FFT grid size
   int nbuffer;          // Size of buffer
-  double boxsize;
+  double boxsize;       // Size of the simulation box 
   double *readbuffer;   // Read buffer
   double *pofk;         // P(k) bins
   double *nmodes;       // Number of modes in each pofk bin
@@ -49,6 +50,7 @@ struct Simulation {
   string datatype;      // RAMSES or GADGET
   fftw_complex *grid;   // FFT grid
   fftw_plan plan;       // FFT execution plan
+  bool endianchange;    // finds if the simulation data differs in endianness from the system and changes if need  
 } global;
 
 //=================================================
@@ -225,10 +227,6 @@ void add_to_grid_TSC(double x, double y, double z, int ngrid){
 
 }
 
-
-
-
-
 //=================================================
 // Process GADGET data
 // Format of pos is [x1 y1 z1 z2 y2 z2 ...]
@@ -238,17 +236,31 @@ void add_to_grid_TSC(double x, double y, double z, int ngrid){
 // Format pos [x1 ... xN y1 ... z1 ... ]
 // with x,y,z in [0,1]
 //=================================================
+
 void process_particle_data(double *pos, int npart, double boxsize = 0.0){
   double x, y, z;
   int ngrid = global.ngrid;
   float *pos_float = (float *) pos;
+  
+
+  global.boxsize=boxsize;                      
+  #ifdef _UNITS
+  global.boxsize/=units;
+  #endif
+
+
   for(int i = 0; i < npart; i++){
-  global.boxsize=boxsize;
     if(global.datatype.compare("RAMSES") == 0){
       x = pos[i];
       y = pos[npart+i];
       z = pos[2*npart+i];
     } else if (global.datatype.compare("GADGET") == 0){
+        if(endianchange){
+            swap_endian(pos_float[3*i]);
+            swap_endian(pos_float[3*i+1]);
+            swap_endian(pos_float[3*i+2]);
+            }
+
       x = double(pos_float[3*i]/boxsize);
       y = double(pos_float[3*i+1]/boxsize);
       z = double(pos_float[3*i+2]/boxsize);
@@ -257,6 +269,7 @@ void process_particle_data(double *pos, int npart, double boxsize = 0.0){
       y = pos[3*i+1]/boxsize;
       z = pos[3*i+2]/boxsize;
     }
+
 
     //======================================
     // Bin particle to the grid
@@ -424,10 +437,11 @@ void output_pofk(){
   double *pofk   = global.pofk;
   double *nmodes = global.nmodes;
   double boxsize = global.boxsize;
+
   ofstream pofkfile(global.pofkoutfile.c_str());
   for(int i = 1; i <= ngrid/2; i++){
     if(nmodes[i]>0){
-      pofkfile << (2*i-1)*M_PI/boxsize << " " << double(pofk[i]*M_PI*ngrid*ngrid*ngrid) << endl;
+      pofkfile << (2*i-1)*M_PI/boxsize << " " << double(pofk[i]*boxsize*boxsize*boxsize) << endl;
     }
   } 
 }
@@ -447,7 +461,8 @@ int main(int argv, char **argc){
     global.nfiles      = atoi(argc[4]);
     global.datatype    = argc[5];
     global.npart_tot   = 0;
-    global.nbuffer     = 100000000; // 750 MB
+//  global.nbuffer     = 100000000; // 750 MB
+    global.nbuffer     =100000000*10;
 
     cout << endl;
     cout << "=====================================" << endl;
@@ -483,7 +498,7 @@ int main(int argv, char **argc){
       cout << "Read " << i << endl;
       read_and_bin_particles_ramses(global.filebase, i  , &global.npart_tot, global.readbuffer, &global.nbuffer);
     } else if(global.datatype.compare("GADGET") == 0) {
-      read_and_bin_particles_gadget(global.filebase, i-1, &global.npart_tot, global.readbuffer, &global.nbuffer);
+      read_and_bin_particles_gadget(global.filebase, i-1, &global.npart_tot, global.readbuffer, &global.nbuffer, global.nfiles);
     } else if(global.datatype.compare("ASCII") == 0) {
       global.nfiles = 1;
       read_and_bin_particles_ascii(global.filebase, 1, &global.npart_tot, global.readbuffer, &global.nbuffer);
