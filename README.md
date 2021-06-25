@@ -40,7 +40,12 @@ This code is based on the [L-PICOLA](https://github.com/CullanHowlett/l-picola) 
  
  - Added the TSC mass-assignment scheme in SimplePofk
 
- - Changed the normalization of the output in SimplePofk, the multiplicatory factors wrt. the previous version are (2i-1)/L for wavelength and Pi*(NGRID)^3 for P(k)
+ - Changed the normalization of the output in SimplePofk, the multiplicatory factors wrt. the previous version are (2i-1)*M_PI/L for wavelength and Pi*(L)^3 for P(k)
 
+ - Added the automatic endianness check and byte change for GADGET files 
+
+ - Slightly changed the reading routine of single versus multiple chunks of Gadget data. If the simulation is in one single file (SimplePofk argument NumFiles being 1), the basename serves as the name for the opened file. Otherwise, the previous routine applies.
+
+ - Added a preprocessor option for switching the units to kpc/h
 
 MG-PICOLA is distributed under the GNU Public License v3 (see COPYING for details).
