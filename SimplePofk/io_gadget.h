@@ -63,7 +63,7 @@ void print_header(){
   printf("M = %e %e %e %e %e %e\n",header.mass[0],header.mass[1],header.mass[2],header.mass[3],header.mass[4],header.mass[5]);
   printf("a               = %f\n",header.time);
   printf("z               = %f\n",header.redshift);
-  printf("BoxSize (Mpc/h) = %f\n",header.BoxSize/1000.0);
+  printf("BoxSize (Mpc/h) = %f\n",header.BoxSize);
   printf("OmegaM          = %f\n",header.Omega0);
   printf("OmegaL          = %f\n",header.OmegaLambda);
   printf("HubbleParam     = %f\n",header.HubbleParam);
@@ -89,7 +89,6 @@ void read_gadget_header(FILE *fd, bool verbose = true){
 void read_gadget_float_vector(FILE *fd, void *buffer, int dim, int npart, bool verbose = true){
   int tmp;
   float *val = (float *)buffer;
-
   // Read
   my_fread(&tmp,sizeof(int),1,fd);
   my_fread(buffer, dim*sizeof(float), npart, fd);
@@ -147,7 +146,7 @@ template <typename T> std::string to_string(T value){
   return os.str();
 }
 
-void read_and_bin_particles_gadget(std::string fileprefix, int filenum, int *npart_tot, double *readbuffer, int *nbuffer){
+void read_and_bin_particles_gadget(std::string fileprefix, int filenum, unsigned long long  *npart_tot, double *readbuffer, int *nbuffer){
   std::string filename = fileprefix + to_string(filenum);
   FILE *fp;
   int npart_now;

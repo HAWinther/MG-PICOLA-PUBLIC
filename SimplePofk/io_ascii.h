@@ -7,7 +7,7 @@ void process_particle_data(double *pos, int npart, double boxsize);
 // Read method for ascii
 //======================================
 
-void read_and_bin_particles_ascii(std::string filebase, int filenum, int *npart_tot, double *readbuffer, int *nbuffer){
+void read_and_bin_particles_ascii(std::string filebase, int filenum, unsigned long long *npart_tot, double *readbuffer, int *nbuffer){
   FILE *fp;
   std::string filename;
 
