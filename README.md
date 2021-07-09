@@ -1,4 +1,4 @@
-# MG-PICOLA-PUBLIC
+V# MG-PICOLA-PUBLIC
 MG-PICOLA v0.9, May 2017
 Author: Hans A. Winther
 
@@ -40,7 +40,7 @@ This code is based on the [L-PICOLA](https://github.com/CullanHowlett/l-picola) 
  
  - Added the TSC mass-assignment scheme in SimplePofk.
 
- - Changed the normalization of the output in SimplePofk, the changes wrt. the previous version are (2i-1)M_PI/BoxSize for wavelength (previously just i) and multiplication by (BoxSize)^3 for P(k).
+ - Changed the normalization of the output in SimplePofk, the changes wrt. the previous version are (2i+1)M_PI/BoxSize for wavelength (previously just i) and multiplication by (BoxSize)^3 for P(k).
 
  - Added the automatic endianness check and byte change for GADGET files. 
 
