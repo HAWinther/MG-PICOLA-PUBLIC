@@ -11,9 +11,6 @@ OPTIONS = -D_SUBTRACTSHOTNOISE -D_NGP
 #-D_UNITS
 
 # Path to FFTW library
-#I = -I/home/topolski/include
-#L = -L/home/topolski/lib -lfftw3 -lfftw3_threads
-
 I = -I$(HOME)/include
 L = -L$(HOME)/lib -lfftw3 -lfftw3_threads
 
