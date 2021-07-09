@@ -345,7 +345,7 @@ double window(int kx, int ky, int kz){
 // Assuming we have binned particles to grid
 //======================================
 void calculate_pofk(){
-  int ngrid = global.ngrid;
+  long int ngrid = global.ngrid;
   fftw_complex *grid = global.grid;
   fftw_plan *plan = &global.plan;
   double *pofk    = global.pofk;
@@ -384,9 +384,9 @@ void calculate_pofk(){
       int jj = (j < nover2 ? j : j-ngrid);
 #pragma omp parallel for 
       for(int k = 0; k < ngrid; k++){
-        long int dind = ngrid * omp_get_thread_num();
+        long long int dind = ngrid * omp_get_thread_num();
         int kk = (k < nover2 ? k : k-ngrid);
-        long long ind = i + ngrid*(j + k*ngrid);
+        long long int ind = i + ngrid*(j + k*ngrid);
         long long int kind = int(sqrt(ii*ii + jj*jj + kk*kk) + 0.5);
 
         if(kind < ngrid && kind > 0){
