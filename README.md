@@ -1,4 +1,4 @@
-V# MG-PICOLA-PUBLIC
+# MG-PICOLA-PUBLIC
 MG-PICOLA v0.9, May 2017
 Author: Hans A. Winther
 
