@@ -441,7 +441,7 @@ void output_pofk(){
   ofstream pofkfile(global.pofkoutfile.c_str());
   for(int i = 1; i <= ngrid/2; i++){
     if(nmodes[i]>0){
-      pofkfile << (2*i-1)*M_PI/boxsize << " " << double(pofk[i]*boxsize*boxsize*boxsize) << endl;
+      pofkfile << (2*i+1)*M_PI/boxsize << " " << double(pofk[i]*boxsize*boxsize*boxsize) << endl;
     }
   } 
 }
