@@ -27,7 +27,7 @@ void process_particle_data(double *pos, int npart_now, double boxsize);
   bool endianchange = false;
 
 //===================================================
-// swap_endian endianness 
+// swap endianness routine
 //================================================-===
 
 template <typename T>
@@ -132,7 +132,7 @@ void read_gadget_header(FILE *fd, bool verbose = true){
   my_fread(&tmp,sizeof(int),1,fd); // here, if the endianness is the same as the machine we're working on, the integer should be equal to 256, i.e. number of bytes the header space reserves
   if(tmp!=256){
 	 	endianchange = true;
-		if(verbose) std::cout << "Different endianness of the data detected! Subsequent readings will be swap_endianped to the other endian system" << std::endl;
+		if(verbose) std::cout << "Different endianness of the data detected! Subsequent readings will be swapped to the other endian system" << std::endl;
 			}
 
   my_fread(&header, sizeof(header), 1, fd);
