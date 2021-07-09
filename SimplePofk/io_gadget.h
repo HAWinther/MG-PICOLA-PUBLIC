@@ -14,7 +14,6 @@
 #endif
 
 
-
 size_t my_fread(void *ptr, size_t size, size_t nmemb, FILE * stream);
 void read_gadget_float_vector(FILE *fd, void *buffer, int dim, int npart, bool print);
 void read_gadget_int_vector(FILE *fd, void *buffer, int dim, int npart, bool print);
@@ -28,14 +27,14 @@ void process_particle_data(double *pos, int npart_now, double boxsize);
   bool endianchange = false;
 
 //===================================================
-// Swap endianness 
+// swap_endian endianness 
 //================================================-===
 
 template <typename T>
 void swap_endian(T& pX)
 {
     char& raw = reinterpret_cast<char&>(pX);
-    std::reverse(&raw, &raw + sizeof(T));
+     std::reverse(&raw, &raw + sizeof(T));
 }
 
 //=======================================================
@@ -102,6 +101,7 @@ void print_header(){
 //======================================================
 
 void change_endian_header(){
+  
   for(int i=0; i<6; i++){
   	swap_endian(header.npart[i]);
 	swap_endian(header.mass[i]);
@@ -132,7 +132,7 @@ void read_gadget_header(FILE *fd, bool verbose = true){
   my_fread(&tmp,sizeof(int),1,fd); // here, if the endianness is the same as the machine we're working on, the integer should be equal to 256, i.e. number of bytes the header space reserves
   if(tmp!=256){
 	 	endianchange = true;
-		if(verbose) std::cout << "Different endianness of the data detected! Subsequent readings will be swapped to the other endian system" << std::endl;
+		if(verbose) std::cout << "Different endianness of the data detected! Subsequent readings will be swap_endianped to the other endian system" << std::endl;
 			}
 
   my_fread(&header, sizeof(header), 1, fd);

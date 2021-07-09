@@ -249,7 +249,7 @@ void process_particle_data(double *pos, int npart, double boxsize = 0.0){
   #endif
 
 
-  for(int i = 0; i < npart; i++){
+  for(long int i = 0; i < npart; i++){
     if(global.datatype.compare("RAMSES") == 0){
       x = pos[i];
       y = pos[npart+i];
@@ -271,9 +271,9 @@ void process_particle_data(double *pos, int npart, double boxsize = 0.0){
     }
 
 
-    //======================================
-    // Bin particle to the grid
-    //======================================
+//======================================
+// Bin particle to the grid
+//======================================
 #if defined(_NGP)
     add_to_grid_NGP( x, y, z, ngrid);
 #elif defined(_CIC)
@@ -294,7 +294,8 @@ void allocate_memory(bool allocate){
   if(allocate){
     fftw_init_threads();
     fftw_plan_with_nthreads(omp_get_max_threads());
-
+    
+    cout << "The program needs at least " << (sizeof(fftw_complex) * ngrid*ngrid*ngrid)/1024/1024/1024 << " GB of available RAM memory. Make sure there is enough." << endl;
     global.grid   = (fftw_complex *) fftw_malloc(sizeof(fftw_complex) * ngrid*ngrid*ngrid);
     global.plan   = fftw_plan_dft_3d(ngrid, ngrid, ngrid, global.grid, global.grid, FFTW_FORWARD, FFTW_ESTIMATE); 
     global.pofk   = new double[ngrid];
@@ -305,8 +306,8 @@ void allocate_memory(bool allocate){
       global.pofk[i] = global.nmodes[i] = 0.0;
 
     // Init FFT grid
-    int ngridtot = pow3(ngrid);
-    for(int i = 0; i < ngridtot; i++)
+    long long int ngridtot = pow3(ngrid);
+    for(long long int i = 0; i < ngridtot; i++)
       global.grid[i][0] = global.grid[i][1] = 0.0;
 
   } else {
@@ -344,7 +345,7 @@ double window(int kx, int ky, int kz){
 // Assuming we have binned particles to grid
 //======================================
 void calculate_pofk(){
-  long long ngrid = global.ngrid;
+  int ngrid = global.ngrid;
   fftw_complex *grid = global.grid;
   fftw_plan *plan = &global.plan;
   double *pofk    = global.pofk;
@@ -383,7 +384,7 @@ void calculate_pofk(){
       int jj = (j < nover2 ? j : j-ngrid);
 #pragma omp parallel for 
       for(int k = 0; k < ngrid; k++){
-        int dind = ngrid * omp_get_thread_num();
+        long int dind = ngrid * omp_get_thread_num();
         int kk = (k < nover2 ? k : k-ngrid);
         long long ind = i + ngrid*(j + k*ngrid);
         long long int kind = int(sqrt(ii*ii + jj*jj + kk*kk) + 0.5);
@@ -462,7 +463,7 @@ int main(int argv, char **argc){
     global.datatype    = argc[5];
     global.npart_tot   = 0;
 //  global.nbuffer     = 100000000; // 750 MB
-    global.nbuffer     =100000000*10;
+    global.nbuffer     = 100000000*10; // 7.5 GB
 
     cout << endl;
     cout << "=====================================" << endl;

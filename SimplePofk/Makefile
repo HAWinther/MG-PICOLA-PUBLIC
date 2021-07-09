@@ -7,7 +7,8 @@ CC = g++
 # Choose among mass-assignment functions using -D_FUNCTION, where FUNCTION = NGP, CIC or TSC 
 # If the input Gadget data is in kpc/h, use -D_UNITS, otherwise it is assumed that it is already in Mpc/h
 
-OPTIONS = -D_SUBTRACTSHOTNOISE -D_NGP -D_UNITS
+OPTIONS = -D_SUBTRACTSHOTNOISE -D_NGP
+#-D_UNITS
 
 # Path to FFTW library
 I = -I/home/topolski/include
