@@ -53,7 +53,7 @@ std::string int_to_ramses_string(int i){
 // Read method for RAMSES
 //======================================
 
-void read_and_bin_particles_ramses(std::string filebase, int filenum, int *npart_tot, double *readbuffer, int *nbuffer){
+void read_and_bin_particles_ramses(std::string filebase, int filenum, unsigned long long *npart_tot, double *readbuffer, int *nbuffer){
   FILE *fp;
   std::string filename;
 
