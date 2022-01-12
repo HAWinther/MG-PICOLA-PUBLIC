@@ -35,5 +35,17 @@ This code is based on the [L-PICOLA](https://github.com/CullanHowlett/l-picola) 
  - Added memory monitoring (using wrappers around malloc and free).
 
  - Added support for amplitude fixed (|delta(k)|^2 == P(k)) and inverted (delta -> -delta) initial conditions (see Pontzen et al. 2016). This can dramatically reduce the sample variance in P(k) (and other observables) by running pairs of simulation (normal and inverted) and adding the resulting P(k). See e.g. [1806.01871](https://arxiv.org/pdf/1806.01871.pdf) which shows that this procedure is bias free.
+ 
+ - For SimplePofk, changed the types of indexing variables so that overflow no longer occurs for NGRID >= 1290 (overflow of int type).
+ 
+ - Added the TSC mass-assignment scheme in SimplePofk.
+
+ - Changed the normalization of the output in SimplePofk, the changes wrt. the previous version are (2i+1)M_PI/BoxSize for wavelength (previously just i) and multiplication by (BoxSize)^3 for P(k).
+
+ - Added the automatic endianness check and byte change for GADGET files. 
+
+ - Slightly changed the reading routine of single versus multiple chunks of Gadget data. If the simulation is in one single file (SimplePofk argument NumFiles being 1), the basename serves as the name for the opened file. Otherwise, the previous routine applies.
+
+ - Added a preprocessor option for switching the units to kpc/h.
 
 MG-PICOLA is distributed under the GNU Public License v3 (see COPYING for details).
